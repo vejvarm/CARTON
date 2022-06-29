@@ -48,8 +48,8 @@ def get_parser():
     parser.add_argument('--batch_size', default=25, type=int)
 
     # test and inference
-    parser.add_argument('--model_path', default='experiments/snapshots/CARTON_e15_v0.0287_multitask.pth.tar', type=str)
-    parser.add_argument('--question_type', default='Clarification',
+    parser.add_argument('--model_path', default='experiments/snapshots/CARTON_e60_v0.0209_multitask.pth.tar', type=str)
+    parser.add_argument('--question_type', default='Simple Question (Direct)',
         choices=['Clarification',
                 'Comparative Reasoning (All)',
                 'Logical Reasoning (All)',

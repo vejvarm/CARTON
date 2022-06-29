@@ -19,15 +19,12 @@ parser.add_argument('--max_results', default=1000, help='json file with actions'
 args = parser.parse_args()
 
 # load kg
-kg = None  # KnowledgeGraph()
+kg = KnowledgeGraph()
 
 # load data
 data_path = f'{str(ROOT_PATH)}{args.file_path}'
-data = []
 with open(data_path) as json_file:
     data = json.load(json_file)
-
-print(data)
 
 # load action executor
 action_executor = ActionExecutor(kg)

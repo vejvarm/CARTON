@@ -84,10 +84,10 @@ class ActionExecutor:
             action_input_size_constrain['union'] = 2
         # parse actions
         actions_to_execute = self._parse_actions(actions)
-        for key, value in actions_to_execute.items():
-            if actions_to_execute[key][1] == 'prev_answer':
-                actions_to_execute[key][1] = prev_results
-            elif actions_to_execute[key][0] == 'is_in' and actions_to_execute[key][1].startswith('Q'):
-                actions_to_execute[key][1] = [actions_to_execute[key][1]]
+        for key, action in actions_to_execute.items():
+            if action[1] == 'prev_answer':
+                action[1] = prev_results
+            elif action[0] == 'is_in' and action[1].startswith('Q'):
+                action[1] = [action[1]]
         # execute actions and return results
         return self._execute_actions(actions_to_execute)
