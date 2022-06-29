@@ -13,13 +13,11 @@ from args import get_parser
 from unidecode import unidecode
 from collections import OrderedDict
 from transformers import BertTokenizer
-from elasticsearch import Elasticsearch
 
 # import constants
 from constants import *
 
 # set logger
-logging.getLogger('elasticsearch').setLevel(logging.CRITICAL)
 logger = logging.getLogger(__name__)
 
 class NoamOpt:
@@ -241,7 +239,6 @@ class Scorer(object):
 class Inference(object):
     def __init__(self):
         self.tokenizer = BertTokenizer.from_pretrained(BERT_BASE_UNCASED)
-        self.es = Elasticsearch([{'host': 'localhost', 'port': 9200}]) # connect to elastic search server
         self.inference_actions = []
 
     def construct_actions(self, inference_data, predictor):
@@ -290,46 +287,6 @@ class Inference(object):
                 print(f'==> Finished action construction {((i+1)/len(question_type_inference_data))*100:.2f}% -- {toc - tic:0.2f}s')
 
         self.write_inference_actions()
-
-    def create_ner_idx_ent_dict(self, ner_indices, context_question):
-        ent_idx = []
-        ner_idx_ent = OrderedDict()
-        for index, span_type in ner_indices.items():
-            if not ent_idx or index-1 == ent_idx[-1][0]:
-                ent_idx.append([index, span_type]) # check wether token start with ## then include previous token also from context_question
-            else:
-                # get ent tokens from input context
-                ent_tokens = [context_question[idx] for idx, _ in ent_idx]
-                # get string from tokens using tokenizer
-                ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
-                # get elastic search results
-                es_results = self.elasticsearch_query(ent_string, ent_idx[0][1]) # use type from B tag only
-                # add idices to dict
-                if es_results:
-                    for idx, _ in ent_idx:
-                        ner_idx_ent[idx] = es_results
-                # clean ent_idx
-                ent_idx = [[index, span_type]]
-        if ent_idx:
-            # get ent tokens from input context
-            ent_tokens = [context_question[idx] for idx, _ in ent_idx]
-            # get string from tokens using tokenizer
-            ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
-            # get elastic search results
-            es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])
-            # add idices to dict
-            if es_results:
-                for idx, _ in ent_idx:
-                    ner_idx_ent[idx] = es_results
-        return ner_idx_ent
-
-    def elasticsearch_query(self, query, filter_type, res_size=50):
-        # TODO: (read) https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html
-        res = self.es.search(index='csqa_wikidata', doc_type='entities', body={'size': res_size, 'query': {'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}}})
-        results = []
-        for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
-        filtered_results = [res for res in results if filter_type in res[1]]
-        return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
 
     def get_value(self, question):
         if 'min' in question.split():
