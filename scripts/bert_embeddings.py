@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import re
 import time
 import json
@@ -56,7 +59,7 @@ flair.device = DEVICE
 bert = DocumentPoolEmbeddings([BertEmbeddings('bert-base-uncased', layers='-1')])
 
 # read entities
-id_entity = json.loads(open(f'{ROOT_PATH}/knowledge_graph/items_wikidata_n.json').read())
+id_entity = json.loads(open(f'{ROOT_PATH.parent}/knowledge_graph/items_wikidata_n.json').read())
 
 # create embeddings for NA and PAD values
 na = Sentence(NA_TOKEN)
@@ -81,5 +84,5 @@ for i, id in enumerate(list(all_entities)):
         toc = time.perf_counter()
         print(f'==> Finished {((i+1)/len(all_entities))*100:.2f}% -- {toc - tic:0.2f}s')
 
-with open(f'{ROOT_PATH}/knowledge_graph/entity_embeddings.json', 'w') as outfile:
+with open(f'{ROOT_PATH.parent}/knowledge_graph/entity_embeddings.json', 'w') as outfile:
     json.dump(entity_embeddings, outfile, indent=4)

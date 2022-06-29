@@ -324,6 +324,7 @@ class Inference(object):
         return ner_idx_ent
 
     def elasticsearch_query(self, query, filter_type, res_size=50):
+        # TODO: (read) https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html
         res = self.es.search(index='csqa_wikidata', doc_type='entities', body={'size': res_size, 'query': {'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}}})
         results = []
         for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])

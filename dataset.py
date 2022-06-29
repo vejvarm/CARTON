@@ -9,10 +9,11 @@ from constants import *
 class CSQADataset:
     def __init__(self):
         self.id = 0
-        self.train_path = str(ROOT_PATH.parent) + args.data_path + '/train/*'
-        self.val_path = str(ROOT_PATH.parent) + args.data_path + '/val/*'
-        self.test_path = str(ROOT_PATH.parent) + args.data_path + '/test/*'
+        self.train_path = str(ROOT_PATH) + args.data_path + '/train/*'
+        self.val_path = str(ROOT_PATH) + args.data_path + '/val/*'
+        self.test_path = str(ROOT_PATH) + args.data_path + '/test/*'
         self.load_data_and_fields()
+        print(self.train_path)
 
     def _prepare_data(self, data):
         input_data = []

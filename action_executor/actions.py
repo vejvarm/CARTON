@@ -14,6 +14,13 @@ class ActionOperator:
 
         return set(self.kg.triples['subject'][e][p])
 
+    def find_set(self, e_set, p):
+        result_set = set()
+        for e in e_set:
+            result_set.update(self.find(e, p))
+
+        return result_set
+
     def find_reverse(self, e, p):
         if isinstance(e, list):
             return self.find_reverse_set(e, p)
@@ -25,13 +32,6 @@ class ActionOperator:
             return set()
 
         return set(self.kg.triples['object'][e][p])
-
-    def find_set(self, e_set, p):
-        result_set = set()
-        for e in e_set:
-            result_set.update(self.find(e, p))
-
-        return result_set
 
     def find_reverse_set(self, e_set, p):
         result_set = set()
@@ -108,7 +108,7 @@ class ActionOperator:
     def equal(self, type_dict, value):
         return set([k for k, v in type_dict.items() if v == value and v >= 0])
 
-    def approx(self, type_dict, value, interval=15):
+    def approx(self, type_dict, value, interval=10):
         # ambiguous action
         # simply check for more than 0
         return set([k for k, v in type_dict.items() if v > 0])
@@ -144,3 +144,6 @@ class ActionOperator:
 
     def difference(self, s1, s2):
         return s1.difference(s2)
+
+    def update_entity(self, e_set, ein, num):
+        pass

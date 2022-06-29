@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import time
 import json
 import argparse
@@ -13,17 +15,19 @@ ROOT_PATH = Path(os.path.dirname(__file__)).parent
 parser = argparse.ArgumentParser(description='Execute actions')
 parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', help='json file with actions')
 parser.add_argument('--question_type', default='Clarification', help='json file with actions')
-parser.add_argument('--max_rresults', default=1000, help='json file with actions')
+parser.add_argument('--max_results', default=1000, help='json file with actions')
 args = parser.parse_args()
 
 # load kg
-kg = KnowledgeGraph()
+kg = None  # KnowledgeGraph()
 
 # load data
 data_path = f'{str(ROOT_PATH)}{args.file_path}'
 data = []
 with open(data_path) as json_file:
     data = json.load(json_file)
+
+print(data)
 
 # load action executor
 action_executor = ActionExecutor(kg)
@@ -47,6 +51,7 @@ count_no_answer = 0
 count_total = 0
 tic = time.perf_counter()
 for i, d in enumerate(data):
+    print(d['question_type'])
     if d['question_type'] != args.question_type:
         continue
 

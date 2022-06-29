@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import argparse
 from tqdm import tqdm
@@ -58,6 +60,8 @@ def create_pred_ob_sub(object_invTriples, wiki_path):
 
 
 if __name__ == '__main__':
+    print(ROOT_PATH)
+
     args = parser.parse_args()
 
     par_childs = json.load(open(str(ROOT_PATH.parent) + f'/{args.wiki_path}/par_child_dict.json', "r"))
