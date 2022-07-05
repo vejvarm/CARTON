@@ -1,3 +1,4 @@
+import sqlite3
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -31,6 +32,21 @@ def plot_from_np_file(path_to_np_file, out_plot_file_path):
     plt.xlabel("epoch")
     plt.ylabel("validation loss")
     plt.savefig(out_plot_file_path, format="png", dpi=200)
+
+
+def example_sqlite():
+    subject = "Q7931"
+    con = sqlite3.connect('\data\example.db')  # initialize and load database file
+    cur = con.cursor()  # cursor for using SQL commands
+
+    # create table, insert data
+    cur.execute("CREATE TABLE sub_rel_ob (sub_id, rel_id, ob_id)")
+    cur.execute(f"INSERT INTO sub_rel_ob ({subject}, 'P831', 'Q8401')")
+
+    # find subject entries
+    cur.execute(f"SELECT * FROM table WHERE subject = {subject}")
+
+    con.close()  # close connection to database file
 
 
 if __name__ == '__main__':
