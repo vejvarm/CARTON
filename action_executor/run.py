@@ -124,12 +124,12 @@ def run_question_type(file_path=args.file_path):
         # print(f'Accuracy: {question_types_meters[args.question_type].accuracy}')
         result_list.append(f'Accuracy: {question_types_meters[args.question_type].accuracy}\n')
     else:
-        result_list.append(f'Precision: {question_types_meters[args.question_type].precision}')
-        print(f'Precision: {question_types_meters[args.question_type].precision}\n')
-        result_list.append(f'Recall: {question_types_meters[args.question_type].recall}')
-        print(f'Recall: {question_types_meters[args.question_type].recall}\n')
-        result_list.append(f'F1-score: {question_types_meters[args.question_type].f1_score}')
-        print(f'F1-score: {question_types_meters[args.question_type].f1_score}\n')
+        result_list.append(f'Precision: {question_types_meters[args.question_type].precision}\n')
+        print(f'Precision: {question_types_meters[args.question_type].precision}')
+        result_list.append(f'Recall: {question_types_meters[args.question_type].recall}\n')
+        print(f'Recall: {question_types_meters[args.question_type].recall}')
+        result_list.append(f'F1-score: {question_types_meters[args.question_type].f1_score}\n')
+        print(f'F1-score: {question_types_meters[args.question_type].f1_score}')
 
     with open(f"{str(ROOT_PATH)}{os.path.splitext(file_path)[0]}.log", "w") as result_log:
         result_log.writelines(result_list)
