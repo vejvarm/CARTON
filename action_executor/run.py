@@ -9,12 +9,13 @@ from pathlib import Path
 from knowledge_graph.knowledge_graph import KnowledgeGraph
 from executor import ActionExecutor
 from meters import AccuracyMeter, F1scoreMeter
+from helpers import enforce_question_type
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
 
 # add arguments to parser
 parser = argparse.ArgumentParser(description='Execute actions')
 parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', help='json file with actions')
-parser.add_argument('--question_type', default='Clarification', help='type of questions')
+parser.add_argument('--question_type', default='Simple Question (Direct)', help='type of questions')
 parser.add_argument('--max_results', default=1000, help='maximum number of results')
 args = parser.parse_args()
 
@@ -40,7 +41,7 @@ question_types_meters = {
 }
 
 
-def run_question_type(file_path=args.file_path):
+def run_question_type(file_path=args.file_path, question_type=args.question_type):
     count_no_answer = 0
     count_wrong_type = 0
     count_total = 0
@@ -52,8 +53,10 @@ def run_question_type(file_path=args.file_path):
 
     tic = time.perf_counter()
     for i, d in enumerate(data):
-        print(d['question_type'])
-        if d['question_type'] != args.question_type:
+        # print(d['question_type'])
+        # Enforce Question type:
+        if not enforce_question_type(d, question_type):
+            print("SKIPPING question WITHOUT EVALUATION")
             continue
 
         count_total += 1
@@ -110,26 +113,26 @@ def run_question_type(file_path=args.file_path):
         print(f'==> Finished {((i + 1) / len(data)) * 100:.2f}% -- {toc - tic:0.2f}s')
 
     # print results
-    result_list = [str(args.question_type),
+    result_list = [str(question_type),
                    f'\nNA actions: {count_no_answer}\n',
                    f'Wrong type: {count_wrong_type}\n',
                    f'Total samples: {count_total}\n',
                    ]
-    print(args.question_type)
+    print(question_type)
     print(f'NA actions: {count_no_answer}')
     print(f'Wrong type: {count_wrong_type}')
     print(f'Total samples: {count_total}')
-    if args.question_type in ['Verification (Boolean) (All)', 'Quantitative Reasoning (Count) (All)',
+    if question_type in ['Verification (Boolean) (All)', 'Quantitative Reasoning (Count) (All)',
                               'Comparative Reasoning (Count) (All)']:
-        # print(f'Accuracy: {question_types_meters[args.question_type].accuracy}')
-        result_list.append(f'Accuracy: {question_types_meters[args.question_type].accuracy}\n')
+        # print(f'Accuracy: {question_types_meters[question_type].accuracy}')
+        result_list.append(f'Accuracy: {question_types_meters[question_type].accuracy}\n')
     else:
-        result_list.append(f'Precision: {question_types_meters[args.question_type].precision}\n')
-        print(f'Precision: {question_types_meters[args.question_type].precision}')
-        result_list.append(f'Recall: {question_types_meters[args.question_type].recall}\n')
-        print(f'Recall: {question_types_meters[args.question_type].recall}')
-        result_list.append(f'F1-score: {question_types_meters[args.question_type].f1_score}\n')
-        print(f'F1-score: {question_types_meters[args.question_type].f1_score}')
+        result_list.append(f'Precision: {question_types_meters[question_type].precision}\n')
+        print(f'Precision: {question_types_meters[question_type].precision}')
+        result_list.append(f'Recall: {question_types_meters[question_type].recall}\n')
+        print(f'Recall: {question_types_meters[question_type].recall}')
+        result_list.append(f'F1-score: {question_types_meters[question_type].f1_score}\n')
+        print(f'F1-score: {question_types_meters[question_type].f1_score}')
 
     with open(f"{str(ROOT_PATH)}{os.path.splitext(file_path)[0]}.log", "w") as result_log:
         result_log.writelines(result_list)
@@ -138,9 +141,10 @@ def run_question_type(file_path=args.file_path):
 if args.question_type == 'all':
     for key in question_types_meters.keys():
         args.question_type = key
+        print(args.question_type)
         relative_path = f"{args.file_path}{args.question_type}.json"
-        print(f"relative path: {relative_path}")
-        run_question_type(file_path=relative_path)
+        run_question_type(file_path=relative_path,
+                          question_type=args.question_type)
 else:
     run_question_type()
 

@@ -34,6 +34,29 @@ def plot_from_np_file(path_to_np_file, out_plot_file_path):
     plt.savefig(out_plot_file_path, format="png", dpi=200)
 
 
+def enforce_question_type(d, question_type):
+    """ Check if the right question type is being Evaluated
+    Clarification gets special treatment here!
+    Inputs:
+    arg d (dict): dictionary of the input data
+
+    return (bool): True if question_type corresponds to current args.question_type
+    """
+    q_type_list = list()
+    if isinstance(d['question_type'], list) and 'Clarification' in d['question_type']:
+        q_type_list = d['question_type']
+        d['question_type'] = 'Clarification'
+    elif not isinstance(d['question_type'], list):
+        q_type_list.append(d['question_type'])
+    else:
+        raise ValueError(f"Unsupported question type: {d['question_type']}")
+
+    # check if question type is correct:
+    if question_type in q_type_list:
+        return True
+    else:
+        return False
+
 def example_sqlite():
     subject = "Q7931"
     con = sqlite3.connect('\data\example.db')  # initialize and load database file
