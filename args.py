@@ -1,5 +1,6 @@
 import argparse
 
+
 def get_parser():
     parser = argparse.ArgumentParser(description='CARTON')
 
@@ -26,13 +27,13 @@ def get_parser():
                                                                 'entity_pointer'], type=str)
 
     # model
-    parser.add_argument('--emb_dim', default=300, type=int)
-    parser.add_argument('--dropout', default=0.1, type=int)
-    parser.add_argument('--heads', default=6, type=int)
-    parser.add_argument('--layers', default=2, type=int)
-    parser.add_argument('--max_positions', default=1000, type=int)
-    parser.add_argument('--pf_dim', default=300, type=int)
-    parser.add_argument('--bert_dim', default=768, type=int)
+    parser.add_argument('--emb_dim', default=512, type=int)     # default: 300 (dkg?)
+    parser.add_argument('--dropout', default=0.1, type=int)     # default: 0.1 (same)
+    parser.add_argument('--heads', default=8, type=int)         # default: 6
+    parser.add_argument('--layers', default=4, type=int)        # default: 2
+    parser.add_argument('--max_positions', default=1000, type=int)  # ?
+    parser.add_argument('--pf_dim', default=512, type=int)      # default: 300 (tanformer dim?)
+    parser.add_argument('--bert_dim', default=768, type=int)    # default: 768 (same, dent)
 
     # training
     parser.add_argument('--lr', default=0.0001, type=float)
@@ -48,17 +49,20 @@ def get_parser():
     parser.add_argument('--batch_size', default=25, type=int)
 
     # test and inference
-    parser.add_argument('--model_path', default='experiments/snapshots/CARTON_e60_v0.0209_multitask.pth.tar', type=str)
+    parser.add_argument('--model_path', default='experiments/snapshots/CARTON_e100_v0.0283_multitask.pth.tar', type=str)
+    parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--question_type', default='Simple Question (Direct)',
-        choices=['Clarification',
-                'Comparative Reasoning (All)',
-                'Logical Reasoning (All)',
-                'Quantitative Reasoning (All)',
-                'Simple Question (Coreferenced)',
-                'Simple Question (Direct)',
-                'Simple Question (Ellipsis)',
-                'Verification (Boolean) (All)',
-                'Quantitative Reasoning (Count) (All)',
-                'Comparative Reasoning (Count) (All)'], type=str)
+                        choices=['all',
+                                 'Clarification',
+                                 'Comparative Reasoning (All)',
+                                 'Logical Reasoning (All)',
+                                 'Quantitative Reasoning (All)',
+                                 'Simple Question (Coreferenced)',
+                                 'Simple Question (Direct)',
+                                 'Simple Question (Ellipsis)',
+                                 'Verification (Boolean) (All)',
+                                 'Quantitative Reasoning (Count) (All)',
+                                 'Comparative Reasoning (Count) (All)'], type=str)
+    parser.add_argument('--max_results', default=1000, help='maximum number of results', type=int)
 
     return parser
