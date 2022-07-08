@@ -137,7 +137,7 @@ class ClassifierNetworks(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, vocabulary, device, embed_dim=args.emb_dim, layers=args.layers,
+    def __init__(self, vocabulary, device, embed_dim_out=args.emb_dim, layers=args.layers,
                  heads=args.heads, pf_dim=args.pf_dim, dropout=args.dropout, max_positions=args.max_positions):
         super().__init__()
         input_dim = len(vocabulary)
@@ -148,9 +148,13 @@ class Encoder(nn.Module):
         input_dim, embed_dim = vocabulary.vectors.size()
         self.scale = math.sqrt(embed_dim)
         self.embed_tokens = nn.Embedding(input_dim, embed_dim)
-        self.embed_tokens.weight.data.copy_(vocabulary.vectors)
+        self.embed_tokens.weight.data.copy_(vocabulary.vectors)  # TODO: weight dimensions will not fit
         self.embed_positions = PositionalEmbedding(embed_dim, dropout, max_positions)
 
+        # Feed-Forward layer to transform fixed Emb vector dimensions
+        self.ff_emb = nn.Linear(embed_dim, embed_dim_out, True, device)
+
+        # Stack Encoder Transformer Layers
         self.layers = nn.ModuleList([EncoderLayer(embed_dim, heads, pf_dim, dropout, device) for _ in range(layers)])
 
     def forward(self, src_tokens):
@@ -158,6 +162,7 @@ class Encoder(nn.Module):
 
         x = self.embed_tokens(src_tokens) * self.scale
         x += self.embed_positions(src_tokens)
+        x = self.ff_emb(x)  # transform to args.emb_dim
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         for layer in self.layers:

@@ -29,7 +29,7 @@ def get_parser():
     # model
     parser.add_argument('--emb_dim', default=512, type=int)     # default: 300 (dkg?)
     parser.add_argument('--dropout', default=0.1, type=int)     # default: 0.1 (same)
-    parser.add_argument('--heads', default=9, type=int)         # default: 6
+    parser.add_argument('--heads', default=8, type=int)         # default: 6
     parser.add_argument('--layers', default=4, type=int)        # default: 2
     parser.add_argument('--max_positions', default=1000, type=int)  # ?
     parser.add_argument('--pf_dim', default=512, type=int)      # default: 300 (tanformer dim?)
