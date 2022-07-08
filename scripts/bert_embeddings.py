@@ -16,17 +16,17 @@ from constants import *
 
 train, val, test = [], [], []
 # read data
-train_files = glob(str(ROOT_PATH.parent) + '/data/final/csqa' + '/train/*' + '/*.json')
+train_files = glob(str(ROOT_PATH) + '/data/final/csqa' + '/train/*' + '/*.json')
 for f in train_files:
     with open(f) as json_file:
         train.append(json.load(json_file))
 
-val_files = glob(str(ROOT_PATH.parent) + '/data/final/csqa' + '/val/*' + '/*.json')
+val_files = glob(str(ROOT_PATH) + '/data/final/csqa' + '/val/*' + '/*.json')
 for f in val_files:
     with open(f) as json_file:
         val.append(json.load(json_file))
 
-test_files = glob(str(ROOT_PATH.parent) + '/data/final/csqa' + '/test/*' + '/*.json')
+test_files = glob(str(ROOT_PATH) + '/data/final/csqa' + '/test/*' + '/*.json')
 for f in test_files:
     with open(f) as json_file:
         test.append(json.load(json_file))
@@ -59,7 +59,7 @@ flair.device = DEVICE
 bert = DocumentPoolEmbeddings([BertEmbeddings('bert-base-uncased', layers='-1')])
 
 # read entities
-id_entity = json.loads(open(f'{ROOT_PATH.parent}/knowledge_graph/items_wikidata_n.json').read())
+id_entity = json.loads(open(f'{ROOT_PATH}/knowledge_graph/items_wikidata_n.json').read())
 
 # create embeddings for NA and PAD values
 na = Sentence(NA_TOKEN)
@@ -84,5 +84,5 @@ for i, id in enumerate(list(all_entities)):
         toc = time.perf_counter()
         print(f'==> Finished {((i+1)/len(all_entities))*100:.2f}% -- {toc - tic:0.2f}s')
 
-with open(f'{ROOT_PATH.parent}/knowledge_graph/entity_embeddings.json', 'w') as outfile:
+with open(f'{ROOT_PATH}/knowledge_graph/entity_embeddings.json', 'w') as outfile:
     json.dump(entity_embeddings, outfile, indent=4)

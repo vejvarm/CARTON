@@ -135,6 +135,7 @@ class ClassifierNetworks(nn.Module):
         x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)
         return self.predicate_cls(x), self.type_cls(x)
 
+
 class Encoder(nn.Module):
     def __init__(self, vocabulary, device, embed_dim=args.emb_dim, layers=args.layers,
                  heads=args.heads, pf_dim=args.pf_dim, dropout=args.dropout, max_positions=args.max_positions):
@@ -241,6 +242,8 @@ class DecoderLayer(nn.Module):
 class MultiHeadedAttention(nn.Module):
     def __init__(self, embed_dim, heads, dropout, device):
         super().__init__()
+        print(embed_dim)
+        print(heads)
         assert embed_dim % heads == 0
         self.attn_dim = embed_dim // heads
         self.heads = heads
