@@ -122,6 +122,7 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
     model.train()
 
     end = time.time()
+    batch_progress_old = -1
     for i, batch in enumerate(train_loader):
         # get inputs
         input = batch.input
@@ -157,9 +158,10 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         batch_time.update(time.time() - end)
         end = time.time()
 
-        batch_progress = ((i+1)/len(train_loader))*100
-        if batch_progress % 1 == 0:
-            logger.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:.2f}% - Time: {batch_time.sum:0.2f}s')
+        batch_progress = int(((i+1)/len(train_loader))*100)  # percentage
+        if batch_progress > batch_progress_old:
+            logger.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:02d}% - Time: {batch_time.sum:0.2f}s')
+        batch_progress_old = batch_progress
 
 def validate(val_loader, model, vocabs, helper_data, criterion):
     losses = AverageMeter()
