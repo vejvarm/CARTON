@@ -148,14 +148,14 @@ class Encoder(nn.Module):
         input_dim, embed_dim = vocabulary.vectors.size()
         self.scale = math.sqrt(embed_dim)
         self.embed_tokens = nn.Embedding(input_dim, embed_dim)
-        self.embed_tokens.weight.data.copy_(vocabulary.vectors)  # TODO: weight dimensions will not fit
+        self.embed_tokens.weight.data.copy_(vocabulary.vectors)
         self.embed_positions = PositionalEmbedding(embed_dim, dropout, max_positions)
 
         # Feed-Forward layer to transform fixed Emb vector dimensions
         self.ff_emb = nn.Linear(embed_dim, embed_dim_out, True, device)
 
         # Stack Encoder Transformer Layers
-        self.layers = nn.ModuleList([EncoderLayer(embed_dim, heads, pf_dim, dropout, device) for _ in range(layers)])
+        self.layers = nn.ModuleList([EncoderLayer(embed_dim_out, heads, pf_dim, dropout, device) for _ in range(layers)])
 
     def forward(self, src_tokens):
         src_mask = (src_tokens != self.padding_idx).unsqueeze(1).unsqueeze(2)
