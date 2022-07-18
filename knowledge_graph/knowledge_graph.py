@@ -50,8 +50,8 @@ class KnowledgeGraph:
             'subject': self.subject_triples,  # dict[s][r] -> [o1, o2, o3]
             'object': self.object_triples,  # dict[o][r] -> [s1, s2, s3]
             'relation': {
-                'subject': self.relation_subject_object, # dict[r][s] -> [o1, o2, o3]
-                'object': self.relation_object_subject # dict[r][o] -> [s1, s2, s3]
+                'subject': self.relation_subject_object,  # dict[r][s] -> [o1, o2, o3]
+                'object': self.relation_object_subject  # dict[r][o] -> [s1, s2, s3]
             },
-            'type': self.type_triples # dict[t][r] -> [t1, t2, t3]
+            'type': self.type_triples  # dict[t][r] -> [t1, t2, t3]
         }

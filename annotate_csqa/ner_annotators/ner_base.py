@@ -1,4 +1,6 @@
 from unidecode import unidecode
+
+
 class NERBase:
     def __init__(self, kg, preprocessed_data, tokenizer):
         self.kg = kg

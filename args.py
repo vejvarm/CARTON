@@ -49,7 +49,7 @@ def get_parser():
     parser.add_argument('--batch_size', default=25, type=int)
 
     # test and inference
-    parser.add_argument('--model_path', default='experiments/snapshots/CARTON_e100_v0.0283_multitask.pth.tar', type=str)
+    parser.add_argument('--model_path', default='experiments/snapshots/CARTON_e100_v0.1241_multitask.pth.tar', type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--question_type', default='Simple Question (Direct)',
                         choices=['all',

@@ -25,13 +25,12 @@ def extract_val_loss_from_train_log(file_name):
         np.save(f, arr)
 
 
-def plot_from_np_file(path_to_np_file, out_plot_file_path):
+def plot_from_np_file(path_to_np_file):
     arr = np.load(path_to_np_file)
     plt.plot(arr)
     plt.title("Training validation loss")
     plt.xlabel("epoch")
     plt.ylabel("validation loss")
-    plt.savefig(out_plot_file_path, format="png", dpi=200)
 
 
 def enforce_question_type(d, question_type):
@@ -76,7 +75,11 @@ if __name__ == '__main__':
     # log_file_name = "train_multitask.log"
     # extract_val_loss_from_train_log(log_file_name)
 
-    input_np_file_path = f"{args.path_results}/out_train_multitask.npy"
+    input1 = f"{args.path_results}/default-params/out_train_multitask.npy"
+    input2 = f"{args.path_results}/out_train_multitask.npy"
     output_plot_file_path = f"{args.path_results}/val_loss.png"
-    plot_from_np_file(input_np_file_path, output_plot_file_path)
+    plot_from_np_file(input1)
+    plot_from_np_file(input2)
+
+    plt.savefig(output_plot_file_path, format="png", dpi=200)
 
