@@ -56,6 +56,7 @@ def enforce_question_type(d, question_type):
     else:
         return False
 
+
 def example_sqlite():
     subject = "Q7931"
     con = sqlite3.connect('\data\example.db')  # initialize and load database file
@@ -72,8 +73,8 @@ def example_sqlite():
 
 
 if __name__ == '__main__':
-    # log_file_name = "train_multitask.log"
-    # extract_val_loss_from_train_log(log_file_name)
+    log_file_name = "train_multitask.log"
+    extract_val_loss_from_train_log(log_file_name)
 
     input1 = f"{args.path_results}/default-params/out_train_multitask.npy"
     input2 = f"{args.path_results}/out_train_multitask.npy"

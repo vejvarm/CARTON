@@ -7,6 +7,7 @@ import argparse
 from glob import glob
 from pathlib import Path
 from knowledge_graph.knowledge_graph import KnowledgeGraph
+from knowledge_graph.ZODBConnector import BTreeDB
 from executor import ActionExecutor
 from meters import AccuracyMeter, F1scoreMeter
 from helpers import enforce_question_type
@@ -20,7 +21,9 @@ parser.add_argument('--max_results', default=1000, help='maximum number of resul
 args = parser.parse_args()
 
 # load kg
-kg = KnowledgeGraph()
+# kg = KnowledgeGraph()  # ANCHOR: old CARTON implementation
+kg = BTreeDB("./knowledge_graph/Wikidata.fs")  # ANCHOR: ZODB implementation
+kg.kg_adapter()  # to fill labels and triples dictionaries
 
 # load action executor
 action_executor = ActionExecutor(kg)

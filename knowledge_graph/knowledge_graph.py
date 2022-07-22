@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 ROOT_PATH = Path(os.path.dirname(__file__))
 
+
 class KnowledgeGraph:
     def __init__(self, wikidata_path=f'{ROOT_PATH}'):
         tic = time.perf_counter()
