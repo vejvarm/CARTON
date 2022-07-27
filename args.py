@@ -36,12 +36,12 @@ def get_parser():
     parser.add_argument('--bert_dim', default=768, type=int)    # default: 768 (same, dent)
 
     # training
-    parser.add_argument('--lr', default=0.001, type=float)
+    parser.add_argument('--lr', default=0.0001, type=float)
     parser.add_argument('--momentum', default=0.9, type=float)
     parser.add_argument('--warmup', default=4000, type=float)
     parser.add_argument('--factor', default=1, type=float)
     parser.add_argument('--weight_decay', default=0, type=float)
-    parser.add_argument('--epochs', default=25, type=int)
+    parser.add_argument('--epochs', default=100, type=int)
     parser.add_argument('--start_epoch', default=0, type=int)
     parser.add_argument('--valfreq', default=1, type=int)
     parser.add_argument('--resume', default='', type=str)

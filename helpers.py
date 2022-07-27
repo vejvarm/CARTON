@@ -9,6 +9,7 @@ from args import get_parser
 parser = get_parser()
 args = parser.parse_args()
 
+
 def extract_val_loss_from_train_log(file_name):
     with open(f"{ROOT_PATH}/{args.path_results}/{file_name}", 'r') as f:
         out = []
