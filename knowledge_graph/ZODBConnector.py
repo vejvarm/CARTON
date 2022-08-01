@@ -59,6 +59,109 @@ class BTreeDB:
             'type': self.root.type_triples  # dict[t][r] -> [t1, t2, t3]
         }
 
+    # UPDATING KG
+    def check_label_existance(self, sr: str, lab: str):
+        """ Check for entity/relation label existance in KG
+
+        param sr: subject or relation
+        param lab: label for the subjet or relation
+        """
+        if sr[0] == "Q":
+            try:
+                entry = self.root.id_entity[sr]
+                print(f"Entity {sr} already exists with label '{entry}'. Should I change it to '{lab}'?")
+            except KeyError:
+                print(f"Entity {sr} doesn't exist yet. Should I assign it with label '{lab}'?")
+                # self.root.id_entity[sr] = lab
+        elif sr[0] == "P":
+            try:
+                entry = self.root.id_relation[sr]
+                print(f"Relation {sr} already exists with label '{entry}'. Should I change it to '{lab}'?")
+            except KeyError:
+                print(f"Relation {sr} doesn't exist yet. Should I assign it with label '{lab}'?")
+
+    def add_label(self, sr: str, lab: str):
+        """ Update entity/relation label mapping in KG
+
+        !warning, destructive method, run check_label_existance first
+
+        param sr: subject or relation
+        param lab: label for the subjet or relation
+        """
+
+        if sr[0] == 'Q':
+            self.root.id_entity[sr] = lab
+        elif sr[0] == 'P':
+            self.root.id_relation[sr] = lab
+        else:
+            raise KeyError("First letter of ID must be either 'Q' (entity) or 'P' (relation).")
+
+    def add_rdf(self, s: str, r: str, o: list[str], replace=False):
+        """
+        param s: subject
+        param r: relation
+        param o: objects (len: 1 to n)
+        """
+        self.update_sub_rel_ob(s, r, o, replace)
+        self.update_rel_sub_ob(r, s, o, replace)
+        for ob in o:
+            self.update_rel_ob_sub(r, ob, [s], replace)
+            self.update_ob_rel_sub(ob, r, [s], replace)
+
+        print("All entries succesfully updated")
+        # TODO: Commit?
+        # TODO: Also update id_entity and id_relation
+
+        # DONE: update all other KG objects with the same data
+
+# TODO:    def update_triple(self, s: list[str] | str, r: list[str] | str, o: list[str] | str, map_to_update: OOBTree.BTree, replace=False):
+
+    def update_sub_rel_ob(self, s, r, o: list[str], replace=False):
+        if s in self.root.subject_triples.keys():
+            if replace or r not in self.root.subject_triples[s].keys():
+                self.root.subject_triples[s][r] = o  # add new objets entry for given s/r pair
+            elif r in self.root.subject_triples[s].keys():
+                self.root.subject_triples[s][r].extend(o)  # add more objects to existing entry
+            else:
+                raise NotImplemented(f"Operation not implemented.")
+        else:  # subject is not yet in KG
+            self.root.subject_triples[s] = OOBTree.BTree({r: o})  # add entirely new rdf entry to KG
+
+    def update_ob_rel_sub(self, o, r, s: list[str], replace=False):
+        if o in self.root.object_triples.keys():
+            if replace or r not in self.root.object_triples[o].keys():
+                self.root.object_triples[o][r] = s  # add new objets entry for given o/r pair
+            elif r in self.root.object_triples[o].keys():
+                self.root.object_triples[o][r].extend(s)  # add more objects to existing entry
+            else:
+                raise NotImplemented(f"Operation not implemented.")
+        else:  # subject is not yet in KG
+            self.root.object_triples[o] = OOBTree.BTree({r: s})  # add entirely new rdf entry to KG
+
+    def update_rel_sub_ob(self, r, s, o: list[str], replace=False):
+        try:
+            if s in self.root.relation_subject_object[r].keys():
+                if replace:
+                    self.root.relation_subject_object[r][s] = o        # replace existing entries
+                else:
+                    self.root.relation_subject_object[r][s].extend(o)  # extend existing entries
+            else:
+                self.root.relation_subject_object[r][s] = o
+        except KeyError:
+            self.root.relation_subject_object[r] = OOBTree.BTree({s: o})  # add new entry entirely
+
+    def update_rel_ob_sub(self, r, o, s: list[str], replace=False):
+        try:
+            if o in self.root.relation_object_subject[r].keys():
+                if replace:
+                    self.root.relation_object_subject[r][o] = s        # replace existing entries
+                else:
+                    self.root.relation_object_subject[r][o].extend(s)  # extend existing entries
+            else:
+                self.root.relation_object_subject[r][o] = s
+        except KeyError:
+            self.root.relation_object_subject[r] = OOBTree.BTree({o: s})  # add new entry entirely
+
     def update_entry(self, ):
         pass  # ANCHOR Which way to update
 
@@ -82,6 +185,19 @@ class BTreeDB:
 
             if progress > (i-1)*100//total_entries:
                 print(f"Progress: {progress}%")
+
+    # DONE:
+    #   id_entity -- DONE
+    #   id_relation -- DONE
+    #   subject_triples -- DONE
+    #   object_triples -- DONE
+    #   relation_subject_object -- DONE
+    #   relation_object_subject -- DONE
+    #   type_triples  -- IGNORE
+    #   entity_type  -- IGNORE
+    # TODO:
+    #   Test adding ned RDFs to KG (add_rdf function)
+    #   Test adding labels to entities/relations
 
     @staticmethod
     def commit():

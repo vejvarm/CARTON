@@ -26,9 +26,9 @@ def extract_val_loss_from_train_log(file_name):
         np.save(f, arr)
 
 
-def plot_from_np_file(path_to_np_file):
+def plot_from_np_file(path_to_np_file, label="validation loss"):
     arr = np.load(path_to_np_file)
-    plt.plot(arr)
+    plt.plot(arr, label=label)
     plt.title("Training validation loss")
     plt.xlabel("epoch")
     plt.ylabel("validation loss")
@@ -80,8 +80,9 @@ if __name__ == '__main__':
     input1 = f"{args.path_results}/default-params/out_train_multitask.npy"
     input2 = f"{args.path_results}/out_train_multitask.npy"
     output_plot_file_path = f"{args.path_results}/val_loss.png"
-    plot_from_np_file(input1)
-    plot_from_np_file(input2)
+    plot_from_np_file(input1, "original code parameters")
+    plot_from_np_file(input2, "paper parameters")
+    plt.legend()
 
     plt.savefig(output_plot_file_path, format="png", dpi=200)
 
