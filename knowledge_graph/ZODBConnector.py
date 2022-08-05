@@ -10,7 +10,7 @@ import ZODB
 
 class BTreeDB:
 
-    def __init__(self, path_to_db_file: str):
+    def __init__(self, path_to_db_file: str, initialise=False, run_adapter=False):
         self.dbase = None
         self.conn = None
         self.root = None
@@ -22,6 +22,12 @@ class BTreeDB:
         self.triples = {}
 
         self.open(path_to_db_file)
+
+        if initialise:
+            self.initialise_structure()
+
+        if run_adapter:
+            self.kg_adapter()
 
     def open(self, path_to_db_file=None):
         if self.conn is None:
@@ -80,19 +86,25 @@ class BTreeDB:
             except KeyError:
                 print(f"Relation {sr} doesn't exist yet. Should I assign it with label '{lab}'?")
 
-    def add_label(self, sr: str, lab: str):
+    def add_label(self, sr: str, lab: str = None):
         """ Update entity/relation label mapping in KG
 
         !warning, destructive method, run check_label_existance first
 
         param sr: subject or relation
-        param lab: label for the subjet or relation
+        param lab: label for the entity or relation (can be None == marked for labeling)
         """
 
         if sr[0] == 'Q':
-            self.root.id_entity[sr] = lab
+            if lab is None and sr in self.root.id_entity.keys():
+                print(f"entity {sr} already exists with label '{self.root.id_entity[sr]}'.")
+            else:
+                self.root.id_entity[sr] = lab
         elif sr[0] == 'P':
-            self.root.id_relation[sr] = lab
+            if lab is None and sr in self.root.id_relation.keys():
+                print(f"relation {sr} already exists with label '{self.root.id_relation[sr]}'.")
+            else:
+                self.root.id_relation[sr] = lab
         else:
             raise KeyError("First letter of ID must be either 'Q' (entity) or 'P' (relation).")
 
@@ -107,6 +119,10 @@ class BTreeDB:
         for ob in o:
             self.update_rel_ob_sub(r, ob, [s], replace)
             self.update_ob_rel_sub(ob, r, [s], replace)
+
+        # initialise new entities in label maps (with lab=None)
+        for e in [s, r, *o]:
+            self.add_label(e)  # if entity already exists it will not change
 
         print("All entries succesfully updated")
         # TODO: Commit?
@@ -266,5 +282,20 @@ class BTreeDB:
 
 if __name__ == "__main__":
     # open and initialise DB object from file
-    path_to_db = "./dbfiles/KnowledgeGraph.fs"
-    db = BTreeDB(path_to_db)
+    path_to_db = "./zodb_kg/KGTest.fs"
+    db = BTreeDB(path_to_db, initialise=True, run_adapter=True)
+
+    db.labels['entity']['Q1234'] = 'nice name'
+    db.labels['relation']['P1'] = 'nice relation'
+
+    s = 'Q0001'
+    r = 'P1'
+    o = ['Q1001', 'Q1002', 'Q1003']
+    db.add_rdf(s, r, o)
+
+    s = 'Q1002'
+    r = 'P2'
+    o = ['Q1234', 'Q1005', 'Q1004']
+    db.add_rdf(s, r, o)
+
+    # db.close()

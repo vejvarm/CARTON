@@ -19,7 +19,7 @@ class CARTON(nn.Module):
     def forward(self, src_tokens, trg_tokens, batch_entities):
         encoder_out = self.encoder(src_tokens)
         decoder_out, decoder_h = self.decoder(src_tokens, trg_tokens, encoder_out)
-        encoder_ctx = encoder_out[:, -1:, :]
+        encoder_ctx = encoder_out[:, -1:, :]  # ANCHOR [batch_size, time, encoder_dim]?
         stacked_pointer_out = self.stptr_net(encoder_ctx, decoder_h, batch_entities)
 
         return {
@@ -102,7 +102,7 @@ class StackedPointerNetworks(nn.Module):
 
 
     def forward(self, encoder_ctx, decoder_h, batch_entities):
-        x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)
+        x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)  # ANCHOR: this is gonna be problematic!
         x = self.context_linear(x).unsqueeze(2)
         x = self.dropout(x)
 
@@ -180,7 +180,7 @@ class EncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, src_tokens, src_mask):
-        x = self.layer_norm(src_tokens + self.dropout(self.self_attn(src_tokens, src_tokens, src_tokens, src_mask)))
+        x = self.layer_norm(src_tokens + self.dropout(self.self_attn(src_tokens, src_tokens, src_tokens, src_mask)))  # ANCHOR: Encoder takes whole encoder_output (not only h_ctx)
         x = self.layer_norm(x + self.dropout(self.pos_ff(x)))
 
         return x
