@@ -152,7 +152,7 @@ class Encoder(nn.Module):
         self.embed_positions = PositionalEmbedding(embed_dim, dropout, max_positions)
 
         # Feed-Forward layer to transform fixed Emb vector dimensions
-        self.ff_emb = nn.Linear(embed_dim, embed_dim_out, True, device)
+        self.ff_emb = nn.Linear(embed_dim, embed_dim_out, True, device)  # ANCHOR EMBDIM: if you want args.emb_dim different than 300, uncomment this
 
         # Stack Encoder Transformer Layers
         self.layers = nn.ModuleList([EncoderLayer(embed_dim_out, heads, pf_dim, dropout, device) for _ in range(layers)])
@@ -162,7 +162,7 @@ class Encoder(nn.Module):
 
         x = self.embed_tokens(src_tokens) * self.scale
         x += self.embed_positions(src_tokens)
-        x = self.ff_emb(x)  # transform to args.emb_dim
+        # x = self.ff_emb(x)  # ANCHOR EMBDIM: if you want args.emb_dim different than 300, uncomment this
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         for layer in self.layers:

@@ -1,3 +1,4 @@
+import os.path
 import sqlite3
 import numpy as np
 from matplotlib import pyplot as plt
@@ -29,6 +30,7 @@ def extract_val_loss_from_train_log(file_name):
 def plot_from_np_file(path_to_np_file, label="validation loss"):
     arr = np.load(path_to_np_file)
     plt.plot(arr, label=label)
+    plt.tight_layout()
     plt.title("Training validation loss")
     plt.xlabel("epoch")
     plt.ylabel("validation loss")
@@ -73,16 +75,38 @@ def example_sqlite():
     con.close()  # close connection to database file
 
 
+def out_file_name(input_string):
+    return "out_" + os.path.splitext(input_string)[0] + ".npy"
+
+
 if __name__ == '__main__':
-    log_file_name = "train_multitask.log"
-    extract_val_loss_from_train_log(log_file_name)
+    log_file_orig = "train_multitask_original_code_params.log"
+    log_file_paper = "train_multitask_paper_params.log"
+    log_file_latest = "train_multitask_latest-params.log"
+    # log_file_latest = "train_multitask_latest-params-short.log"
 
-    input1 = f"{args.path_results}/default-params/out_train_multitask.npy"
-    input2 = f"{args.path_results}/out_train_multitask.npy"
-    output_plot_file_path = f"{args.path_results}/val_loss.png"
+    plot_file_name = 'training-val_loss_original-vs-2layer-paper'
+    plot_file_type = 'png'
+
+    # extract_val_loss_from_train_log(log_file_orig)
+    # extract_val_loss_from_train_log(log_file_paper)
+    # extract_val_loss_from_train_log(log_file_latest)
+
+    font = {#'family': 'normal',
+            #'weight': 'bold',
+            'size': 15}
+
+    plt.rc('font', **font)
+
+    input1 = f"{args.path_results}/{out_file_name(log_file_orig)}"
+    input2 = f"{args.path_results}/{out_file_name(log_file_paper)}"
+    input3 = f"{args.path_results}/{out_file_name(log_file_latest)}"
+    output_plot_file_path = f"{args.path_results}/{plot_file_name}.{plot_file_type}"
     plot_from_np_file(input1, "original code parameters")
-    plot_from_np_file(input2, "paper parameters")
+#    plot_from_np_file(input2, "paper parameters")
+#    plot_from_np_file(input3, "paper parameters (only 2 layers)")
     plt.legend()
+    plt.show()
 
-    plt.savefig(output_plot_file_path, format="png", dpi=200)
+    # plt.savefig(output_plot_file_path, format=plot_file_type, dpi=200)
 

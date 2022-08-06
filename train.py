@@ -115,6 +115,7 @@ def main():
                 CURR_VAL: val_loss})
             logger.info(f'* Val loss: {val_loss:.4f}')
 
+
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
     batch_time = AverageMeter()
     losses = AverageMeter()

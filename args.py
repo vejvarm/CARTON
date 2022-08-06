@@ -27,13 +27,15 @@ def get_parser():
                                                                 'entity_pointer'], type=str)
 
     # model
-    parser.add_argument('--emb_dim', default=512, type=int)     # default: 300 (dkg?)
+    parser.add_argument('--emb_dim', default=300, type=int)     # default: 300 (dkg?)  # ANCHOR EMBDIM in model.py if you want to change this
     parser.add_argument('--dropout', default=0.1, type=int)     # default: 0.1 (same)
-    parser.add_argument('--heads', default=8, type=int)         # default: 6
+    parser.add_argument('--heads', default=6, type=int)         # default: 6
     parser.add_argument('--layers', default=2, type=int)        # default: 2
     parser.add_argument('--max_positions', default=1000, type=int)  # ?
-    parser.add_argument('--pf_dim', default=512, type=int)      # default: 300 (tanformer dim?)
+    parser.add_argument('--pf_dim', default=1200, type=int)     # default: 300 (Position-wise FF layer dim) # ANCHOR PWFF for more info
     parser.add_argument('--bert_dim', default=768, type=int)    # default: 768 (same, dent)
+
+    # ANCHOR PWFF: based on AttentionIsAllYouNeed, Point-wise FF network is usually set to 4x the embedding dim
 
     # training
     parser.add_argument('--lr', default=0.0001, type=float)
