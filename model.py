@@ -19,14 +19,14 @@ class CARTON(nn.Module):
     def forward(self, src_tokens, trg_tokens, batch_entities):
         encoder_out = self.encoder(src_tokens)
         decoder_out, decoder_h = self.decoder(src_tokens, trg_tokens, encoder_out)
-        encoder_ctx = encoder_out[:, -1:, :]  # ANCHOR [batch_size, time, encoder_dim]?
-        stacked_pointer_out = self.stptr_net(encoder_ctx, decoder_h, batch_entities)
+        encoder_ctx = encoder_out[:, -1:, :]  # ANCHOR [batch_size, time, encoder_dim]
+        stacked_pointer_out = self.stptr_net(encoder_ctx, decoder_h, batch_entities)  # ANCHOR encoder context vector
 
         return {
             LOGICAL_FORM: decoder_out,
-            PREDICATE_POINTER: stacked_pointer_out[PREDICATE_POINTER],
-            TYPE_POINTER: stacked_pointer_out[TYPE_POINTER],
-            ENTITY_POINTER: stacked_pointer_out[ENTITY_POINTER]
+            PREDICATE_POINTER: stacked_pointer_out[PREDICATE_POINTER],  # (bs, lf_actions*n_predicates)
+            TYPE_POINTER: stacked_pointer_out[TYPE_POINTER],     # (bs, lf_actions*n_types)
+            ENTITY_POINTER: stacked_pointer_out[ENTITY_POINTER]  # (bs, lf_actions*n_ent)
         }
 
 class Flatten(nn.Module):
@@ -43,16 +43,24 @@ class PointerStack(nn.Module):
         self.flatten = Flatten()
         self.linear_out = nn.Linear(args.emb_dim, 1)
 
-    def forward(self, x):
+    def forward(self, x):  # ANCHOR Pointer network
+        # x.shape: [25, n, 1, 300] ... inputed from ANCHOR@StackedPointerNetworks forward function
         embed = self.embeddings(self.kg_items).unsqueeze(0)
+        # print(f"before: {x.shape}") # torch.Size([25, 18, 1, 300])
         x = x.expand(x.shape[0], x.shape[1], embed.shape[1], x.shape[-1])
+        # print(f"after: {x.shape}") # torch.Size([25, 18, 1560, 300])
         x = x + embed.expand(x.shape[0], x.shape[1], embed.shape[1], embed.shape[-1])
+        # print(f"forever_after: {x.shape}")  # torch.Size([25, 18, 1560, 300])
         x = self.tahn(x)
         x = self.linear_out(x)
+        # print(f"after linear: {x.shape}")  # torch.Size([25, 18, 1560, 1])
         x = x.squeeze(-1)
+        # print(f"after squeeze: {x.shape}")  # torch.Size([25, 18, 1560])
         x = self.flatten(x)
+        # print(f"after flatten: {x.shape}")  # torch.Size([450, 1560]) !!! torch.Flatten class is overridden
 
         return x
+
 
 class EntityPointerStack(nn.Module):
     def __init__(self, entity_vocab):
@@ -66,6 +74,9 @@ class EntityPointerStack(nn.Module):
         self.linear_out = nn.Linear(args.emb_dim, 1)
 
     def _prepare_batch(self, batch_entities):
+        """
+        :param batch_entities: (bs, n) ... batch of entities picked for the current run of entitity pointer
+        """
         batch_embed = []
         for entities in batch_entities:
             temp = []
@@ -77,14 +88,14 @@ class EntityPointerStack(nn.Module):
         return torch.stack(batch_embed)
 
     def forward(self, x, batch_entities):
-        batch_embedding = self._prepare_batch(batch_entities).to(DEVICE)
-        embed = self.linear_in(batch_embedding).unsqueeze(1)
-        x = x.expand(x.shape[0], x.shape[1], embed.shape[1], x.shape[-1])
-        x = x + embed.expand(x.shape[0], x.shape[1], embed.shape[2], embed.shape[-1])
+        batch_embedding = self._prepare_batch(batch_entities).to(DEVICE)  # (25, n_ent, 512)
+        embed = self.linear_in(batch_embedding).unsqueeze(1)  # (25, 1, n_ent, 300)
+        x = x.expand(x.shape[0], x.shape[1], embed.shape[1], x.shape[-1])  # (25, lf_actions, 1, 300)
+        x = x + embed.expand(x.shape[0], x.shape[1], embed.shape[2], embed.shape[-1])  # (25, lf_actions, n_ent, 300)
         x = self.tahn(x)
-        x = self.linear_out(x)
-        x = x.squeeze(-1)
-        x = self.flatten(x)
+        x = self.linear_out(x)  # (25, lf_actions, n_ent, 1)
+        x = x.squeeze(-1)       # (25, lf_actions, n_ent)
+        x = self.flatten(x)     # (25*lf_actions, n_ent)
 
         return x
 
@@ -103,7 +114,9 @@ class StackedPointerNetworks(nn.Module):
 
     def forward(self, encoder_ctx, decoder_h, batch_entities):
         x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)  # ANCHOR: this is gonna be problematic!
-        x = self.context_linear(x).unsqueeze(2)
+        # TODO: each entry in decoder_h is concatenated by encoder_h
+        #  e.g. expand([25, 1, 300], dim=1, n) concat with [25, n, 300] => [25, n, 600]
+        x = self.context_linear(x).unsqueeze(2)  # [25, n, 600] => [25, n, 1, 300]
         x = self.dropout(x)
 
         return {
@@ -162,6 +175,7 @@ class Encoder(nn.Module):
 
         x = self.embed_tokens(src_tokens) * self.scale
         x += self.embed_positions(src_tokens)
+        # print(x.shape) # torch.Size([batch size, utterance length, emb_dim_size]) torch.Size([25, 43, 300])
         # x = self.ff_emb(x)  # ANCHOR EMBDIM: if you want args.emb_dim different than 300, uncomment this
         x = F.dropout(x, p=self.dropout, training=self.training)
 
@@ -247,8 +261,8 @@ class DecoderLayer(nn.Module):
 class MultiHeadedAttention(nn.Module):
     def __init__(self, embed_dim, heads, dropout, device):
         super().__init__()
-        print(embed_dim)
-        print(heads)
+        # print(embed_dim)
+        # print(heads)
         assert embed_dim % heads == 0
         self.attn_dim = embed_dim // heads
         self.heads = heads

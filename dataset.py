@@ -424,7 +424,7 @@ class CSQADataset:
         self.entity_field = Field(pad_token=PAD_TOKEN,
                                 unk_token=NA_TOKEN,
                                 batch_first=True)
-
+        # ANCHOR: vocab fiels
         fields_tuple = [(ID, self.id_field), (INPUT, self.input_field), (LOGICAL_FORM, self.lf_field),
                         (PREDICATE_POINTER, self.predicate_field), (TYPE_POINTER, self.type_field),
                         (ENTITY_POINTER, self.entity_field)]

@@ -185,7 +185,7 @@ def validate(val_loader, model, vocabs, helper_data, criterion):
 
             # prepare targets
             target = {
-                LOGICAL_FORM: logical_form[:, 1:].contiguous().view(-1),
+                LOGICAL_FORM: logical_form[:, 1:].contiguous().view(-1),  # reshapes into one long 1d vector
                 PREDICATE_POINTER: predicate_t[:, 1:].contiguous().view(-1),
                 TYPE_POINTER: type_t[:, 1:].contiguous().view(-1),
                 ENTITY_POINTER: entity_t[:, 1:].contiguous().view(-1)

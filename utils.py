@@ -104,10 +104,11 @@ class Predictor(object):
 
                 # decoder_step = self.model._predict_decoder(src_tensor, lf_tensor, encoder_step[ENCODER_OUT])
                 decoder_out, decoder_h = self.model.decoder(src_tensor, lf_tensor, encoder_out)
-                stacked_pointer_out = self.model.stptr_net(encoder_ctx, decoder_h, ent_cand_tensor)
+                stacked_pointer_out = self.model.stptr_net(encoder_ctx, decoder_h, ent_cand_tensor)  # [bs*v, n_kg]
 
+                # TODO: what is the shape of this?, How do we infer the KG entries from this?
                 pred_lf = decoder_out.argmax(1)[-1].item()
-                pred_pd = stacked_pointer_out[PREDICATE_POINTER].argmax(1)[-1].item()
+                pred_pd = stacked_pointer_out[PREDICATE_POINTER].argmax(1)[-1].item()  # argmax(1) [bs*v, n_kg] -> [bs*v], [-1] [bs*v] -> last entry
                 pred_tp = stacked_pointer_out[TYPE_POINTER].argmax(1)[-1].item()
                 pred_en = stacked_pointer_out[ENTITY_POINTER].argmax(1)[-1].item()
 

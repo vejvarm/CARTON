@@ -132,6 +132,43 @@ class BTreeDB:
 
 # TODO:    def update_triple(self, s: list[str] | str, r: list[str] | str, o: list[str] | str, map_to_update: OOBTree.BTree, replace=False):
 
+    def _del_entity(self, e: str, mapping: OOBTree.BTree | OOBTree.TreeSet):
+
+        try:
+            return mapping.pop(e)
+            # check for subjects, properties and objects to delete from other KG structures
+        except KeyError:
+            print(f"entity '{e}' is not present in {mapping}")
+            return None
+
+    def remove_subject(self, s):
+        """Completely removes subject from KG and all RDF entries it has within the KG"""
+
+        deleted_map = self._del_entity(s, self.root.subject_triples)
+
+        if deleted_map is not None:
+            for rel, object_list in deleted_map.items():
+                try:
+                    objects = self.root.relation_subject_object[rel].pop(s)
+                    print(f"Removed {objects} from rel_sub_ob")
+                except KeyError:
+                    print('No objects deleted from rel_sub_ob triple')
+                for ob in object_list:
+                    try:
+                        self.root.relation_object_subject[rel][ob].remove(s)
+                        print(f"Removed {s} from rel_ob_sub")
+                        if not self.root.relation_object_subject[rel][ob]:
+                            print(f"popped empty object array {self.root.relation_object_subject[rel].pop(ob)}")
+                    except KeyError:
+                        print('No subjects deleted from rel_ob_sub triple')
+                        continue
+                    try:
+                        subject = self.root.object_triples[ob][rel].remove(s)
+                        print(f"Removed {subject} from rel_ob_sub")
+                    except KeyError:
+                        print('No subjects deleted from ob_rel_sub triple')
+
+
     def update_sub_rel_ob(self, s, r, o: list[str], replace=False):
         if s in self.root.subject_triples.keys():
             if replace or r not in self.root.subject_triples[s].keys():
@@ -293,9 +330,19 @@ if __name__ == "__main__":
     o = ['Q1001', 'Q1002', 'Q1003']
     db.add_rdf(s, r, o)
 
-    s = 'Q1002'
+    s = 'Q1001'
     r = 'P2'
     o = ['Q1234', 'Q1005', 'Q1004']
+    db.add_rdf(s, r, o)
+
+    s = 'Q1003'
+    r = 'P2'
+    o = ['Q1001', 'Q1002']
+    db.add_rdf(s, r, o)
+
+    s = 'Q1003'
+    r = 'P1'
+    o = ['Q1001']
     db.add_rdf(s, r, o)
 
     # db.close()
