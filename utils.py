@@ -246,7 +246,7 @@ class Inference(object):
         tic = time.perf_counter()
         # based on model outpus create a final logical form to execute
         question_type_inference_data = [data for data in inference_data if args.question_type in data[QUESTION_TYPE]]
-        for i, sample in enumerate(question_type_inference_data):
+        for i, sample in enumerate(question_type_inference_data):  # ANCHOR: u wot m8? ... how is having CONTEXT_ENTITIES not cheating?
             predictions = predictor.predict(sample[CONTEXT_QUESTION], sample[CONTEXT_ENTITIES])
             actions = []
             logical_form_prediction = predictions[LOGICAL_FORM]
