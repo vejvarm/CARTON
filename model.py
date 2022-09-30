@@ -16,21 +16,20 @@ class CARTON(nn.Module):
         self.decoder = Decoder(vocabs[LOGICAL_FORM], DEVICE)
         self.ner = NerNet(len(vocabs[NER]))
         self.coref = CorefNet(len(vocabs[COREF]))
-        self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER], vocabs[ENTITY_POINTER])
+        self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER])
 
-    def forward(self, src_tokens, trg_tokens, batch_entities):
+    def forward(self, src_tokens, trg_tokens):
         encoder_out = self.encoder(src_tokens)
         ner_out, ner_h = self.ner(encoder_out)  # ANCHOR: LASAGNE
         coref_out = self.coref(torch.cat([encoder_out, ner_h], dim=-1))  # ANCHOR: LASAGNE
         decoder_out, decoder_h = self.decoder(src_tokens, trg_tokens, encoder_out)
         encoder_ctx = encoder_out[:, -1:, :]  # ANCHOR [batch_size, time, encoder_dim]
-        stacked_pointer_out = self.stptr_net(encoder_ctx, decoder_h, batch_entities)  # ANCHOR encoder context vector
+        stacked_pointer_out = self.stptr_net(encoder_ctx, decoder_h)  # ANCHOR encoder context vector
 
         return {
             LOGICAL_FORM: decoder_out,
             PREDICATE_POINTER: stacked_pointer_out[PREDICATE_POINTER],  # (bs, lf_actions*n_predicates)
             TYPE_POINTER: stacked_pointer_out[TYPE_POINTER],     # (bs, lf_actions*n_types)
-            ENTITY_POINTER: stacked_pointer_out[ENTITY_POINTER],  # (bs, lf_actions*n_ent)
             NER: ner_out,
             COREF: coref_out
         }
@@ -136,47 +135,8 @@ class PointerStack(nn.Module):
 
         return x
 
-
-class EntityPointerStack(nn.Module):
-    def __init__(self, entity_vocab):
-        super(EntityPointerStack, self).__init__()
-        self.entity_embeddings = json.loads(open(f'{ROOT_PATH}{args.embedding_path}').read())
-        self.entity_vocab = entity_vocab.itos
-        self.linear_in = nn.Linear(args.bert_dim, args.emb_dim)
-        self.dropout = nn.Dropout(args.dropout)
-        self.tahn = nn.Tanh()
-        self.flatten = Flatten()
-        self.linear_out = nn.Linear(args.emb_dim, 1)
-
-    def _prepare_batch(self, batch_entities):
-        """
-        :param batch_entities: (bs, n) ... batch of entities picked for the current run of entitity pointer
-        """
-        batch_embed = []
-        for entities in batch_entities:
-            temp = []
-            for id in entities:
-                ent = self.entity_vocab[id]
-                temp.append(torch.tensor(self.entity_embeddings[ent]))
-            batch_embed.append(torch.stack(temp))
-
-        return torch.stack(batch_embed)
-
-    def forward(self, x, batch_entities):
-        batch_embedding = self._prepare_batch(batch_entities).to(DEVICE)  # (25, n_ent, 512)
-        embed = self.linear_in(batch_embedding).unsqueeze(1)  # (25, 1, n_ent, 300)
-        x = x.expand(x.shape[0], x.shape[1], embed.shape[1], x.shape[-1])  # (25, lf_actions, 1, 300)
-        x = x + embed.expand(x.shape[0], x.shape[1], embed.shape[2], embed.shape[-1])  # (25, lf_actions, n_ent, 300)
-        x = self.tahn(x)
-        x = self.linear_out(x)  # (25, lf_actions, n_ent, 1)
-        x = x.squeeze(-1)       # (25, lf_actions, n_ent)
-        x = self.flatten(x)     # (25*lf_actions, n_ent)
-
-        return x
-
-
 class StackedPointerNetworks(nn.Module):
-    def __init__(self, predicate_vocab, type_vocab, entity_vocab):
+    def __init__(self, predicate_vocab, type_vocab):
         super(StackedPointerNetworks, self).__init__()
 
         self.context_linear = nn.Linear(args.emb_dim*2, args.emb_dim)
@@ -184,10 +144,9 @@ class StackedPointerNetworks(nn.Module):
 
         self.predicate_pointer = PointerStack(predicate_vocab)
         self.type_pointer = PointerStack(type_vocab)
-        self.entity_pointer = EntityPointerStack(entity_vocab)
 
 
-    def forward(self, encoder_ctx, decoder_h, batch_entities):
+    def forward(self, encoder_ctx, decoder_h):
         x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)  # ANCHOR: this is gonna be problematic!
         # TODO: each entry in decoder_h is concatenated by encoder_h
         #  e.g. expand([25, 1, 300], dim=1, n) concat with [25, n, 300] => [25, n, 600]
@@ -197,7 +156,6 @@ class StackedPointerNetworks(nn.Module):
         return {
             PREDICATE_POINTER: self.predicate_pointer(x),
             TYPE_POINTER: self.type_pointer(x),
-            ENTITY_POINTER: self.entity_pointer(x, batch_entities)
         }
 
 class ClassifierNetworks(nn.Module):

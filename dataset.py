@@ -530,8 +530,7 @@ class CSQADataset:
         # ANCHOR: vocab fiels
         fields_tuple = [(ID, self.id_field), (INPUT, self.input_field), (LOGICAL_FORM, self.lf_field),
                         (NER, self.ner_field), (COREF, self.coref_field),
-                        (PREDICATE_POINTER, self.predicate_field), (TYPE_POINTER, self.type_field),
-                        (ENTITY_POINTER, self.entity_field)]
+                        (PREDICATE_POINTER, self.predicate_field), (TYPE_POINTER, self.type_field)]
 
         # create toechtext datasets
         self.train_data = self._make_torchtext_dataset(train, fields_tuple)
@@ -546,7 +545,6 @@ class CSQADataset:
         self.coref_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
         self.predicate_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
         self.type_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
-        self.entity_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
 
     def get_data(self):
         return self.train_data, self.val_data, self.test_data
@@ -563,7 +561,6 @@ class CSQADataset:
             COREF: self.coref_field,
             PREDICATE_POINTER: self.predicate_field,
             TYPE_POINTER: self.type_field,
-            ENTITY_POINTER: self.entity_field
         }
 
     def get_vocabs(self):
@@ -575,5 +572,4 @@ class CSQADataset:
             COREF: self.coref_field.vocab,
             PREDICATE_POINTER: self.predicate_field.vocab,
             TYPE_POINTER: self.type_field.vocab,
-            ENTITY_POINTER: self.entity_field.vocab
         }

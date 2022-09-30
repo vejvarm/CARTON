@@ -74,7 +74,7 @@ class Predictor(object):
         self.model = model
         self.vocabs = vocabs
 
-    def predict(self, input, ent_cand):
+    def predict(self, input):
         """Perform prediction on given input example"""
         self.model.eval()
         model_out = {}
@@ -83,10 +83,6 @@ class Predictor(object):
         tokenized_sentence = [START_TOKEN] + [t.lower() for t in input] + [CTX_TOKEN]
         numericalized = [self.vocabs[INPUT].stoi[token] if token in self.vocabs[INPUT].stoi else self.vocabs[INPUT].stoi[UNK_TOKEN] for token in tokenized_sentence]
         src_tensor = torch.LongTensor(numericalized).unsqueeze(0).to(DEVICE)
-
-        # prepare entity candidates
-        numericalized_ent_cand = [self.vocabs[ENTITY_POINTER].stoi[entity] for entity in ent_cand if entity in self.vocabs[ENTITY_POINTER].stoi]
-        ent_cand_tensor = torch.LongTensor(numericalized_ent_cand).unsqueeze(0).to(DEVICE)
 
         with torch.no_grad():
             # get ner, coref predictions
@@ -101,7 +97,6 @@ class Predictor(object):
             lf_out = [self.vocabs[LOGICAL_FORM].stoi[START_TOKEN]]
             pd_out = [self.vocabs[PREDICATE_POINTER].stoi[NA_TOKEN]]
             tp_out = [self.vocabs[TYPE_POINTER].stoi[NA_TOKEN]]
-            en_out = [self.vocabs[ENTITY_POINTER].stoi[NA_TOKEN]]
 
             for _ in range(self.model.decoder.max_positions):
                 lf_tensor = torch.LongTensor(lf_out).unsqueeze(0).to(DEVICE)
@@ -109,13 +104,12 @@ class Predictor(object):
                 decoder_step = self.model._predict_decoder(src_tensor, lf_tensor, encoder_out)
                 decoder_out = decoder_step[DECODER_OUT]
                 decoder_h = decoder_step[DECODER_H]
-                stacked_pointer_out = self.model.stptr_net(encoder_ctx, decoder_h, ent_cand_tensor)  # [bs*v, n_kg]
+                stacked_pointer_out = self.model.stptr_net(encoder_ctx, decoder_h)  # [bs*v, n_kg]
 
                 # TODO: what is the shape of this?, How do we infer the KG entries from this?
                 pred_lf = decoder_out.argmax(1)[-1].item()
                 pred_pd = stacked_pointer_out[PREDICATE_POINTER].argmax(1)[-1].item()  # argmax(1) [bs*v, n_kg] -> [bs*v], [-1] [bs*v] -> last entry
                 pred_tp = stacked_pointer_out[TYPE_POINTER].argmax(1)[-1].item()
-                pred_en = stacked_pointer_out[ENTITY_POINTER].argmax(1)[-1].item()
 
                 if pred_lf == self.vocabs[LOGICAL_FORM].stoi[END_TOKEN]:
                     break
@@ -123,7 +117,6 @@ class Predictor(object):
                 lf_out.append(pred_lf)
                 pd_out.append(pred_pd)
                 tp_out.append(pred_tp)
-                en_out.append(pred_en)
 
         # translate top predictions into vocab tokens
         model_out[LOGICAL_FORM] = [self.vocabs[LOGICAL_FORM].itos[i] for i in lf_out][1:]
@@ -131,7 +124,6 @@ class Predictor(object):
         model_out[COREF] = [self.vocabs[COREF].itos[i] for i in coref_out][1:-1]
         model_out[PREDICATE_POINTER] = [self.vocabs[PREDICATE_POINTER].itos[i] for i in pd_out][1:]
         model_out[TYPE_POINTER] = [self.vocabs[TYPE_POINTER].itos[i] for i in tp_out][1:]
-        model_out[ENTITY_POINTER] = [ent_cand[i] for i in en_out][:-1]  # TODO: comment?
 
         return model_out
 
@@ -155,7 +147,7 @@ class AccuracyMeter(object):
 class Scorer(object):
     """Scorer class"""
     def __init__(self):
-        self.tasks = [TOTAL, LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, ENTITY_POINTER]
+        self.tasks = [TOTAL, LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER]
         self.results = {
             OVERALL: {task:AccuracyMeter() for task in self.tasks},
             CLARIFICATION: {task:AccuracyMeter() for task in self.tasks},
@@ -184,7 +176,7 @@ class Scorer(object):
             ref_en = helper[ENTITY][LABEL][example.id[0]]
 
             # get model hypothesis
-            hypothesis = predictor.predict(example.input, example.entity_pointer)
+            hypothesis = predictor.predict(example.input)
 
             # check correctness
             correct_lf = 1 if ref_lf == hypothesis[LOGICAL_FORM] else 0
@@ -192,11 +184,10 @@ class Scorer(object):
             correct_coref = 1 if ref_coref == hypothesis[COREF] else 0
             correct_pd = 1 if ref_pd == hypothesis[PREDICATE_POINTER] else 0
             correct_tp = 1 if ref_tp == hypothesis[TYPE_POINTER] else 0
-            correct_en = 1 if ref_en == hypothesis[ENTITY_POINTER] else 0
 
             # save results
             gold = 1
-            res = 1 if correct_lf and correct_ner and correct_coref and correct_pd and correct_tp and correct_en else 0
+            res = 1 if correct_lf and correct_ner and correct_coref and correct_pd and correct_tp else 0
             # Question type
             self.results[q_type][TOTAL].update(gold, res)
             self.results[q_type][LOGICAL_FORM].update(ref_lf, hypothesis[LOGICAL_FORM])
@@ -204,7 +195,6 @@ class Scorer(object):
             self.results[q_type][COREF].update(ref_coref, hypothesis[COREF])
             self.results[q_type][PREDICATE_POINTER].update(ref_pd, hypothesis[PREDICATE_POINTER])
             self.results[q_type][TYPE_POINTER].update(ref_tp, hypothesis[TYPE_POINTER])
-            self.results[q_type][ENTITY_POINTER].update(ref_en, hypothesis[ENTITY_POINTER])
             # Overall
             self.results[OVERALL][TOTAL].update(gold, res)
             self.results[OVERALL][LOGICAL_FORM].update(ref_lf, hypothesis[LOGICAL_FORM])
@@ -212,7 +202,6 @@ class Scorer(object):
             self.results[OVERALL][COREF].update(ref_coref, hypothesis[COREF])
             self.results[OVERALL][PREDICATE_POINTER].update(ref_pd, hypothesis[PREDICATE_POINTER])
             self.results[OVERALL][TYPE_POINTER].update(ref_tp, hypothesis[TYPE_POINTER])
-            self.results[OVERALL][ENTITY_POINTER].update(ref_en, hypothesis[ENTITY_POINTER])
 
             # save data
             self.data_dict.append({
@@ -227,15 +216,12 @@ class Scorer(object):
                 f'{PREDICATE_POINTER}_gold': ref_pd,
                 TYPE_POINTER: hypothesis[TYPE_POINTER],
                 f'{TYPE_POINTER}_gold': ref_tp,
-                ENTITY_POINTER: hypothesis[ENTITY_POINTER],
-                f'{TYPE_POINTER}_gold': ref_en,
                 # ------------------------------------
                 f'{LOGICAL_FORM}_correct': correct_lf,
                 f'{NER}_correct': correct_ner,
                 f'{COREF}_correct': correct_coref,
                 f'{PREDICATE_POINTER}_correct': correct_pd,
                 f'{TYPE_POINTER}_correct': correct_tp,
-                f'{ENTITY_POINTER}_correct': correct_en,
                 IS_CORRECT: res,
                 QUESTION_TYPE: q_type
             })
@@ -446,7 +432,6 @@ class MultiTaskLoss(nn.Module):
         self.coref_loss = SingleTaskLoss(ignore_index)
         self.pred_pointer = SingleTaskLoss(ignore_index)
         self.type_pointer = SingleTaskLoss(ignore_index)
-        self.ent_pointer = SingleTaskLoss(ignore_index)
 
         self.mml_emp = torch.Tensor([True, True, True, True])
         self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))
@@ -459,7 +444,6 @@ class MultiTaskLoss(nn.Module):
             self.coref_loss(output[COREF], target[COREF]),
             self.pred_pointer(output[PREDICATE_POINTER], target[PREDICATE_POINTER]),
             self.type_pointer(output[TYPE_POINTER], target[TYPE_POINTER]),
-            self.ent_pointer(output[ENTITY_POINTER], target[ENTITY_POINTER])
         ))
 
         dtype = task_losses.dtype
@@ -474,7 +458,6 @@ class MultiTaskLoss(nn.Module):
             COREF: losses[2],
             PREDICATE_POINTER: losses[3],
             TYPE_POINTER: losses[4],
-            ENTITY_POINTER: losses[5],
             MULTITASK: losses.mean()
         }[args.task]
 
@@ -483,16 +466,6 @@ def init_weights(model):
     for p in model.parameters():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
-
-# TODO: Remove enventually
-def construct_entity_target(id_batch, helper_data, vocabs, max_size):
-    ent_t = []
-    for idx in id_batch:
-        e_t = helper_data[ENTITY][GOLD][vocabs[ID].itos[idx]]
-        while len(e_t) < max_size: e_t.append(vocabs[ENTITY_POINTER].stoi[PAD_TOKEN]) # add padding
-        while len(e_t) > max_size: e_t.pop()
-        ent_t.append(torch.tensor(e_t))
-    return torch.stack(ent_t).to(DEVICE)
 
 # ANCHOR LASAGNE parameter initialisation
 def Embedding(num_embeddings, embedding_dim, padding_idx):

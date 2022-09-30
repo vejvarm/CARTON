@@ -14,8 +14,7 @@ from dataset import CSQADataset
 from torchtext.data import BucketIterator
 from utils import (NoamOpt, AverageMeter,
                     SingleTaskLoss, MultiTaskLoss,
-                    save_checkpoint, init_weights,
-                    construct_entity_target)
+                    save_checkpoint, init_weights)
 
 # import constants
 from constants import *
@@ -138,7 +137,7 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         type_t = batch.type_pointer
 
         # compute output
-        output = model(input, logical_form[:, :-1], batch.entity_pointer)
+        output = model(input, logical_form[:, :-1])
 
         # prepare targets
         target = {
@@ -187,7 +186,7 @@ def validate(val_loader, model, vocabs, helper_data, criterion):
             type_t = batch.type_pointer
 
             # compute output
-            output = model(input, logical_form[:, :-1], batch.entity_pointer)
+            output = model(input, logical_form[:, :-1])
 
             # prepare targets
             target = {
