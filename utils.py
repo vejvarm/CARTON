@@ -344,7 +344,7 @@ class Inference(object):
 
         self.write_inference_actions()
 
-    # TODO: Implement without ElasticSearch
+    # TODO: ANCHOR ES2ZODB Implement without ElasticSearch
     def create_ner_idx_ent_dict(self, ner_indices, context_question):
         ent_idx = []
         ner_idx_ent = OrderedDict()
@@ -433,7 +433,7 @@ class MultiTaskLoss(nn.Module):
         self.pred_pointer = SingleTaskLoss(ignore_index)
         self.type_pointer = SingleTaskLoss(ignore_index)
 
-        self.mml_emp = torch.Tensor([True, True, True, True])
+        self.mml_emp = torch.Tensor([True, True, True, True, True])
         self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))
 
     def forward(self, output, target):

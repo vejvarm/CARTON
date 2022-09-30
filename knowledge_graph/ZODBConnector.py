@@ -65,6 +65,11 @@ class BTreeDB:
             'type': self.root.type_triples  # dict[t][r] -> [t1, t2, t3]
         }
 
+    # TODO: Searching through KG
+    #   !!!FUZZY reverse index search (reimplement in the style of LASAGNE )
+    #   ANCHOR ES2ZODB
+    #   USE kg.labels['entity'] but reverse the key value (reverse index) ... fuzzy search of eid by entity name
+
     # UPDATING KG
     def check_label_existance(self, sr: str, lab: str):
         """ Check for entity/relation label existance in KG
