@@ -14,13 +14,6 @@ class ActionOperator:
 
         return set(self.kg.triples['subject'][e][p])
 
-    def find_set(self, e_set, p):
-        result_set = set()
-        for e in e_set:
-            result_set.update(self.find(e, p))
-
-        return result_set
-
     def find_reverse(self, e, p):
         if isinstance(e, list):
             return self.find_reverse_set(e, p)
@@ -32,6 +25,13 @@ class ActionOperator:
             return set()
 
         return set(self.kg.triples['object'][e][p])
+
+    def find_set(self, e_set, p):
+        result_set = set()
+        for e in e_set:
+            result_set.update(self.find(e, p))
+
+        return result_set
 
     def find_reverse_set(self, e_set, p):
         result_set = set()

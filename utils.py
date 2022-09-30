@@ -90,8 +90,12 @@ class Predictor(object):
 
         with torch.no_grad():
             # get ner, coref predictions
-            encoder_out = self.model.encoder(src_tensor)
-            encoder_ctx = encoder_out[:, -1:, :]
+            encoder_step = self.model._predict_encoder(src_tensor)
+            # TODO: encoder_step contains [encoder_out, ner_out, coref_out]
+            encoder_out = encoder_step[ENCODER_OUT]  # FIXME compatibility with CARTON
+            encoder_ctx = encoder_out[:, -1, :]  # TODO: check this
+            ner_out = encoder_step[NER].argmax(1).tolist()
+            coref_out = encoder_step[COREF].argmax(1).tolist()
 
             # get logical form, predicate and type prediction
             lf_out = [self.vocabs[LOGICAL_FORM].stoi[START_TOKEN]]
@@ -102,8 +106,9 @@ class Predictor(object):
             for _ in range(self.model.decoder.max_positions):
                 lf_tensor = torch.LongTensor(lf_out).unsqueeze(0).to(DEVICE)
 
-                # decoder_step = self.model._predict_decoder(src_tensor, lf_tensor, encoder_step[ENCODER_OUT])
-                decoder_out, decoder_h = self.model.decoder(src_tensor, lf_tensor, encoder_out)
+                decoder_step = self.model._predict_decoder(src_tensor, lf_tensor, encoder_out)
+                decoder_out = decoder_step[DECODER_OUT]
+                decoder_h = decoder_step[DECODER_H]
                 stacked_pointer_out = self.model.stptr_net(encoder_ctx, decoder_h, ent_cand_tensor)  # [bs*v, n_kg]
 
                 # TODO: what is the shape of this?, How do we infer the KG entries from this?
@@ -122,9 +127,11 @@ class Predictor(object):
 
         # translate top predictions into vocab tokens
         model_out[LOGICAL_FORM] = [self.vocabs[LOGICAL_FORM].itos[i] for i in lf_out][1:]
+        model_out[NER] = [self.vocabs[NER].itos[i] for i in ner_out][1:-1]
+        model_out[COREF] = [self.vocabs[COREF].itos[i] for i in coref_out][1:-1]
         model_out[PREDICATE_POINTER] = [self.vocabs[PREDICATE_POINTER].itos[i] for i in pd_out][1:]
         model_out[TYPE_POINTER] = [self.vocabs[TYPE_POINTER].itos[i] for i in tp_out][1:]
-        model_out[ENTITY_POINTER] = [ent_cand[i] for i in en_out][:-1]
+        model_out[ENTITY_POINTER] = [ent_cand[i] for i in en_out][:-1]  # TODO: comment?
 
         return model_out
 
@@ -148,7 +155,7 @@ class AccuracyMeter(object):
 class Scorer(object):
     """Scorer class"""
     def __init__(self):
-        self.tasks = [TOTAL, LOGICAL_FORM, PREDICATE_POINTER, TYPE_POINTER, ENTITY_POINTER]
+        self.tasks = [TOTAL, LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, ENTITY_POINTER]
         self.results = {
             OVERALL: {task:AccuracyMeter() for task in self.tasks},
             CLARIFICATION: {task:AccuracyMeter() for task in self.tasks},
@@ -170,6 +177,8 @@ class Scorer(object):
         for i, (example, q_type)  in enumerate(zip(data, helper['question_type'])):
             # prepare references
             ref_lf = [t.lower() for t in example.logical_form]
+            ref_ner = example.ner
+            ref_coref = example.coref
             ref_pd = example.predicate_pointer
             ref_tp = example.type_pointer
             ref_en = helper[ENTITY][LABEL][example.id[0]]
@@ -179,22 +188,28 @@ class Scorer(object):
 
             # check correctness
             correct_lf = 1 if ref_lf == hypothesis[LOGICAL_FORM] else 0
+            correct_ner = 1 if ref_ner == hypothesis[NER] else 0
+            correct_coref = 1 if ref_coref == hypothesis[COREF] else 0
             correct_pd = 1 if ref_pd == hypothesis[PREDICATE_POINTER] else 0
             correct_tp = 1 if ref_tp == hypothesis[TYPE_POINTER] else 0
             correct_en = 1 if ref_en == hypothesis[ENTITY_POINTER] else 0
 
             # save results
             gold = 1
-            res = 1 if correct_lf and correct_pd and correct_tp and correct_en else 0
+            res = 1 if correct_lf and correct_ner and correct_coref and correct_pd and correct_tp and correct_en else 0
             # Question type
             self.results[q_type][TOTAL].update(gold, res)
             self.results[q_type][LOGICAL_FORM].update(ref_lf, hypothesis[LOGICAL_FORM])
+            self.results[q_type][NER].update(ref_ner, hypothesis[NER])
+            self.results[q_type][COREF].update(ref_coref, hypothesis[COREF])
             self.results[q_type][PREDICATE_POINTER].update(ref_pd, hypothesis[PREDICATE_POINTER])
             self.results[q_type][TYPE_POINTER].update(ref_tp, hypothesis[TYPE_POINTER])
             self.results[q_type][ENTITY_POINTER].update(ref_en, hypothesis[ENTITY_POINTER])
             # Overall
             self.results[OVERALL][TOTAL].update(gold, res)
             self.results[OVERALL][LOGICAL_FORM].update(ref_lf, hypothesis[LOGICAL_FORM])
+            self.results[OVERALL][NER].update(ref_ner, hypothesis[NER])
+            self.results[OVERALL][COREF].update(ref_coref, hypothesis[COREF])
             self.results[OVERALL][PREDICATE_POINTER].update(ref_pd, hypothesis[PREDICATE_POINTER])
             self.results[OVERALL][TYPE_POINTER].update(ref_tp, hypothesis[TYPE_POINTER])
             self.results[OVERALL][ENTITY_POINTER].update(ref_en, hypothesis[ENTITY_POINTER])
@@ -204,6 +219,10 @@ class Scorer(object):
                 INPUT: example.input,
                 LOGICAL_FORM: hypothesis[LOGICAL_FORM],
                 f'{LOGICAL_FORM}_gold': ref_lf,
+                NER: hypothesis[NER],
+                f'{NER}_gold': ref_ner,
+                COREF: hypothesis[COREF],
+                f'{COREF}_gold': ref_coref,
                 PREDICATE_POINTER: hypothesis[PREDICATE_POINTER],
                 f'{PREDICATE_POINTER}_gold': ref_pd,
                 TYPE_POINTER: hypothesis[TYPE_POINTER],
@@ -212,6 +231,8 @@ class Scorer(object):
                 f'{TYPE_POINTER}_gold': ref_en,
                 # ------------------------------------
                 f'{LOGICAL_FORM}_correct': correct_lf,
+                f'{NER}_correct': correct_ner,
+                f'{COREF}_correct': correct_coref,
                 f'{PREDICATE_POINTER}_correct': correct_pd,
                 f'{TYPE_POINTER}_correct': correct_tp,
                 f'{ENTITY_POINTER}_correct': correct_en,
@@ -255,8 +276,56 @@ class Inference(object):
                 if action not in [ENTITY, RELATION, TYPE, VALUE, PREV_ANSWER]:
                     actions.append([ACTION, action])
                 elif action == ENTITY:
-                    entity_prediction = predictions[ENTITY_POINTER]
-                    actions.append([ENTITY, entity_prediction[j]])
+                    # get predictions
+                    context_question = sample[CONTEXT_QUESTION]
+                    ner_prediction = predictions[NER]
+                    coref_prediction = predictions[COREF]
+                    # get their indices
+                    ner_indices = OrderedDict({k: tag.split('-')[-1] for k, tag in enumerate(ner_prediction) if
+                                               tag.startswith(B) or tag.startswith(I)})
+                    coref_indices = OrderedDict({k: tag for k, tag in enumerate(coref_prediction) if tag not in ['NA']})
+                    # create a ner dictionary with index as key and entity as value
+                    ner_idx_ent = self.create_ner_idx_ent_dict(ner_indices, context_question)
+                    if str(ent_count_pos) not in list(coref_indices.values()):
+                        if args.question_type in [CLARIFICATION, QUANTITATIVE_COUNT] and len(
+                                list(coref_indices.values())) == ent_count_pos:  # simple constraint for clarification and quantitative count
+                            for l, (cidx, ctag) in enumerate(coref_indices.items()):
+                                if ctag == str(ent_count_pos - 1):
+                                    if cidx in ner_idx_ent:
+                                        actions.append([ENTITY, ner_idx_ent[cidx][0]])
+                                        break
+                                    else:
+                                        print(f'Coref index {cidx} not in ner entities!')
+                                        actions.append([ENTITY, ENTITY])
+                                        break
+                            try:
+                                actions.append([ENTITY, ner_idx_ent.popitem()[1][0]])
+                            except:
+                                print('No coref indices!')
+                                actions.append([ENTITY, ENTITY])
+                        elif args.question_type in [VERIFICATION, SIMPLE_DIRECT,
+                                                    CLARIFICATION] and ent_count_pos == 0 and not coref_indices:  # simple constraint for verification and simple question (direct)
+                            try:
+                                actions.append([ENTITY, ner_idx_ent.popitem()[1][0]])
+                            except:
+                                print('No coref indices!')
+                                actions.append([ENTITY, ENTITY])
+                        else:
+                            # TODO here things get hard, we will need to use all ner entites and see if it works
+                            print('No coref indices!')
+                            actions.append([ENTITY, ENTITY])
+                    else:
+                        for l, (cidx, ctag) in enumerate(coref_indices.items()):
+                            if ctag == str(ent_count_pos):
+                                if cidx in ner_idx_ent:
+                                    actions.append([ENTITY, ner_idx_ent[cidx][0]])
+                                    break
+                                else:
+                                    print(f'Coref index {cidx} not in ner entities!')
+                                    actions.append([ENTITY, ENTITY])
+                                    break
+                    # update entity position counter
+                    ent_count_pos += 1
                 elif action == RELATION:
                     predicate_prediction = predictions[PREDICATE_POINTER]
                     actions.append([RELATION, predicate_prediction[j]])
@@ -288,6 +357,47 @@ class Inference(object):
                 print(f'==> Finished action construction {((i+1)/len(question_type_inference_data))*100:.2f}% -- {toc - tic:0.2f}s')
 
         self.write_inference_actions()
+
+    # TODO: Implement without ElasticSearch
+    def create_ner_idx_ent_dict(self, ner_indices, context_question):
+        ent_idx = []
+        ner_idx_ent = OrderedDict()
+        for index, span_type in ner_indices.items():
+            if not ent_idx or index-1 == ent_idx[-1][0]:
+                ent_idx.append([index, span_type]) # check wether token start with ## then include previous token also from context_question
+            else:
+                # get ent tokens from input context
+                ent_tokens = [context_question[idx] for idx, _ in ent_idx]
+                # get string from tokens using tokenizer
+                ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
+                # get elastic search results
+                es_results = self.elasticsearch_query(ent_string, ent_idx[0][1]) # use type from B tag only
+                # add idices to dict
+                if es_results:
+                    for idx, _ in ent_idx:
+                        ner_idx_ent[idx] = es_results
+                # clean ent_idx
+                ent_idx = [[index, span_type]]
+        if ent_idx:
+            # get ent tokens from input context
+            ent_tokens = [context_question[idx] for idx, _ in ent_idx]
+            # get string from tokens using tokenizer
+            ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
+            # get elastic search results
+            es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])
+            # add idices to dict
+            if es_results:
+                for idx, _ in ent_idx:
+                    ner_idx_ent[idx] = es_results
+        return ner_idx_ent
+
+    def elasticsearch_query(self, query, filter_type, res_size=50):
+        res = self.es.search(index='csqa_wikidata', doc_type='entities', body={'size': res_size, 'query': {'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}}})
+        results = []
+        for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
+        filtered_results = [res for res in results if filter_type in res[1]]
+        return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
+    # TODO END
 
     def get_value(self, question):
         if 'min' in question.split():
@@ -332,6 +442,8 @@ class MultiTaskLoss(nn.Module):
     def __init__(self, ignore_index):
         super().__init__()
         self.lf_loss = SingleTaskLoss(ignore_index)
+        self.ner_loss = SingleTaskLoss(ignore_index)
+        self.coref_loss = SingleTaskLoss(ignore_index)
         self.pred_pointer = SingleTaskLoss(ignore_index)
         self.type_pointer = SingleTaskLoss(ignore_index)
         self.ent_pointer = SingleTaskLoss(ignore_index)
@@ -343,6 +455,8 @@ class MultiTaskLoss(nn.Module):
         # weighted loss
         task_losses = torch.stack((
             self.lf_loss(output[LOGICAL_FORM], target[LOGICAL_FORM]),
+            self.ner_loss(output[NER], target[NER]),
+            self.coref_loss(output[COREF], target[COREF]),
             self.pred_pointer(output[PREDICATE_POINTER], target[PREDICATE_POINTER]),
             self.type_pointer(output[TYPE_POINTER], target[TYPE_POINTER]),
             self.ent_pointer(output[ENTITY_POINTER], target[ENTITY_POINTER])
@@ -356,9 +470,11 @@ class MultiTaskLoss(nn.Module):
 
         return {
             LOGICAL_FORM: losses[0],
-            PREDICATE_POINTER: losses[1],
-            TYPE_POINTER: losses[2],
-            ENTITY_POINTER: losses[3],
+            NER: losses[1],
+            COREF: losses[2],
+            PREDICATE_POINTER: losses[3],
+            TYPE_POINTER: losses[4],
+            ENTITY_POINTER: losses[5],
             MULTITASK: losses.mean()
         }[args.task]
 
@@ -368,6 +484,7 @@ def init_weights(model):
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
 
+# TODO: Remove enventually
 def construct_entity_target(id_batch, helper_data, vocabs, max_size):
     ent_t = []
     for idx in id_batch:
@@ -376,3 +493,27 @@ def construct_entity_target(id_batch, helper_data, vocabs, max_size):
         while len(e_t) > max_size: e_t.pop()
         ent_t.append(torch.tensor(e_t))
     return torch.stack(ent_t).to(DEVICE)
+
+# ANCHOR LASAGNE parameter initialisation
+def Embedding(num_embeddings, embedding_dim, padding_idx):
+    """Embedding layer"""
+    m = nn.Embedding(num_embeddings, embedding_dim, padding_idx=padding_idx)
+    nn.init.uniform_(m.weight, -0.1, 0.1)
+    nn.init.constant_(m.weight[padding_idx], 0)
+    return m
+
+def Linear(in_features, out_features, bias=True):
+    """Linear layer"""
+    m = nn.Linear(in_features, out_features, bias=bias)
+    m.weight.data.uniform_(-0.1, 0.1)
+    if bias:
+        m.bias.data.uniform_(-0.1, 0.1)
+    return m
+
+def LSTM(input_size, hidden_size, **kwargs):
+    """LSTM layer"""
+    m = nn.LSTM(input_size, hidden_size, **kwargs)
+    for name, param in m.named_parameters():
+        if 'weight' in name or 'bias' in name:
+            param.data.uniform_(-0.1, 0.1)
+    return m

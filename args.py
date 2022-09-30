@@ -24,7 +24,9 @@ def get_parser():
                                                                 'logical_form',
                                                                 'predicate_pointer',
                                                                 'type_pointer',
-                                                                'entity_pointer'], type=str)
+                                                            #    'entity_pointer',  # TODO: Uncomment?
+                                                                'ner',
+                                                                'coref'], type=str)
 
     # model
     parser.add_argument('--emb_dim', default=300, type=int)     # default: 300 (dkg?)  # ANCHOR EMBDIM in model.py if you want to change this

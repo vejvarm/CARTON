@@ -25,6 +25,8 @@ LOGICAL_FORM = 'logical_form'
 PREDICATE_POINTER = 'predicate_pointer'
 TYPE_POINTER = 'type_pointer'
 ENTITY_POINTER = 'entity_pointer'
+NER = 'ner'
+COREF = 'coref'
 MULTITASK = 'multitask'
 
 # helper tokens
@@ -39,9 +41,15 @@ NA_TOKEN = 'NA'
 GOLD = 'gold'
 LABEL = 'label'
 
+# ner tag
+B = 'B'
+I = 'I'
+O = 'O'
+
 # model
 ENCODER_OUT = 'encoder_out'
 DECODER_OUT = 'decoder_out'
+DECODER_H = 'decoder_h'
 
 # training
 EPOCH = 'epoch'

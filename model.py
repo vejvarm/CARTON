@@ -14,10 +14,14 @@ class CARTON(nn.Module):
         self.vocabs = vocabs
         self.encoder = Encoder(vocabs[INPUT], DEVICE)
         self.decoder = Decoder(vocabs[LOGICAL_FORM], DEVICE)
+        self.ner = NerNet(len(vocabs[NER]))
+        self.coref = CorefNet(len(vocabs[COREF]))
         self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER], vocabs[ENTITY_POINTER])
 
     def forward(self, src_tokens, trg_tokens, batch_entities):
         encoder_out = self.encoder(src_tokens)
+        ner_out, ner_h = self.ner(encoder_out)  # ANCHOR: LASAGNE
+        coref_out = self.coref(torch.cat([encoder_out, ner_h], dim=-1))  # ANCHOR: LASAGNE
         decoder_out, decoder_h = self.decoder(src_tokens, trg_tokens, encoder_out)
         encoder_ctx = encoder_out[:, -1:, :]  # ANCHOR [batch_size, time, encoder_dim]
         stacked_pointer_out = self.stptr_net(encoder_ctx, decoder_h, batch_entities)  # ANCHOR encoder context vector
@@ -26,12 +30,83 @@ class CARTON(nn.Module):
             LOGICAL_FORM: decoder_out,
             PREDICATE_POINTER: stacked_pointer_out[PREDICATE_POINTER],  # (bs, lf_actions*n_predicates)
             TYPE_POINTER: stacked_pointer_out[TYPE_POINTER],     # (bs, lf_actions*n_types)
-            ENTITY_POINTER: stacked_pointer_out[ENTITY_POINTER]  # (bs, lf_actions*n_ent)
+            ENTITY_POINTER: stacked_pointer_out[ENTITY_POINTER],  # (bs, lf_actions*n_ent)
+            NER: ner_out,
+            COREF: coref_out
         }
+
+    # ANCHOR: LASAGNE
+    def _predict_encoder(self, src_tensor):
+        with torch.no_grad():
+            encoder_out = self.encoder(src_tensor)
+            ner_out, ner_h = self.ner(encoder_out)
+            coref_out = self.coref(torch.cat([encoder_out, ner_h], dim=-1))
+
+        return {
+            ENCODER_OUT: encoder_out,
+            NER: ner_out,
+            COREF: coref_out
+        }
+
+    def _predict_decoder(self, src_tokens, trg_tokens, encoder_out):
+        with torch.no_grad():
+            decoder_out, decoder_h = self.decoder(src_tokens, trg_tokens, encoder_out)
+            encoder_ctx = encoder_out[:, -1:, :]
+            graph_out = self.graph_net(encoder_ctx, decoder_h, self.graph)
+
+            return {
+                DECODER_OUT: decoder_out,
+                DECODER_H: decoder_h,
+            }
+
+
+class LstmFlatten(nn.Module):
+    def forward(self, x):
+        return x[0].squeeze(1)
+
 
 class Flatten(nn.Module):
     def forward(self, x):
         return x.contiguous().view(-1, x.shape[-1])
+
+
+# ANCHOR: BIO entity labeling (annotator)
+#   Finding all entities in the input utterance (BIO & types)
+class NerNet(nn.Module):
+    def __init__(self, tags, dropout=args.dropout):
+        super(NerNet, self).__init__()
+        self.ner_lstm = nn.Sequential(
+            nn.LSTM(input_size=args.emb_dim, hidden_size=args.emb_dim, batch_first=True),
+            LstmFlatten(),
+            nn.LeakyReLU()
+        )
+
+        self.ner_linear = nn.Sequential(
+            Flatten(),
+            nn.Dropout(dropout),
+            nn.Linear(args.emb_dim, tags)
+        )
+
+    def forward(self, x):
+        h = self.ner_lstm(x)
+        return self.ner_linear(h), h
+
+
+# ANCHOR: This is interesting
+class CorefNet(nn.Module):
+    def __init__(self, tags, dropout=args.dropout):
+        super(CorefNet, self).__init__()
+        self.seq_net = nn.Sequential(
+            nn.Linear(args.emb_dim * 2, args.emb_dim),
+            nn.LeakyReLU(),
+            Flatten(),
+            nn.Dropout(dropout),
+            nn.Linear(args.emb_dim, tags)
+        )
+
+    def forward(self, x):
+        return self.seq_net(x)
+
 
 class PointerStack(nn.Module):
     def __init__(self, vocab):

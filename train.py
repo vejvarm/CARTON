@@ -57,9 +57,10 @@ def main():
     # define loss function (criterion)
     criterion = {
         LOGICAL_FORM: SingleTaskLoss,
+        NER: SingleTaskLoss,
+        COREF: SingleTaskLoss,
         PREDICATE_POINTER: SingleTaskLoss,
         TYPE_POINTER: SingleTaskLoss,
-        ENTITY_POINTER: SingleTaskLoss,
         MULTITASK: MultiTaskLoss
     }[args.task](ignore_index=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN])
 
@@ -89,12 +90,14 @@ def main():
                                                     device=DEVICE)
 
     logger.info('Loaders prepared.')
-    logger.info(f'Training data: {len(train_data.examples)}')
-    logger.info(f'Validation data: {len(val_data.examples)}')
+    logger.info(f"Training data: {len(train_data.examples)}")
+    logger.info(f"Validation data: {len(val_data.examples)}")
     logger.info(f'Question example: {train_data.examples[0].input}')
     logger.info(f'Logical form example: {train_data.examples[0].logical_form}')
-    logger.info(f'Unique tokens in input vocabulary: {len(vocabs[INPUT])}')
-    logger.info(f'Unique tokens in logical form vocabulary: {len(vocabs[LOGICAL_FORM])}')
+    logger.info(f"Unique tokens in input vocabulary: {len(vocabs[INPUT])}")
+    logger.info(f"Unique tokens in logical form vocabulary: {len(vocabs[LOGICAL_FORM])}")
+    logger.info(f"Unique tokens in ner vocabulary: {len(vocabs[NER])}")
+    logger.info(f"Unique tokens in coref vocabulary: {len(vocabs[COREF])}")
     logger.info(f'Batch: {args.batch_size}')
     logger.info(f'Epochs: {args.epochs}')
 
@@ -129,9 +132,10 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         # get inputs
         input = batch.input
         logical_form = batch.logical_form
+        ner = batch.ner
+        coref = batch.coref
         predicate_t = batch.predicate_pointer
         type_t = batch.type_pointer
-        entity_t = construct_entity_target(batch.id, helper_data, vocabs, predicate_t.shape[-1])
 
         # compute output
         output = model(input, logical_form[:, :-1], batch.entity_pointer)
@@ -139,9 +143,10 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         # prepare targets
         target = {
             LOGICAL_FORM: logical_form[:, 1:].contiguous().view(-1),
+            NER: ner.contiguous().view(-1),
+            COREF: coref.contiguous().view(-1),
             PREDICATE_POINTER: predicate_t[:, 1:].contiguous().view(-1),
             TYPE_POINTER: type_t[:, 1:].contiguous().view(-1),
-            ENTITY_POINTER: entity_t[:, 1:].contiguous().view(-1)
         }
 
         # compute loss
@@ -176,9 +181,10 @@ def validate(val_loader, model, vocabs, helper_data, criterion):
             # get inputs
             input = batch.input
             logical_form = batch.logical_form
+            ner = batch.ner
+            coref = batch.coref
             predicate_t = batch.predicate_pointer
             type_t = batch.type_pointer
-            entity_t = construct_entity_target(batch.id, helper_data, vocabs, predicate_t.shape[-1])
 
             # compute output
             output = model(input, logical_form[:, :-1], batch.entity_pointer)
@@ -186,9 +192,10 @@ def validate(val_loader, model, vocabs, helper_data, criterion):
             # prepare targets
             target = {
                 LOGICAL_FORM: logical_form[:, 1:].contiguous().view(-1),  # reshapes into one long 1d vector
+                NER: ner.contiguous().view(-1),
+                COREF: coref.contiguous().view(-1),
                 PREDICATE_POINTER: predicate_t[:, 1:].contiguous().view(-1),
                 TYPE_POINTER: type_t[:, 1:].contiguous().view(-1),
-                ENTITY_POINTER: entity_t[:, 1:].contiguous().view(-1)
             }
 
             # compute loss
