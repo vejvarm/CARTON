@@ -51,8 +51,9 @@ class BTreeDB:
         self.entity_type = self.root.entity_type
 
         self.labels = {
-            'entity': self.root.id_entity,  # dict[e] -> label
-            'relation': self.root.id_relation  # dict[r] -> label
+            'entity': self.root.id_entity,   # dict[e] -> label
+            'relation': self.root.id_relation,   # dict[r] -> label
+            'inverse': self.root.inverse_entity if 'inverse_entity' in self.root() else None  # dict[label] -> entity
         }
 
         self.triples = {
@@ -65,10 +66,36 @@ class BTreeDB:
             'type': self.root.type_triples  # dict[t][r] -> [t1, t2, t3]
         }
 
+        if self.labels['inverse'] is None:
+            print('invert labels')
+            self.invert_labels()
+            self.labels['inverse'] = self.root.inverse_entity
+
+    def invert_labels(self):
+        if 'inverse_entity' not in self.root():
+            self.root.inverse_entity = OOBTree.BTree()
+            print('Inverse entity tree not initialised. Initialising new one.')
+
+        for k, v in self.root.id_entity.items():
+            self.root.inverse_entity[v] = k  # TODO: deal with duplicate labels
+
+        assert len(self.root.inverse_entity) > 0
+        print('Inverting successful.')
+
+
+
+
+
     # TODO: Searching through KG
     #   !!!FUZZY reverse index search (reimplement in the style of LASAGNE )
-    #   ANCHOR ES2ZODB
-    #   USE kg.labels['entity'] but reverse the key value (reverse index) ... fuzzy search of eid by entity name
+    #   goto ANCHOR ES2ZODB
+    #   TODO USE kg.labels['entity'] but reverse the key value (reverse index) ... fuzzy search of eid by entity name
+
+
+
+
+
+
 
     # UPDATING KG
     def check_label_existance(self, sr: str, lab: str):
@@ -278,6 +305,7 @@ class BTreeDB:
         # labels
         self.root.id_entity = OOBTree.BTree()
         self.root.id_relation = OOBTree.BTree()
+        self.root.inverse_entity = OOBTree.BTree()
         # triples
         self.root.subject_triples = OOBTree.BTree()
         self.root.object_triples = OOBTree.BTree()
@@ -294,6 +322,8 @@ class BTreeDB:
         print("\tid_entity filled.")
         self._fill_oobtree(kg.id_relation, self.root.id_relation)
         print("\tid_relation filled.")
+        # fill inverse index label/entity_id BTree
+        self.invert_labels()
 
         # fill TRIPLES
         print("Filling Triples maps...")
@@ -324,30 +354,30 @@ class BTreeDB:
 
 if __name__ == "__main__":
     # open and initialise DB object from file
-    path_to_db = "./zodb_kg/KGTest.fs"
-    db = BTreeDB(path_to_db, initialise=True, run_adapter=True)
+    path_to_db = "./Wikidata.fs"
+    db = BTreeDB(path_to_db, initialise=False, run_adapter=True)
+    # print(len(db.labels['inverse'].keys()))
 
-    db.labels['entity']['Q1234'] = 'nice name'
-    db.labels['relation']['P1'] = 'nice relation'
+    # db.invert_labels()
 
-    s = 'Q0001'
-    r = 'P1'
-    o = ['Q1001', 'Q1002', 'Q1003']
-    db.add_rdf(s, r, o)
-
-    s = 'Q1001'
-    r = 'P2'
-    o = ['Q1234', 'Q1005', 'Q1004']
-    db.add_rdf(s, r, o)
-
-    s = 'Q1003'
-    r = 'P2'
-    o = ['Q1001', 'Q1002']
-    db.add_rdf(s, r, o)
-
-    s = 'Q1003'
-    r = 'P1'
-    o = ['Q1001']
-    db.add_rdf(s, r, o)
+    # s = 'Q0001'
+    # r = 'P1'
+    # o = ['Q1001', 'Q1002', 'Q1003']
+    # db.add_rdf(s, r, o)
+    #
+    # s = 'Q1001'
+    # r = 'P2'
+    # o = ['Q1234', 'Q1005', 'Q1004']
+    # db.add_rdf(s, r, o)
+    #
+    # s = 'Q1003'
+    # r = 'P2'
+    # o = ['Q1001', 'Q1002']
+    # db.add_rdf(s, r, o)
+    #
+    # s = 'Q1003'
+    # r = 'P1'
+    # o = ['Q1001']
+    # db.add_rdf(s, r, o)
 
     # db.close()

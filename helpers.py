@@ -3,12 +3,7 @@ import sqlite3
 import numpy as np
 from matplotlib import pyplot as plt
 
-from constants import ROOT_PATH
-from args import get_parser
-
-# read parser
-parser = get_parser()
-args = parser.parse_args()
+from constants import *
 
 
 def extract_val_loss_from_train_log(file_name):
@@ -78,6 +73,30 @@ def example_sqlite():
 def out_file_name(input_string):
     return "out_" + os.path.splitext(input_string)[0] + ".npy"
 
+# Inference ner edit distance
+def get_edit_distance(query=None, confidence_levels=True, default_dist=1):
+    """
+    Return the matching maximum edit distance for a particular string length.
+    As string length decreases, maximum edit distance also decreases.
+    """
+
+    # Check for appropriate formats
+    assert isinstance(query, str), "queries can be str() type only"
+
+    # We check if confidence levels are set
+    if confidence_levels:
+        num_chars = len(query)
+        max_len = len(args.ner_max_distance)
+        if num_chars <= max_len:
+            max_dist = args.ner_max_distance[num_chars-1]
+        else:
+            max_dist = args.ner_max_distance[-1]
+    # Fallback if confidence levels are not set
+    else:
+        max_dist = default_dist
+
+    return int(max_dist)
+
 
 if __name__ == '__main__':
     log_file_default = "train_multitask.log"
@@ -112,5 +131,5 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
-    # plt.savefig(output_plot_file_path, format=plot_file_type, dpi=200)
+    plt.savefig(output_plot_file_path, format=plot_file_type, dpi=200)
 

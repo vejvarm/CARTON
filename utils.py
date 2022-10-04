@@ -9,13 +9,21 @@ import logging
 import numpy as np
 import torch.nn as nn
 from pathlib import Path
+
+import helpers
 from args import get_parser
 from unidecode import unidecode
 from collections import OrderedDict
 from transformers import BertTokenizer
 
+from rapidfuzz import process
+from rapidfuzz.distance.Levenshtein import distance
+
 # import constants
 from constants import *
+
+# import CSQA ZODB KG
+from knowledge_graph.ZODBConnector import BTreeDB
 
 # set logger
 logger = logging.getLogger(__name__)
@@ -244,10 +252,12 @@ class Scorer(object):
         self.results = []
         self.instances = 0
 
+
 class Inference(object):
     def __init__(self):
         self.tokenizer = BertTokenizer.from_pretrained(BERT_BASE_UNCASED)
         self.inference_actions = []
+        self.kg = BTreeDB(args.kg_path, run_adapter=True)  # ANCHOR: ZODB implementation
 
     def construct_actions(self, inference_data, predictor):
         tic = time.perf_counter()
@@ -268,7 +278,7 @@ class Inference(object):
                     coref_prediction = predictions[COREF]
                     # get their indices
                     ner_indices = OrderedDict({k: tag.split('-')[-1] for k, tag in enumerate(ner_prediction) if
-                                               tag.startswith(B) or tag.startswith(I)})
+                                               tag.startswith(B) or tag.startswith(I)})  # idx: type_id
                     coref_indices = OrderedDict({k: tag for k, tag in enumerate(coref_prediction) if tag not in ['NA']})
                     # create a ner dictionary with index as key and entity as value
                     ner_idx_ent = self.create_ner_idx_ent_dict(ner_indices, context_question)
@@ -348,16 +358,17 @@ class Inference(object):
     def create_ner_idx_ent_dict(self, ner_indices, context_question):
         ent_idx = []
         ner_idx_ent = OrderedDict()
-        for index, span_type in ner_indices.items():
+        for index, span_type in ner_indices.items():  # index is just word order in the context question
             if not ent_idx or index-1 == ent_idx[-1][0]:
-                ent_idx.append([index, span_type]) # check wether token start with ## then include previous token also from context_question
+                ent_idx.append([index, span_type]) # check whether token start with ## then include previous token also from context_question
             else:
                 # get ent tokens from input context
                 ent_tokens = [context_question[idx] for idx, _ in ent_idx]
                 # get string from tokens using tokenizer
                 ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
                 # get elastic search results
-                es_results = self.elasticsearch_query(ent_string, ent_idx[0][1]) # use type from B tag only
+                # es_results = self.elasticsearch_query(ent_string, ent_idx[0][1]) # use type from B tag only
+                es_results = self.rapidfuzz_query(ent_string, ent_idx[0][1])  # ANCHOR: RapidFuzz implementation
                 # add idices to dict
                 if es_results:
                     for idx, _ in ent_idx:
@@ -370,19 +381,41 @@ class Inference(object):
             # get string from tokens using tokenizer
             ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
             # get elastic search results
-            es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])
+            # es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])
+            es_results = self.rapidfuzz_query(ent_string, ent_idx[0][1])  # ANCHOR: RapidFuzz implementation
             # add idices to dict
             if es_results:
                 for idx, _ in ent_idx:
                     ner_idx_ent[idx] = es_results
         return ner_idx_ent
 
-    def elasticsearch_query(self, query, filter_type, res_size=50):
-        res = self.es.search(index='csqa_wikidata', doc_type='entities', body={'size': res_size, 'query': {'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}}})
-        results = []
-        for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
-        filtered_results = [res for res in results if filter_type in res[1]]
-        return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
+    def rapidfuzz_query(self, query, filter_type, res_size=50):
+        """
+        Fuzzy querry on entity labels and find maximum 'res_size' candidates for relevant entity ids based on Levenshtein distance
+        Filter resulting entity_ids by type
+
+        return: list of filtered entity_ids or unfiltered entity_ids (if filtered is empty)
+
+        """
+        max_dist = helpers.get_edit_distance(query)
+        res = process.extract(query, self.kg.labels['entity'], scorer=distance, score_cutoff=max_dist, limit=res_size)
+        unfiltered_res = []
+        filtered_res = []
+        for hit in res:
+            ent_id = hit[2]
+            ent_type = self.kg.entity_type[ent_id]  # filter by types
+            unfiltered_res.append(ent_id)
+            if filter_type in ent_type:
+                filtered_res.append(ent_id)
+
+        return filtered_res if filtered_res else unfiltered_res
+
+    # def elasticsearch_query(self, query, filter_type, res_size=50):
+    #     res = self.es.search(index='csqa_wikidata', doc_type='entities', body={'size': res_size, 'query': {'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}}})
+    #     results = []
+    #     for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
+    #     filtered_results = [res for res in results if filter_type in res[1]]
+    #     return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
     # TODO END
 
     def get_value(self, question):

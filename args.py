@@ -12,6 +12,7 @@ def get_parser():
     # data
     parser.add_argument('--data_path', default='/data/final/csqa')
     parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
+    parser.add_argument('--kg_path', default='/knowledge_graph/Wikidata.fs')
 
     # experiments
     parser.add_argument('--snapshots', default='experiments/snapshots', type=str)
@@ -68,5 +69,6 @@ def get_parser():
                                  'Quantitative Reasoning (Count) (All)',
                                  'Comparative Reasoning (Count) (All)'], type=str)
     parser.add_argument('--max_results', default=1000, help='maximum number of results', type=int)
+    parser.add_argument('--ner_max_distance', default=[0, 0, 1, 1, 1, 2])
 
     return parser
