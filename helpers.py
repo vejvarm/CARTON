@@ -1,9 +1,32 @@
+import json
 import os.path
 import sqlite3
 import numpy as np
 from matplotlib import pyplot as plt
 
 from constants import *
+
+def extract_individual_losses_from_train_log(file_name):
+    with open(f"{ROOT_PATH}/{args.path_results}/{file_name}", 'r') as f:
+        col_names = []
+        out = []
+        out_dict = {}
+        epoch = 0
+        for line in f:
+            if 'Val losses::' in line:
+                if not col_names:
+                    col_names = ['EPOCH'] + [e.split(":")[-2] for e in line.split("|")]
+                    out.append(col_names)
+                values = [epoch + 1] + [float(e.split(":")[-1]) for e in line.split("|")]
+                out.append(values)
+                epoch += 1
+
+        for atribute in zip(*out):
+            out_dict[atribute[0]] = atribute[1:]
+
+    # save to json file
+    with open(f"{args.path_results}/out_{file_name.split('.')[0]}.json", 'w') as f:
+        json.dump(out_dict, f, indent=4)
 
 
 def extract_val_loss_from_train_log(file_name):
@@ -20,6 +43,25 @@ def extract_val_loss_from_train_log(file_name):
 
     with open(f"{args.path_results}/out_{file_name.split('.')[0]}.npy", 'wb') as f:
         np.save(f, arr)
+
+
+def plot_from_jsom_multiloss_file(json_file_name, title="CrossEntropy losses during validation"):
+    with open(f"{args.path_results}/{json_file_name}", 'r') as f:
+        data = json.load(f)
+
+    x = data['EPOCH']
+
+    for attr, vals in data.items():
+        if 'EPOCH' in attr.upper():
+            pass
+        else:
+            plt.semilogy(x, vals, label=attr)
+
+    plt.xlabel('epoch')
+    plt.ylabel('log validation loss')
+    plt.legend()
+    plt.show()
+
 
 
 def plot_from_np_file(path_to_np_file, label="validation loss"):
@@ -73,6 +115,7 @@ def example_sqlite():
 def out_file_name(input_string):
     return "out_" + os.path.splitext(input_string)[0] + ".npy"
 
+
 # Inference ner edit distance
 def get_edit_distance(query=None, confidence_levels=True, default_dist=1):
     """
@@ -98,7 +141,7 @@ def get_edit_distance(query=None, confidence_levels=True, default_dist=1):
     return int(max_dist)
 
 
-if __name__ == '__main__':
+def main_old():
     log_file_default = "train_multitask.log"
     log_file_orig = "train_multitask_original_code_params.log"
     log_file_paper = "train_multitask_paper_params.log"
@@ -113,9 +156,9 @@ if __name__ == '__main__':
     # extract_val_loss_from_train_log(log_file_paper)
     # extract_val_loss_from_train_log(log_file_latest)
 
-    font = {#'family': 'normal',
-            #'weight': 'bold',
-            'size': 15}
+    font = {  # 'family': 'normal',
+        # 'weight': 'bold',
+        'size': 15}
 
     plt.rc('font', **font)
 
@@ -126,10 +169,19 @@ if __name__ == '__main__':
     output_plot_file_path = f"{args.path_results}/{plot_file_name}.{plot_file_type}"
     plot_from_np_file(input0, "CARTON+NER module")
     plot_from_np_file(input1, "CARTON")
-#    plot_from_np_file(input2, "paper parameters")
-#    plot_from_np_file(input3, "paper parameters (only 2 layers)")
+    #    plot_from_np_file(input2, "paper parameters")
+    #    plot_from_np_file(input3, "paper parameters (only 2 layers)")
     plt.legend()
     # plt.show()
 
     plt.savefig(output_plot_file_path, format=plot_file_type, dpi=200)
 
+
+if __name__ == '__main__':
+    # main_old()
+
+    log_file_default = "train_multitask.log"
+
+    extract_individual_losses_from_train_log(log_file_default)
+
+    plot_from_jsom_multiloss_file('out_' + log_file_default.split('.')[0] + '.json')
