@@ -304,7 +304,7 @@ class CSQADataset:
 
         partition = []
         for f in files:
-            with open(f) as json_file:
+            with open(f, encoding='utf8') as json_file:
                 partition.append(json.load(json_file))
 
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased').tokenize
@@ -464,17 +464,17 @@ class CSQADataset:
         # read data
         train_files = glob(self.train_path + '/*.json')
         for f in train_files:
-            with open(f) as json_file:
+            with open(f, encoding='utf8') as json_file:
                 train.append(json.load(json_file))
 
         val_files = glob(self.val_path + '/*.json')
         for f in val_files:
-            with open(f) as json_file:
+            with open(f, encoding='utf8') as json_file:
                 val.append(json.load(json_file))
 
         test_files = glob(self.test_path + '/*.json')
         for f in test_files:
-            with open(f) as json_file:
+            with open(f, encoding='utf8') as json_file:  # TODO: WTF is this encoding
                 test.append(json.load(json_file))
 
         # prepare data

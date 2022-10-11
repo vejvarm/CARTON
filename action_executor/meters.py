@@ -16,6 +16,7 @@ class AccuracyMeter(object):
 
         self.accuracy = self.correct / (self.correct + self.wrong)
 
+
 class F1scoreMeter(object):
     def __init__(self):
         self.reset()

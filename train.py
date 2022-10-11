@@ -63,6 +63,8 @@ def main():
         MULTITASK: MultiTaskLoss
     }[args.task](ignore_index=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN])
 
+    single_task_loss = SingleTaskLoss(ignore_index=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN])
+
     # define optimizer
     optimizer = NoamOpt(torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 
@@ -107,8 +109,8 @@ def main():
 
         # evaluate on validation set
         if (epoch+1) % args.valfreq == 0:
-            val_loss = validate(val_loader, model, vocabs, val_helper, criterion)
-            best_val = min(val_loss, best_val) # log every validation step
+            val_loss = validate(val_loader, model, vocabs, val_helper, criterion, single_task_loss)
+            best_val = min(val_loss, best_val)  # log every validation step
             save_checkpoint({
                 EPOCH: epoch + 1,
                 STATE_DICT: model.state_dict(),
@@ -152,7 +154,7 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         loss = criterion(output, target) if args.task == MULTITASK else criterion(output[args.task], target[args.task])
 
         # record loss
-        losses.update(loss.data, input.size(0))
+        losses.update(loss.detach(), input.size(0))
 
         # compute gradient and do Adam step
         optimizer.zero_grad()
@@ -169,8 +171,16 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
             logger.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:02d}% - Time: {batch_time.sum:0.2f}s')
         batch_progress_old = batch_progress
 
-def validate(val_loader, model, vocabs, helper_data, criterion):
+
+def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss):
     losses = AverageMeter()
+
+    # record individual losses
+    losses_lf = AverageMeter()
+    losses_ner = AverageMeter()
+    losses_coref = AverageMeter()
+    losses_pred = AverageMeter()
+    losses_type = AverageMeter()
 
     # switch to evaluate mode
     model.eval()
@@ -200,8 +210,25 @@ def validate(val_loader, model, vocabs, helper_data, criterion):
             # compute loss
             loss = criterion(output, target) if args.task == MULTITASK else criterion(output[args.task], target[args.task])
 
+            # compute individual losses
+            loss_lf = single_task_loss(output[LOGICAL_FORM], target[LOGICAL_FORM])
+            loss_ner = single_task_loss(output[NER], target[NER])
+            loss_coref = single_task_loss(output[COREF], target[COREF])
+            loss_pred = single_task_loss(output[PREDICATE_POINTER], target[PREDICATE_POINTER])
+            loss_type = single_task_loss(output[TYPE_POINTER], target[TYPE_POINTER])
+
             # record loss
-            losses.update(loss.data, input.size(0))
+            losses.update(loss.detach(), input.size(0))
+
+            # record individual losses
+            losses_lf.update(loss_lf.detach(), input.size(0))
+            losses_ner.update(loss_ner.detach(), input.size(0))
+            losses_coref.update(loss_coref.detach(), input.size(0))
+            losses_pred.update(loss_pred.detach(), input.size(0))
+            losses_type.update(loss_type.detach(), input.size(0))
+
+    logger.info(f"Val losses:: LF: {losses_lf.avg} | NER: {losses_ner.avg} | COREF: {losses_coref.avg} | "
+                f"PRED: {losses_pred.avg} | TYPE: {losses_type.avg}")
 
     return losses.avg
 

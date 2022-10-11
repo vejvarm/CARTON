@@ -38,7 +38,7 @@ print(f'Done, {len(csqa_data)} folders loaded!')
 
 # load kg
 # kg = KnowledgeGraph()
-kg = BTreeDB("./knowledge_graph/Wikidata.fs")  # ANCHOR: ZODB implementation of KG
+kg = BTreeDB(args.kg_path)  # ANCHOR: ZODB implementation of KG
 kg.kg_adapter()  # to fill labels and triples dictionaries
 
 # create ner and action annotator

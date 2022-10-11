@@ -22,7 +22,7 @@ args = parser.parse_args()
 
 # load kg
 # kg = KnowledgeGraph()  # ANCHOR: old CARTON implementation
-kg = BTreeDB("./knowledge_graph/Wikidata.fs")  # ANCHOR: ZODB implementation
+kg = BTreeDB(args.kg_path)  # ANCHOR: ZODB implementation
 kg.kg_adapter()  # to fill labels and triples dictionaries
 
 # load action executor

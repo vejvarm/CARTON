@@ -51,7 +51,6 @@ class CARTON(nn.Module):
         with torch.no_grad():
             decoder_out, decoder_h = self.decoder(src_tokens, trg_tokens, encoder_out)
             encoder_ctx = encoder_out[:, -1:, :]
-            graph_out = self.graph_net(encoder_ctx, decoder_h, self.graph)
 
             return {
                 DECODER_OUT: decoder_out,

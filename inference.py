@@ -1,16 +1,10 @@
-import os
-import time
 import random
 import logging
 import torch
 import numpy as np
-import torch.optim
-import torch.nn as nn
-from pathlib import Path
 from model import CARTON
 from dataset import CSQADataset
-from torchtext.data import BucketIterator
-from utils import SingleTaskLoss, MultiTaskLoss, AverageMeter, Scorer, Predictor, Inference
+from utils import Predictor, Inference
 
 # import constants
 from constants import *
@@ -20,7 +14,7 @@ logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
                     datefmt='%d/%m/%Y %I:%M:%S %p',
                     level=logging.INFO,
                     handlers=[
-                        logging.FileHandler(f'{args.path_results}/test_{args.question_type}.log', 'w'),
+                        logging.FileHandler(f'{args.path_results}/inference_{args.question_type}.log', 'w'),
                         logging.StreamHandler()
                     ])
 logger = logging.getLogger(__name__)
@@ -40,6 +34,7 @@ def main():
     vocabs = dataset.get_vocabs()
     inference_data = dataset.get_inference_data()
 
+    logger.info(f'Inference partition: {args.inference_partition}')
     logger.info(f'Inference question type: {args.question_type}')
     logger.info('Inference data prepared')
     logger.info(f"Num of inference data: {len(inference_data)}")

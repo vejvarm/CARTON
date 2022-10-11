@@ -5,6 +5,24 @@ from pathlib import Path
 ROOT_PATH = Path(os.path.dirname(__file__))
 
 
+class MiniKG:
+    def __init__(self, wikidata_path=f'{ROOT_PATH}'):
+        tic = time.perf_counter()
+
+        # id -> entity label
+        self.id_entity = ujson.loads(open(f'{wikidata_path}/items_wikidata_n.json').read())
+        print(f'Loaded id_entity {time.perf_counter()-tic:0.2f}s')
+
+        # entity -> type
+        self.entity_type = ujson.loads(open(f'{wikidata_path}/entity_type.json').read()) # dict[e] -> type
+        print(f'Loaded entity_type {time.perf_counter()-tic:0.2f}s')
+
+        # labels
+        self.labels = {
+            'entity': self.id_entity,  # dict[e] -> label
+        }
+
+
 class KnowledgeGraph:
     def __init__(self, wikidata_path=f'{ROOT_PATH}'):
         tic = time.perf_counter()

@@ -15,6 +15,7 @@ from args import get_parser
 from unidecode import unidecode
 from collections import OrderedDict
 from transformers import BertTokenizer
+from elasticsearch import Elasticsearch
 
 from rapidfuzz import process
 from rapidfuzz.distance.Levenshtein import distance
@@ -257,6 +258,8 @@ class Inference(object):
     def __init__(self):
         self.tokenizer = BertTokenizer.from_pretrained(BERT_BASE_UNCASED)
         self.inference_actions = []
+        self.es = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
+                                basic_auth=(args.elastic_user, args.elastic_password))  # for inverse index search
         self.kg = BTreeDB(args.kg_path, run_adapter=True)  # ANCHOR: ZODB implementation
 
     def construct_actions(self, inference_data, predictor):
@@ -264,7 +267,7 @@ class Inference(object):
         # based on model outpus create a final logical form to execute
         question_type_inference_data = [data for data in inference_data if args.question_type in data[QUESTION_TYPE]]
         for i, sample in enumerate(question_type_inference_data):  # ANCHOR: u wot m8? ... how is having CONTEXT_ENTITIES not cheating?
-            predictions = predictor.predict(sample[CONTEXT_QUESTION], sample[CONTEXT_ENTITIES])
+            predictions = predictor.predict(sample[CONTEXT_QUESTION])
             actions = []
             logical_form_prediction = predictions[LOGICAL_FORM]
             ent_count_pos = 0
@@ -368,7 +371,7 @@ class Inference(object):
                 ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
                 # get elastic search results
                 # es_results = self.elasticsearch_query(ent_string, ent_idx[0][1]) # use type from B tag only
-                es_results = self.rapidfuzz_query(ent_string, ent_idx[0][1])  # ANCHOR: RapidFuzz implementation
+                es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
                 # add idices to dict
                 if es_results:
                     for idx, _ in ent_idx:
@@ -382,40 +385,19 @@ class Inference(object):
             ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
             # get elastic search results
             # es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])
-            es_results = self.rapidfuzz_query(ent_string, ent_idx[0][1])  # ANCHOR: RapidFuzz implementation
+            es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
             # add idices to dict
             if es_results:
                 for idx, _ in ent_idx:
                     ner_idx_ent[idx] = es_results
         return ner_idx_ent
 
-    def rapidfuzz_query(self, query, filter_type, res_size=50):
-        """
-        Fuzzy querry on entity labels and find maximum 'res_size' candidates for relevant entity ids based on Levenshtein distance
-        Filter resulting entity_ids by type
-
-        return: list of filtered entity_ids or unfiltered entity_ids (if filtered is empty)
-
-        """
-        max_dist = helpers.get_edit_distance(query)
-        res = process.extract(query, self.kg.labels['entity'], scorer=distance, score_cutoff=max_dist, limit=res_size)
-        unfiltered_res = []
-        filtered_res = []
-        for hit in res:
-            ent_id = hit[2]
-            ent_type = self.kg.entity_type[ent_id]  # filter by types
-            unfiltered_res.append(ent_id)
-            if filter_type in ent_type:
-                filtered_res.append(ent_id)
-
-        return filtered_res if filtered_res else unfiltered_res
-
-    # def elasticsearch_query(self, query, filter_type, res_size=50):
-    #     res = self.es.search(index='csqa_wikidata', doc_type='entities', body={'size': res_size, 'query': {'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}}})
-    #     results = []
-    #     for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
-    #     filtered_results = [res for res in results if filter_type in res[1]]
-    #     return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
+    def elasticsearch_query(self, query, filter_type, res_size=50):
+        res = self.es.search(index='csqa_wikidata', body={'size': res_size, 'query': {'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}}})
+        results = []
+        for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
+        filtered_results = [res for res in results if filter_type in res[1]]
+        return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
     # TODO END
 
     def get_value(self, question):
@@ -442,6 +424,33 @@ class Inference(object):
     def write_inference_actions(self):
         with open(f'{ROOT_PATH}/{args.path_inference}/{args.model_path.rsplit("/", 1)[-1].rsplit(".", 2)[0]}_{args.question_type}.json', 'w', encoding='utf-8') as json_file:
             json_file.write(json.dumps(self.inference_actions, indent=4))
+
+
+def rapidfuzz_query(query, filter_type, kg, res_size=50):
+    """
+    Fuzzy querry on entity labels and find maximum 'res_size' candidates for relevant entity ids based on Levenshtein distance
+    Filter resulting entity_ids by type
+
+    return: list of filtered entity_ids or unfiltered entity_ids (if filtered is empty)
+
+    """
+    max_dist = helpers.get_edit_distance(query)
+    res = process.extract(query, kg.labels['entity'], scorer=distance, score_cutoff=max_dist, limit=res_size)
+    unfiltered_res = []
+    filtered_res = []
+    for hit in res:
+        ent_id = hit[2]
+        # try to filter by types (if type exists in database)
+        try:
+            ent_type_list = kg.entity_type[ent_id]  # filter by types
+            if filter_type in ent_type_list:
+                filtered_res.append(ent_id)
+        except KeyError:
+            print('x', end='')
+        unfiltered_res.append(ent_id)
+
+    return filtered_res if filtered_res else unfiltered_res
+
 
 def save_checkpoint(state):
     filename = f'{ROOT_PATH}/{args.snapshots}/{MODEL_NAME}_e{state[EPOCH]}_v{state[CURR_VAL]:.4f}_{args.task}.pth.tar'

@@ -12,7 +12,7 @@ def get_parser():
     # data
     parser.add_argument('--data_path', default='/data/final/csqa')
     parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
-    parser.add_argument('--kg_path', default='/knowledge_graph/Wikidata.fs')
+    parser.add_argument('--kg_path', default='./knowledge_graph/Wikidata.fs')
 
     # experiments
     parser.add_argument('--snapshots', default='experiments/snapshots', type=str)
@@ -54,8 +54,9 @@ def get_parser():
     parser.add_argument('--batch_size', default=25, type=int)
 
     # test and inference
-    parser.add_argument('--model_path', default='experiments/models/CARTON_e100_v0.0283_multitask.pth.tar', type=str)
+    parser.add_argument('--model_path', default='experiments/models/CARTONwNER_e10_v0.0198_multitask.pth.tar', type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
+    parser.add_argument('--inference_partition', default='test', choices=['val', 'test'], type=str)
     parser.add_argument('--question_type', default='Simple Question (Direct)',
                         choices=['all',
                                  'Clarification',
@@ -70,5 +71,11 @@ def get_parser():
                                  'Comparative Reasoning (Count) (All)'], type=str)
     parser.add_argument('--max_results', default=1000, help='maximum number of results', type=int)
     parser.add_argument('--ner_max_distance', default=[0, 0, 1, 1, 1, 2])
+
+    # elasticsearch related
+    parser.add_argument('--elastic_host', default='https://localhost:9200')
+    parser.add_argument('--elastic_certs', default='.knowledge_graph/certs/http_ca.crt')
+    parser.add_argument('--elastic_user', default='elastic')
+    parser.add_argument('--elastic_password', default='hZiYNU+ye9izCApoff-v')
 
     return parser

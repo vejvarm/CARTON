@@ -5,6 +5,7 @@ action_input_size_constrain = {'find': 2, 'find_reverse': 2, 'filter_type': 2,
                             'greater': 2, 'less': 2, 'equal': 2, 'approx': 2, 'atmost': 2, 'atleast': 2, 'argmin': 1,
                             'argmax': 1, 'is_in': 2, 'count': 1, 'union': 10, 'intersection': 2, 'difference': 2}
 
+
 class ActionExecutor:
     def __init__(self, kg):
         self.operator = ActionOperator(kg)
@@ -77,7 +78,6 @@ class ActionExecutor:
                 raise NotImplementedError('Not implemented for more than 3 inputs!')
 
         return next(reversed(partial_results.values()))
-
 
     def __call__(self, actions, prev_results, question_type):
         if question_type in ['Logical Reasoning (All)', 'Quantitative Reasoning (All)', 'Comparative Reasoning (All)', 'Clarification', 'Quantitative Reasoning (Count) (All)', 'Comparative Reasoning (Count) (All)']:

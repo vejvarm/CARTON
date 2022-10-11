@@ -105,10 +105,10 @@ if __name__ == '__main__':
     log_file_latest = "train_multitask_latest-params.log"
     # log_file_latest = "train_multitask_latest-params-short.log"
 
-    plot_file_name = 'training-val_loss_original-vs-2layer-paper'
+    plot_file_name = 'training-val_loss_LASAGNE'
     plot_file_type = 'png'
 
-    extract_val_loss_from_train_log(log_file_default)
+    # extract_val_loss_from_train_log(log_file_default)
     # extract_val_loss_from_train_log(log_file_orig)
     # extract_val_loss_from_train_log(log_file_paper)
     # extract_val_loss_from_train_log(log_file_latest)
@@ -124,12 +124,12 @@ if __name__ == '__main__':
     input2 = f"{args.path_results}/{out_file_name(log_file_paper)}"
     input3 = f"{args.path_results}/{out_file_name(log_file_latest)}"
     output_plot_file_path = f"{args.path_results}/{plot_file_name}.{plot_file_type}"
-    plot_from_np_file(input0, "pf_dim = 4x emb_dim")
-    plot_from_np_file(input1, "original code parameters")
+    plot_from_np_file(input0, "CARTON+NER module")
+    plot_from_np_file(input1, "CARTON")
 #    plot_from_np_file(input2, "paper parameters")
 #    plot_from_np_file(input3, "paper parameters (only 2 layers)")
     plt.legend()
-    plt.show()
+    # plt.show()
 
     plt.savefig(output_plot_file_path, format=plot_file_type, dpi=200)
 
