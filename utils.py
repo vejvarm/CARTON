@@ -370,8 +370,8 @@ class Inference(object):
                 # get string from tokens using tokenizer
                 ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
                 # get elastic search results
-                # es_results = self.elasticsearch_query(ent_string, ent_idx[0][1]) # use type from B tag only
-                es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
+                es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])  # use type from B tag only
+                # es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
                 # add idices to dict
                 if es_results:
                     for idx, _ in ent_idx:
@@ -384,8 +384,8 @@ class Inference(object):
             # get string from tokens using tokenizer
             ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
             # get elastic search results
-            # es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])
-            es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
+            es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])
+            # es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
             # add idices to dict
             if es_results:
                 for idx, _ in ent_idx:
