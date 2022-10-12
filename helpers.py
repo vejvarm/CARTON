@@ -51,15 +51,18 @@ def plot_from_jsom_multiloss_file(json_file_name, title="CrossEntropy losses dur
 
     x = data['EPOCH']
 
-    for attr, vals in data.items():
+    fig, ax = plt.subplots(5, 1)
+    ax[0].set_title(title)
+    for i, (attr, vals) in enumerate(data.items()):
         if 'EPOCH' in attr.upper():
             pass
         else:
-            plt.semilogy(x, vals, label=attr)
+            ax[i-1].plot(x, vals, label=attr)
 
+            # ax[i-1].set_title(attr)
+            ax[i-1].set_ylabel(attr)
+    # plt.tight_layout()
     plt.xlabel('epoch')
-    plt.ylabel('log validation loss')
-    plt.legend()
     plt.show()
 
 
@@ -151,7 +154,7 @@ def main_old():
     plot_file_name = 'training-val_loss_LASAGNE'
     plot_file_type = 'png'
 
-    # extract_val_loss_from_train_log(log_file_default)
+    extract_val_loss_from_train_log(log_file_default)
     # extract_val_loss_from_train_log(log_file_orig)
     # extract_val_loss_from_train_log(log_file_paper)
     # extract_val_loss_from_train_log(log_file_latest)
@@ -178,7 +181,8 @@ def main_old():
 
 
 if __name__ == '__main__':
-    # main_old()
+    plt.figure()
+    main_old()
 
     log_file_default = "train_multitask.log"
 
