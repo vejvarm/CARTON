@@ -36,7 +36,6 @@ if __name__ == '__main__':
     #         f'==> Finished {((i + 1) / len(kg_entities)) * 100:.4f}% -- {time.perf_counter() - tic:0.2f}s')
 
 
-
     # test it out
     tic = time.perf_counter()
     query = unidecode('suny in philadeplphia')

@@ -51,7 +51,7 @@ def plot_from_jsom_multiloss_file(json_file_name, title="CrossEntropy losses dur
 
     x = data['EPOCH']
 
-    fig, ax = plt.subplots(5, 1)
+    fig, ax = plt.subplots(len(data) - 1, 1)
     ax[0].set_title(title)
     for i, (attr, vals) in enumerate(data.items()):
         if 'EPOCH' in attr.upper():
@@ -64,6 +64,51 @@ def plot_from_jsom_multiloss_file(json_file_name, title="CrossEntropy losses dur
     # plt.tight_layout()
     plt.xlabel('epoch')
     plt.show()
+
+
+def plot_from_multi_json_files(json_file_names: list[str], title="CrossEntropy losses during validation"):
+    data_dict = {}
+    num_fields = 0
+    colors = {}
+    color_list = ['b', 'r', 'g', 'm', 'o']
+    for i, file_name in enumerate(json_file_names):
+        label = file_name.split('.')[0].split('_')[-1]
+        label = 'base' if label == 'multitask' else label
+        with open(f"{args.path_results}/{file_name}", 'r') as f:
+            data = json.load(f)
+            num_attrs = len(data)  # not counting EPOCH attribute
+            num_fields = num_attrs if num_attrs > num_fields else num_fields
+
+            for j, (attr, vals) in enumerate(data.items()):
+                if attr not in data_dict.keys():
+                    data_dict[attr] = {label: vals}
+                else:
+                    data_dict[attr][label] = vals
+        colors[label] = color_list[i]
+
+    fig, ax = plt.subplots(num_fields, 1)
+    ax[0].set_title(title)
+
+    x = data_dict['EPOCH']
+    min_x = 100000
+    max_x = 0
+    for i, (attr, vals_dict) in enumerate(data_dict.items()):
+        if 'EPOCH' in attr.upper():
+            pass
+        else:
+            for k, vals in vals_dict.items():
+                ax[i-1].plot(x[k], vals, label=f'{k}', color=colors[k])
+                min_x = min(x[k][0], min_x)
+                max_x = max(len(x[k]), max_x)
+
+            # ax[i-1].set_title(attr)
+            ax[i-1].set_ylabel(attr)
+            ax[i-1].set_xlim(min_x, max_x)
+    ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, 1.1),
+              ncol=3, fancybox=True, shadow=True)
+    plt.xlabel('epoch')
+    plt.show()
+
 
 
 
@@ -150,6 +195,7 @@ def main_old():
     log_file_paper = "train_multitask_paper_params.log"
     log_file_latest = "train_multitask_latest-params.log"
     # log_file_latest = "train_multitask_latest-params-short.log"
+    log_file_cwner = 'train_multitask_CwNER-02.log'
 
     plot_file_name = 'training-val_loss_LASAGNE'
     plot_file_type = 'png'
@@ -158,6 +204,7 @@ def main_old():
     # extract_val_loss_from_train_log(log_file_orig)
     # extract_val_loss_from_train_log(log_file_paper)
     # extract_val_loss_from_train_log(log_file_latest)
+    extract_val_loss_from_train_log(log_file_cwner)
 
     font = {  # 'family': 'normal',
         # 'weight': 'bold',
@@ -169,11 +216,13 @@ def main_old():
     input1 = f"{args.path_results}/{out_file_name(log_file_orig)}"
     input2 = f"{args.path_results}/{out_file_name(log_file_paper)}"
     input3 = f"{args.path_results}/{out_file_name(log_file_latest)}"
+    input4 = f"{args.path_results}/{out_file_name(log_file_cwner)}"
     output_plot_file_path = f"{args.path_results}/{plot_file_name}.{plot_file_type}"
-    plot_from_np_file(input0, "CARTON+NER module")
-    plot_from_np_file(input1, "CARTON")
+    plot_from_np_file(input0, "CARTON module")
+    # plot_from_np_file(input1, "CARTON")
     #    plot_from_np_file(input2, "paper parameters")
     #    plot_from_np_file(input3, "paper parameters (only 2 layers)")
+    plot_from_np_file(input4, "CARTON+NER module")
     plt.legend()
     # plt.show()
 
@@ -184,8 +233,14 @@ if __name__ == '__main__':
     plt.figure()
     main_old()
 
-    log_file_default = "train_multitask.log"
+    log_files = ["train_multitask.log", "train_multitask_CwNER-02.log"]
 
-    extract_individual_losses_from_train_log(log_file_default)
+    json_log_files = []
+    for log_file in log_files:
+        extract_individual_losses_from_train_log(log_file)
 
-    plot_from_jsom_multiloss_file('out_' + log_file_default.split('.')[0] + '.json')
+        json_log_files.append('out_' + log_file.split('.')[0] + '.json')
+        # plot_from_jsom_multiloss_file(json_log_files[-1])
+
+    # plot collectively:
+    plot_from_multi_json_files(json_log_files)
