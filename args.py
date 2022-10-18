@@ -25,7 +25,6 @@ def get_parser():
                                                                 'logical_form',
                                                                 'predicate_pointer',
                                                                 'type_pointer',
-                                                            #    'entity_pointer',  # TODO: Uncomment?
                                                                 'ner',
                                                                 'coref'], type=str)
 
@@ -37,6 +36,7 @@ def get_parser():
     parser.add_argument('--max_positions', default=1000, type=int)  # ?
     parser.add_argument('--pf_dim', default=1200, type=int)     # default: 300 (Position-wise FF layer dim) # ANCHOR PWFF for more info
     parser.add_argument('--bert_dim', default=768, type=int)    # default: 768 (same, dent)
+    parser.add_argument('--ptr_n_hidden', default=3, type=int)
 
     # ANCHOR PWFF: based on AttentionIsAllYouNeed, Point-wise FF network is usually set to 4x the embedding dim
 
@@ -51,7 +51,7 @@ def get_parser():
     parser.add_argument('--valfreq', default=1, type=int)
     parser.add_argument('--resume', default='', type=str)
     parser.add_argument('--clip', default=5, type=int)
-    parser.add_argument('--batch_size', default=25, type=int)
+    parser.add_argument('--batch_size', default=200, type=int)  # NOTE: changed from 25
 
     # test and inference
     parser.add_argument('--model_path', default='experiments/models/CARTONwNER_e10_v0.0198_multitask.pth.tar', type=str)

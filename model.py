@@ -114,7 +114,13 @@ class PointerStack(nn.Module):
         self.dropout = nn.Dropout(args.dropout)
         self.tahn = nn.Tanh()
         self.flatten = Flatten()
-        self.linear_out = nn.Linear(args.emb_dim, 1)
+        hidden = []
+        # create ptr_n_hidden Linear+ReLU layers with halving sizes of emb_dim
+        for i in range(args.ptr_n_hidden):
+            hidden.append(nn.Linear(args.emb_dim // (2 ** i), args.emb_dim // (2 ** (i + 1))))
+            hidden.append(nn.ReLU())
+        self.lin_hidden = nn.Sequential(*hidden)
+        self.linear_out = nn.Linear(args.emb_dim//(2**args.ptr_n_hidden), 1)
 
     def forward(self, x):  # ANCHOR Pointer network
         # x.shape: [25, n, 1, 300] ... inputed from ANCHOR@StackedPointerNetworks forward function
@@ -125,6 +131,7 @@ class PointerStack(nn.Module):
         x = x + embed.expand(x.shape[0], x.shape[1], embed.shape[1], embed.shape[-1])
         # print(f"forever_after: {x.shape}")  # torch.Size([25, 18, 1560, 300])
         x = self.tahn(x)
+        x = self.lin_hidden(x)
         x = self.linear_out(x)
         # print(f"after linear: {x.shape}")  # torch.Size([25, 18, 1560, 1])
         x = x.squeeze(-1)
@@ -133,6 +140,7 @@ class PointerStack(nn.Module):
         # print(f"after flatten: {x.shape}")  # torch.Size([450, 1560]) !!! torch.Flatten class is overridden
 
         return x
+
 
 class StackedPointerNetworks(nn.Module):
     def __init__(self, predicate_vocab, type_vocab):
@@ -143,7 +151,6 @@ class StackedPointerNetworks(nn.Module):
 
         self.predicate_pointer = PointerStack(predicate_vocab)
         self.type_pointer = PointerStack(type_vocab)
-
 
     def forward(self, encoder_ctx, decoder_h):
         x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)  # ANCHOR: this is gonna be problematic!
@@ -156,29 +163,6 @@ class StackedPointerNetworks(nn.Module):
             PREDICATE_POINTER: self.predicate_pointer(x),
             TYPE_POINTER: self.type_pointer(x),
         }
-
-class ClassifierNetworks(nn.Module):
-    def __init__(self, predicate_vocab, type_vocab):
-        super(ClassifierNetworks, self).__init__()
-        self.predicate_cls = nn.Sequential(
-            nn.Linear(args.emb_dim*2, args.emb_dim),
-            nn.LeakyReLU(),
-            Flatten(),
-            nn.Dropout(args.dropout),
-            nn.Linear(args.emb_dim, len(predicate_vocab))
-        )
-
-        self.type_cls = nn.Sequential(
-            nn.Linear(args.emb_dim*2, args.emb_dim),
-            nn.LeakyReLU(),
-            Flatten(),
-            nn.Dropout(args.dropout),
-            nn.Linear(args.emb_dim, len(type_vocab))
-        )
-
-    def forward(self, encoder_ctx, decoder_h):
-        x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)
-        return self.predicate_cls(x), self.type_cls(x)
 
 
 class Encoder(nn.Module):
@@ -216,6 +200,7 @@ class Encoder(nn.Module):
 
         return x
 
+
 class EncoderLayer(nn.Module):
     def __init__(self, embed_dim, heads, pf_dim, dropout, device):
         super().__init__()
@@ -230,6 +215,7 @@ class EncoderLayer(nn.Module):
         x = self.layer_norm(x + self.dropout(self.pos_ff(x)))
 
         return x
+
 
 class Decoder(nn.Module):
     def __init__(self, vocabulary, device, embed_dim=args.emb_dim, layers=args.layers,
@@ -274,6 +260,7 @@ class Decoder(nn.Module):
 
         return x, h
 
+
 class DecoderLayer(nn.Module):
     def __init__(self, embed_dim, heads, pf_dim, dropout, device):
         super().__init__()
@@ -289,6 +276,7 @@ class DecoderLayer(nn.Module):
         x = self.layer_norm(x + self.dropout(self.pos_ff(x)))
 
         return x
+
 
 class MultiHeadedAttention(nn.Module):
     def __init__(self, embed_dim, heads, dropout, device):
@@ -334,6 +322,7 @@ class MultiHeadedAttention(nn.Module):
 
         return x
 
+
 class PositionwiseFeedforward(nn.Module):
     def __init__(self, embed_dim, pf_dim, dropout):
         super().__init__()
@@ -346,6 +335,7 @@ class PositionwiseFeedforward(nn.Module):
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         return self.linear_2(x)
+
 
 class PositionalEmbedding(nn.Module):
     def __init__(self, d_model, dropout, max_len=5000):
