@@ -54,7 +54,7 @@ def get_parser():
     parser.add_argument('--batch_size', default=200, type=int)  # NOTE: changed from 25
 
     # test and inference
-    parser.add_argument('--model_path', default='experiments/models/CARTONwNER_e10_v0.0198_multitask.pth.tar', type=str)
+    parser.add_argument('--model_path', default='experiments/models/CARTONwNER_e9_v0.0183_multitask.pth.tar', type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--inference_partition', default='test', choices=['val', 'test'], type=str)
     parser.add_argument('--question_type', default='Simple Question (Direct)',
@@ -76,6 +76,6 @@ def get_parser():
     parser.add_argument('--elastic_host', default='https://localhost:9200')
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')
-    parser.add_argument('--elastic_password', default='hZiYNU+ye9izCApoff-v')
+    parser.add_argument('--elastic_password', default='1jceIiR5k6JlmSyDpNwK')  # Notebook: hZiYNU+ye9izCApoff-v
 
     return parser

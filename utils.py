@@ -259,10 +259,13 @@ class Inference(object):
         self.tokenizer = BertTokenizer.from_pretrained(BERT_BASE_UNCASED)
         self.inference_actions = []
         self.es = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
-                                basic_auth=(args.elastic_user, args.elastic_password))  # for inverse index search
-        self.kg = BTreeDB(args.kg_path, run_adapter=True)  # ANCHOR: ZODB implementation
+                                basic_auth=(args.elastic_user, args.elastic_password),
+                                retry_on_timeout=True)  # for inverse index search
+        # self.kg = BTreeDB(args.kg_path, run_adapter=True)  # ANCHOR: ZODB implementation
 
     def construct_actions(self, inference_data, predictor):
+        logger.info(f'Constructing actions for: {args.question_type}')
+        self.inference_actions = []  # clear inference actions from previous run
         tic = time.perf_counter()
         # based on model outpus create a final logical form to execute
         question_type_inference_data = [data for data in inference_data if args.question_type in data[QUESTION_TYPE]]
@@ -393,7 +396,7 @@ class Inference(object):
         return ner_idx_ent
 
     def elasticsearch_query(self, query, filter_type, res_size=50):
-        res = self.es.search(index='csqa_wikidata', body={'size': res_size, 'query': {'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}}})
+        res = self.es.search(index='csqa_wikidata', size=res_size, query={'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}})
         results = []
         for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
         filtered_results = [res for res in results if filter_type in res[1]]
@@ -424,7 +427,6 @@ class Inference(object):
     def write_inference_actions(self):
         with open(f'{ROOT_PATH}/{args.path_inference}/{args.model_path.rsplit("/", 1)[-1].rsplit(".", 2)[0]}_{args.question_type}.json', 'w', encoding='utf-8') as json_file:
             json_file.write(json.dumps(self.inference_actions, indent=4))
-
 
 def rapidfuzz_query(query, filter_type, kg, res_size=50):
     """

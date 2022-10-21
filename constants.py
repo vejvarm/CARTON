@@ -72,6 +72,17 @@ VERIFICATION = 'Verification (Boolean) (All)'
 QUANTITATIVE_COUNT = 'Quantitative Reasoning (Count) (All)'
 COMPARATIVE_COUNT = 'Comparative Reasoning (Count) (All)'
 
+ALL_QUESTION_TYPES = (CLARIFICATION,  # done
+                      COMPARATIVE,    # done
+                      LOGICAL,        # done
+                      QUANTITATIVE,   # done
+                      SIMPLE_COREFERENCED,  # done
+                      SIMPLE_DIRECT,        # done
+                      SIMPLE_ELLIPSIS,      # done
+                      VERIFICATION,         # done
+                      QUANTITATIVE_COUNT,
+                      COMPARATIVE_COUNT)
+
 # action related
 ENTITY = 'entity'
 RELATION = 'relation'

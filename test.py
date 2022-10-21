@@ -9,7 +9,6 @@ import torch.nn as nn
 from pathlib import Path
 from model import CARTON
 from dataset import CSQADataset
-from torchtext.data import BucketIterator
 from utils import SingleTaskLoss, MultiTaskLoss, AverageMeter, Scorer, Predictor, Inference
 
 # import constants
@@ -24,6 +23,9 @@ logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
                         logging.StreamHandler()
                     ])
 logger = logging.getLogger(__name__)
+
+# disable PUT INFO responses from ElasticSearch search command
+logging.getLogger('elastic_transport.transport').setLevel(logging.WARNING)
 
 # set a seed value
 random.seed(args.seed)
@@ -57,8 +59,16 @@ def main():
     logger.info(f"=> loaded checkpoint '{args.model_path}' (epoch {checkpoint['epoch']})")
 
     # construct actions
-    predictor = Predictor(model, vocabs)
-    Inference().construct_actions(inference_data, predictor)
+    inference = Inference()
+    if args.question_type == 'all':
+        for qtype in ALL_QUESTION_TYPES:
+            args.question_type = qtype
+            predictor = Predictor(model, vocabs)
+            inference.construct_actions(inference_data, predictor)
+        args.question_type = 'all'
+    else:
+        predictor = Predictor(model, vocabs)
+        inference.construct_actions(inference_data, predictor)
 
 
 if __name__ == '__main__':

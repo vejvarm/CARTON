@@ -12,6 +12,7 @@ from args import get_parser
 from model import CARTON
 from dataset import CSQADataset
 from torchtext.data import BucketIterator
+# from torch.utils.data.dataloader import DataLoader  # TODO: implement BucketIterator with this
 from utils import (NoamOpt, AverageMeter,
                     SingleTaskLoss, MultiTaskLoss,
                     save_checkpoint, init_weights)
@@ -89,6 +90,8 @@ def main():
                                                     sort_within_batch=False,
                                                     sort_key=lambda x: len(x.input),
                                                     device=DEVICE)
+
+    # ANCHOR: BucketIterator use deprecated ... use torch.utils.data.dataloader.DataLoader / DataLoader2
 
     logger.info('Loaders prepared.')
     logger.info(f"Training data: {len(train_data.examples)}")
