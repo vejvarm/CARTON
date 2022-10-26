@@ -66,19 +66,21 @@ def plot_from_jsom_multiloss_file(json_file_name, title="CrossEntropy losses dur
     plt.show()
 
 
-def plot_from_multi_json_files(json_file_names: list[str], title="CrossEntropy losses during validation"):
+def plot_from_multi_json_files(json_file_names: list[str], labels: list[str] = tuple(), title="CrossEntropy losses during validation", plot_file_name: str = 'individual_losses', plot_file_types: list[str] = ('png', 'pdf', )):
     data_dict = {}
     num_fields = 0
     colors = {}
-    color_list = ['b', 'r', 'g', 'm', 'o']
-    for i, file_name in enumerate(json_file_names):
-        label = file_name.split('.')[0].split('_')[-1]
+    color_list = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    if labels:
+        assert len(labels) == len(json_file_names), 'Length of labels must be same as length of log_file_names'
+    else:
+        labels = [file_name.split('.')[0].split('_')[-1] for file_name in json_file_names]
+
+    field_names = set()
+    for i, (file_name, label) in enumerate(zip(json_file_names, labels)):
         label = 'base' if label == 'multitask' else label
         with open(f"{args.path_results}/{file_name}", 'r') as f:
             data = json.load(f)
-            num_attrs = len(data)  # not counting EPOCH attribute
-            num_fields = num_attrs if num_attrs > num_fields else num_fields
-
             for j, (attr, vals) in enumerate(data.items()):
                 if attr not in data_dict.keys():
                     data_dict[attr] = {label: vals}
@@ -86,8 +88,14 @@ def plot_from_multi_json_files(json_file_names: list[str], title="CrossEntropy l
                     data_dict[attr][label] = vals
         colors[label] = color_list[i]
 
-    fig, ax = plt.subplots(num_fields, 1)
+    fig, ax = plt.subplots(len(data_dict)-1, 1, figsize=(16, 16))
     ax[0].set_title(title)
+
+    font = {
+        'size': 15
+    }
+
+    plt.rc('font', **font)
 
     x = data_dict['EPOCH']
     min_x = 100000
@@ -107,9 +115,10 @@ def plot_from_multi_json_files(json_file_names: list[str], title="CrossEntropy l
     ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, 1.1),
               ncol=3, fancybox=True, shadow=True)
     plt.xlabel('epoch')
-    plt.show()
 
-
+    for ft in plot_file_types:
+        output_plot_file_path = f"{args.path_results}/{plot_file_name}.{ft}"
+        plt.savefig(output_plot_file_path, bbox_inches='tight', format=ft, dpi=200)
 
 
 def plot_from_np_file(path_to_np_file, label="validation loss"):
@@ -189,22 +198,9 @@ def get_edit_distance(query=None, confidence_levels=True, default_dist=1):
     return int(max_dist)
 
 
-def main_old():
-    log_file_default = "train_multitask.log"
-    log_file_orig = "train_multitask_original_code_params.log"
-    log_file_paper = "train_multitask_paper_params.log"
-    log_file_latest = "train_multitask_latest-params.log"
-    # log_file_latest = "train_multitask_latest-params-short.log"
-    log_file_cwner = 'train_multitask_CwNER-02.log'
+def main_old(log_files: list[str], labels: list[str] = tuple(), plot_file_name: str = 'training_val_loss', plot_file_types: list[str] = ('png', 'pdf', )):
 
-    plot_file_name = 'training-val_loss_LASAGNE'
-    plot_file_type = 'png'
-
-    extract_val_loss_from_train_log(log_file_default)
-    # extract_val_loss_from_train_log(log_file_orig)
-    # extract_val_loss_from_train_log(log_file_paper)
-    # extract_val_loss_from_train_log(log_file_latest)
-    extract_val_loss_from_train_log(log_file_cwner)
+    fig = plt.figure()
 
     font = {  # 'family': 'normal',
         # 'weight': 'bold',
@@ -212,28 +208,31 @@ def main_old():
 
     plt.rc('font', **font)
 
-    input0 = f"{args.path_results}/{out_file_name(log_file_default)}"
-    input1 = f"{args.path_results}/{out_file_name(log_file_orig)}"
-    input2 = f"{args.path_results}/{out_file_name(log_file_paper)}"
-    input3 = f"{args.path_results}/{out_file_name(log_file_latest)}"
-    input4 = f"{args.path_results}/{out_file_name(log_file_cwner)}"
-    output_plot_file_path = f"{args.path_results}/{plot_file_name}.{plot_file_type}"
-    plot_from_np_file(input0, "CARTON module")
-    # plot_from_np_file(input1, "CARTON")
-    #    plot_from_np_file(input2, "paper parameters")
-    #    plot_from_np_file(input3, "paper parameters (only 2 layers)")
-    plot_from_np_file(input4, "CARTON+NER module")
-    plt.legend()
-    # plt.show()
 
-    plt.savefig(output_plot_file_path, format=plot_file_type, dpi=200)
+    if labels:
+        assert len(labels) == len(log_files), 'list of labels must be same length as list of log files'
+    else:
+        labels = [f'plot{i}' for i in range(len(log_files))]
+
+    for lf, label in zip(log_files, labels):
+
+        extract_val_loss_from_train_log(lf)
+
+        input0 = f"{args.path_results}/{out_file_name(lf)}"
+
+        plot_from_np_file(input0, label)
+
+    plt.legend()
+
+    for ft in plot_file_types:
+        output_plot_file_path = f"{args.path_results}/{plot_file_name}.{ft}"
+        plt.savefig(output_plot_file_path, bbox_inches='tight', format=ft, dpi=200)
 
 
 if __name__ == '__main__':
-    plt.figure()
-    main_old()
-
-    log_files = ["train_multitask.log", "train_multitask_CwNER-02.log"]
+    log_files = ["train_multitask.log", ]# "train_multitask_CwNER-02.log"]
+    labels = ['LASAGNE', ]# 'CARTONwNER02']
+    main_old(log_files, labels)
 
     json_log_files = []
     for log_file in log_files:
@@ -243,4 +242,6 @@ if __name__ == '__main__':
         # plot_from_jsom_multiloss_file(json_log_files[-1])
 
     # plot collectively:
-    plot_from_multi_json_files(json_log_files)
+    plot_from_multi_json_files(json_log_files, labels)
+
+    plt.show()

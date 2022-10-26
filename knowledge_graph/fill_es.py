@@ -35,6 +35,7 @@ logging.getLogger('elastic_transport.transport').setLevel(logging.WARNING)
 
 # print(logging.root.setLevel(logging.WARNING))
 
+
 def index_one(item):
     id, label = item
     for i in range(10):
@@ -71,22 +72,28 @@ if __name__ == '__main__':
     #         f'==> Finished {((i + 1) / len(kg_entities)) * 100:.4f}% -- {time.perf_counter() - tic:0.2f}s')
 
     # test it out
-    for i in range(100):
+    analyzer = 'standard'
+    for i in range(1):
         tic = time.perf_counter()
-        query = unidecode('suny in philadeplphia')
-        res = CLIENT.search(index='csqa_wikidata', size=50, query={
+        query = unidecode('Bank America')  # it's case-insensitive
+        res = CLIENT.search(index='csqa_wikidata', size=50,
+            query={
                 'match': {
                     'label': {
                         'query': query,
                         'fuzziness': 'AUTO',
+                        'analyzer': analyzer,
+                        'operator': 'and',
                     }
                 }
             })
         print(f'Search time: {time.perf_counter() - tic}')
 
-    res = CLIENT.search(index='csqa_wikidata', size=50,
-                    query={'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}})
+    an = CLIENT.indices.analyze(index='csqa_wikidata', analyzer=analyzer,
+                                text=query)
 
+    print(an)
     for hit in res['hits']['hits']:
+        print(hit)
         print(f'{hit["_source"]["id"]} - {hit["_source"]["label"]} - {hit["_score"]}')
         print('**********************')
