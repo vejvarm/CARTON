@@ -358,6 +358,8 @@ if __name__ == "__main__":
     db = BTreeDB(path_to_db, initialise=False, run_adapter=True)
     # print(len(db.labels['inverse'].keys()))
 
+    print(len(db.triples['subject']))
+
     # db.invert_labels()
 
     # s = 'Q0001'

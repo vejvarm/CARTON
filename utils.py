@@ -360,7 +360,6 @@ class Inference(object):
 
         self.write_inference_actions()
 
-    # TODO: ANCHOR ES2ZODB Implement without ElasticSearch
     def create_ner_idx_ent_dict(self, ner_indices, context_question):
         ent_idx = []
         ner_idx_ent = OrderedDict()
@@ -373,7 +372,7 @@ class Inference(object):
                 # get string from tokens using tokenizer
                 ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
                 # get elastic search results
-                es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])  # use type from B tag only
+                es_results = elasticsearch_query(self.es, ent_string, ent_idx[0][1])  # use type from B tag only
                 # es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
                 # add idices to dict
                 if es_results:
@@ -387,21 +386,13 @@ class Inference(object):
             # get string from tokens using tokenizer
             ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
             # get elastic search results
-            es_results = self.elasticsearch_query(ent_string, ent_idx[0][1])
+            es_results = elasticsearch_query(self.es, ent_string, ent_idx[0][1])
             # es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
             # add idices to dict
             if es_results:
                 for idx, _ in ent_idx:
                     ner_idx_ent[idx] = es_results
         return ner_idx_ent
-
-    def elasticsearch_query(self, query, filter_type, res_size=50):
-        res = self.es.search(index='csqa_wikidata', size=res_size, query={'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}})
-        results = []
-        for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
-        filtered_results = [res for res in results if filter_type in res[1]]
-        return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
-    # TODO END
 
     def get_value(self, question):
         if 'min' in question.split():
@@ -428,12 +419,28 @@ class Inference(object):
         with open(f'{ROOT_PATH}/{args.path_inference}/{args.model_path.rsplit("/", 1)[-1].rsplit(".", 2)[0]}_{args.question_type}.json', 'w', encoding='utf-8') as json_file:
             json_file.write(json.dumps(self.inference_actions, indent=4))
 
+
+def elasticsearch_query(client, query: str, filter_type: str, res_size=50):
+    """ ElasticSearch implementation of inverse index Fuzzy search. Essentially searching for a document with specific label
+    utilizing a bit of fuzziness to account for misspellings and typos.
+
+    :param client: elasticsearch client
+    :param str query: label to search for
+    :param str filter_type: type_id which restricts the search to only entities of this type
+    :param int res_size: maximum number of results
+    """
+    res = client.search(index=args.elastic_index, size=res_size, query={'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}})
+    results = []
+    for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
+    filtered_results = [res for res in results if filter_type in res[1]]
+    return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
+
 def rapidfuzz_query(query, filter_type, kg, res_size=50):
     """
     Fuzzy querry on entity labels and find maximum 'res_size' candidates for relevant entity ids based on Levenshtein distance
     Filter resulting entity_ids by type
 
-    return: list of filtered entity_ids or unfiltered entity_ids (if filtered is empty)
+    :return: list of filtered entity_ids or unfiltered entity_ids (if filtered is empty)
 
     """
     max_dist = helpers.get_edit_distance(query)

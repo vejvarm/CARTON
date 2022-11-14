@@ -230,8 +230,8 @@ def main_old(log_files: list[str], labels: list[str] = tuple(), plot_file_name: 
 
 
 if __name__ == '__main__':
-    log_files = ["train_multitask.log", ]# "train_multitask_CwNER-02.log"]
-    labels = ['LASAGNE', ]# 'CARTONwNER02']
+    log_files = ["train_multitask_original2.log", "train_multitask_LASAGNE.log", "train_multitask_CwNERwLinPtr2.log"]
+    labels = ['CARTON', 'LASAGNE', 'CARTONwNERwLinPtr']
     main_old(log_files, labels)
 
     json_log_files = []
