@@ -413,7 +413,7 @@ def fill_csqa_from_index_jsons(index, subset='', create=False, max_workers=5):
     index_rel = f'{index}_rel'
     if create:
         create_and_map_rel_index(index_rel)
-    fill_rel_index(index=index_rel, source_json=source, max_workers=max_workers)
+    fill_rel_index(index=index_rel, source_json=source)
 
     source = f'index_ent_dict{subset}.json'
     index_ent = f'{index}_ent'
