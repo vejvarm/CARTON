@@ -184,13 +184,14 @@ def fill_csqa_from_index_jsons(index, subset='', create=False, max_workers=5):
 
 if __name__ == '__main__':
     # INDEX OPERATIONS
-    index = 'csqa_wikidata_test'
+    index = 'csqa_wikidata'
 
     # # DELETE indices
+    # CLIENT.indices.delete(index=f'{index}')  # BEWARE: This deletes EVERYTHING in the old index
     CLIENT.indices.delete(index=f'{index}_ent')
     CLIENT.indices.delete(index=f'{index}_rel')
     CLIENT.indices.delete(index=f'{index}_rdf')
 
     # CREATE, MAP and FILL indices
-    subset = '_first_10000'  # alternative for testing: '_first_10000'
+    subset = ''  # alternative for testing: '_first_10000'
     fill_csqa_from_index_jsons(index, subset, create=True, max_workers=10)

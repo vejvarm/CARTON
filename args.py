@@ -74,9 +74,9 @@ def get_parser():
 
     # elasticsearch related
     # parser.add_argument('--elastic_index_root', default='csqa_wikidata')
-    parser.add_argument('--elastic_index_ent', default='csqa_wikidata_test_ent')
-    parser.add_argument('--elastic_index_rel', default='csqa_wikidata_test_rel')  # TODO: implement relation search
-    parser.add_argument('--elastic_index_rdf', default='csqa_wikidata_test_rdf')
+    parser.add_argument('--elastic_index_ent', default='csqa_wikidata_ent')
+    parser.add_argument('--elastic_index_rel', default='csqa_wikidata_rel')  # TODO: implement relation search
+    parser.add_argument('--elastic_index_rdf', default='csqa_wikidata_rdf')
     parser.add_argument('--elastic_host', default='https://localhost:9200')
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')
