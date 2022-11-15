@@ -11,6 +11,7 @@ ROOT_PATH = Path(os.path.dirname(__file__))
 
 LOGGER = logging.getLogger(__name__)
 
+
 class MiniKG:
     def __init__(self, wikidata_path=f'{ROOT_PATH}'):
         tic = time.perf_counter()
