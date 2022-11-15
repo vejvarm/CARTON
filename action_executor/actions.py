@@ -5,14 +5,18 @@ from ordered_set import OrderedSet
 from constants import args
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
+LOGGER.setLevel(logging.WARNING)
 
 
 class ESActionOperator:
-    def __init__(self, es_client, index_ent=args.elastic_index_ent, index_rdf=args.elastic_index_rdf):  # TODO: switch to individual indices for label_and_type and rdf
+    def __init__(self, es_client,
+                 index_ent=args.elastic_index_ent,
+                 index_rel=args.elastic_index_rel,
+                 index_rdf=args.elastic_index_rdf):  # TODO: switch to individual indices for label_and_type and rdf
         self.kg = None
         self.client = es_client
         self.index_ent = index_ent
+        self.index_rel = index_rel
         self.index_rdf = index_rdf
 
     def _match(self, field: str, term: str):
@@ -25,13 +29,27 @@ class ESActionOperator:
 
         return {'terms': {field: [t.lower() for t in terms]}}
 
-    def _get_tp_and_label(self, o: str):
+    def _get_tp_and_label(self, oid: str):
         pass
 
-    def _get_by_ids(self, obj_set: OrderedSet['str'], es_index):
+    def _get_by_ids(self, obj_set: OrderedSet['str'], es_index: str):
+        """
+
+        # special cases:
+        #   entity doesn't exist: {..., (None, None), ...}
+        #   types list for entity is empty: {..., ('label', []), ...}
+
+        :param obj_set: (OrderedSet) objects to get from entity index
+        :param es_index: (str) index on which to run this operation
+        :return:
+        """
+        res_dict = dict()
+        if not obj_set or '' in obj_set:
+            LOGGER.info(f"in self._get_by_ids: obj_set is {obj_set}, returning empty dictionary")
+            return res_dict
+
         res = self.client.mget(index=es_index,
                                ids=list(obj_set))
-        res_dict = dict()
 
         LOGGER.debug(f"res in self._get_by_ids: {res}")
 
@@ -39,18 +57,18 @@ class ESActionOperator:
             _id = hit['_id']
             if hit['found']:
                 label = hit['_source']['label']
-                type = hit['_source']['type']
-                res_dict[_id] = (label, type)
+                types = hit['_source']['types']
+                res_dict[_id] = (label, types)
             else:
-                LOGGER.warning(f'Entity with id "{_id}" was NOT found in label&type documents.')
+                LOGGER.info(f'in _get_by_ids: Entity with id "{_id}" was NOT found in label&type documents.')
                 res_dict[_id] = (None, None)
 
         LOGGER.debug(f"res_dict in self._get_by_ids: {res_dict}")
 
         return res_dict
 
-    def find(self, e: list[str], p: str):
-        if e is None or p is None:
+    def find(self, e: list[str], rid: str):
+        if e is None or rid is None:
             return None
 
         if not isinstance(e, list):
@@ -60,8 +78,8 @@ class ESActionOperator:
                                  query={
                                      'bool': {
                                          'must': [
-                                             self._terms('id', e),
-                                             self._match('p', p)
+                                             self._terms('sid', e),
+                                             self._match('rid', rid)
                                          ]
                                      }
                                  })
@@ -73,12 +91,12 @@ class ESActionOperator:
 
         result_set = OrderedSet()
         for hit in res['hits']['hits']:
-            result_set.update(hit['_source']['o'])
+            result_set.update([hit['_source']['oid']])
 
         return result_set
 
-    def find_reverse(self, e: list[str], p: str):
-        if e is None or p is None:
+    def find_reverse(self, e: list[str], rid: str):
+        if e is None or rid is None:
             return None
 
         if not isinstance(e, list):
@@ -88,8 +106,8 @@ class ESActionOperator:
                                  query={
                                      'bool': {
                                          'must': [
-                                             self._match('p', p),
-                                             self._terms('o', e)
+                                             self._match('rid', rid),
+                                             self._terms('oid', e)
                                          ]
                                      }
                                  })
@@ -101,29 +119,51 @@ class ESActionOperator:
 
         result_set = OrderedSet()
         for hit in res['hits']['hits']:
-            result_set.update([hit['_source']['id']])
+            result_set.update([hit['_source']['sid']])
 
         return result_set
 
     def filter_type(self, ent_set: OrderedSet, typ: str):
+        result = OrderedSet()
+        if not ent_set:
+            LOGGER.info(f"in filter_type: ent_set is empty, returning empty set")
+            return result
+
         if type(ent_set) is not OrderedSet:
             LOGGER.warning(
                 f"in filter_type: ent_set ({ent_set}) was type {type(ent_set)}, this might result in ordering problems.")
 
         if typ is None:
-            LOGGER.info(f"in filter_type: typ is None, returning None")
-            return None
+            LOGGER.info(f"in filter_type: typ is None, returning original set")
+            return ent_set
 
-        result = OrderedSet()
         lab_tp_dict = self._get_by_ids(ent_set, self.index_ent)
 
-        for o in ent_set:
-            if o in lab_tp_dict.keys() and typ == lab_tp_dict[o][-1]:
-                result.add(o)
+        for oid in ent_set:
+            if oid not in lab_tp_dict.keys():
+                continue
+
+            if lab_tp_dict[oid] == (None, None):
+                continue  # TODO: maybe implement list of missing entities?
+
+            if typ == '' and lab_tp_dict[oid][-1] == []:
+                LOGGER.debug(f"in filter_type: typ is '', filtering entity with type==[]")
+                result.add(oid)
+            elif typ in lab_tp_dict[oid][-1]:
+                result.add(oid)
 
         return result
 
     def filter_multi_types(self, ent_set: OrderedSet, t1: str, t2: str):
+        """ filter set of entities by two types (t1, t2)
+
+        object is accepted if it has at least one type in common with (t1, t2) ( == OR operation)
+
+        :param ent_set: (OrderedSet) set of entities to filter
+        :param t1: (str) type one by which to filter entities in ent_set
+        :param t2: (str) type two ...
+        :return: (OrderedSet) of entities with at least one of the types (t1 or t2)
+        """
         typ_set = OrderedSet([t1, t2])
         if type(ent_set) is not OrderedSet:
             LOGGER.warning(
@@ -133,32 +173,41 @@ class ESActionOperator:
         result = OrderedSet()
         lab_tp_dict = self._get_by_ids(ent_set, self.index_ent)
 
-        for o in ent_set:
-            if o in lab_tp_dict.keys() and len(typ_set.intersection(OrderedSet(lab_tp_dict[o][-1:]))) > 0:
-                result.add(o)
+        for oid in ent_set:
+            if oid not in lab_tp_dict.keys():
+                continue
+
+            if lab_tp_dict[oid] == (None, None):
+                continue  # TODO: maybe implement list of missing entities?
+
+            if oid in lab_tp_dict.keys() and len(typ_set.intersection(OrderedSet(lab_tp_dict[oid][-1]))) > 0:
+                result.add(oid)
 
         return result
 
-    def find_tuple_counts(self, r: str, t1: str, t2: str):
+    def find_tuple_counts(self, r: str, t1: str = None, t2: str = None):
         """
         :param r: (str) property (relation) for which to count connections
-        :param t1: (str) only count sro connections for subjects with this type
-        :param t2: (str) only count sro connections for objects with this type
+        :param t1: (str|None) only count sro connections for subjects with this type (if None, don't filter)
+        :param t2: (str|None) only count sro connections for objects with this type (if None, don't filter)
 
         :return type_dict: {'sub_id': int(count of connections of sub(t1) to objects (of t2) by property r)}
         """
-        if r is None or t1 is None or t2 is None:
+        if r is None:
             return None
 
-        res = self.client.search(index=self.index_rdf, query=self._match('p', r))
+        res = self.client.search(index=self.index_rdf, query=self._match('rid', r), size=args.max_results)
+        LOGGER.debug(f'res in fild_tuple_counts: {res}')
 
         tuple_count = dict()
         subjects = OrderedSet()
 
         for hit in res['hits']['hits']:
-            subjects.append(hit['_source']['id'])
+            subjects.append(hit['_source']['sid'])
 
+        LOGGER.debug(f'subjects in fild_tuple_counts: {subjects}')
         subject_subset = self.filter_type(subjects, t1)
+        LOGGER.debug(f'subject_subset in fild_tuple_counts: {subject_subset}')
 
         for sub in subject_subset:
             obj_filtered = self.filter_type(self.find(sub, r), t2)
@@ -167,26 +216,29 @@ class ESActionOperator:
 
         return tuple_count
 
-    def find_reverse_tuple_counts(self, r: str, t1: str, t2: str):
+    def find_reverse_tuple_counts(self, r: str, t1: str = None, t2: str = None):
         """
         :param r: (str) property (relation) for which to count connections
-        :param t1: (str) only count ors connections for objects with this type
-        :param t2: (str) only count ors connections for subjects with this type
+        :param t1: (str|None) only count ors connections for objects with this type (if None, don't filter)
+        :param t2: (str|None) only count ors connections for subjects with this type (if None, don't filter)
 
         :return type_dict: {'obj_id': int(count of connections of obj(t1) to subjects (of t2) by property r)}
         """
-        if r is None or t1 is None or t2 is None:
+        if r is None:
             return None
 
-        res = self.client.search(index=self.index_rdf, query=self._match('p', r))
+        res = self.client.search(index=self.index_rdf, query=self._match('rid', r), size=args.max_results)
+        LOGGER.debug(f'res in fild_reverse_tuple_counts: {res}')
 
         tuple_count = dict()
         objects = OrderedSet()
 
         for hit in res['hits']['hits']:
-            objects.update(hit['_source']['o'])
+            objects.append(hit['_source']['oid'])
 
+        LOGGER.debug(f'objects in fild_tuple_counts: {objects}')
         object_subset = self.filter_type(objects, t1)
+        LOGGER.debug(f'object_subset in fild_tuple_counts: {object_subset}')
 
         for obj in object_subset:
             sub_filtered = self.filter_type(self.find_reverse(obj, r), t2)
@@ -271,10 +323,11 @@ class ESActionOperator:
         # TODO: how to set id if it is a new subject?
         # TODO: use update instead of index?
         self.client.index(index=self.index_ent, id=sub_id, document={'label': s_label, 'type': None})
-        self.client.index(index=self.index_rdf, document={'id': sub_id,
-                                                      'p': r,
-                                                      'o': list(obj_ids)})
+
         for oid, olab in zip(obj_ids, o_labels):
+            self.client.index(index=self.index_rdf, document={'sid': sub_id,
+                                                              'rid': r,
+                                                              'oid': list(obj_ids)})
             self.client.index(index=self.index_ent, id=oid, document={'label': olab, 'type': None})
 
         # what if objects don't exist?

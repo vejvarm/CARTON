@@ -1,4 +1,5 @@
 import json
+import ujson
 import os.path
 import sqlite3
 import numpy as np
@@ -229,19 +230,38 @@ def main_old(log_files: list[str], labels: list[str] = tuple(), plot_file_name: 
         plt.savefig(output_plot_file_path, bbox_inches='tight', format=ft, dpi=200)
 
 
+def crop_json_file(path_to_json_file: str, num_entries=10000):
+
+    full_dict = ujson.loads(open(path_to_json_file).read())
+
+    keys = list(full_dict.keys())[:num_entries]
+
+    ujson.dump({k: full_dict[k] for k in keys},
+               open(f'{path_to_json_file.removesuffix(".json")}_first_{num_entries}.json', 'w'),
+               indent=4, escape_forward_slashes=False)
+
+
 if __name__ == '__main__':
-    log_files = ["train_multitask_original2.log", "train_multitask_LASAGNE.log", "train_multitask_CwNERwLinPtr2.log"]
-    labels = ['CARTON', 'LASAGNE', 'CARTONwNERwLinPtr']
-    main_old(log_files, labels)
+    # log_files = ["train_multitask_original2.log", "train_multitask_LASAGNE.log", "train_multitask_CwNERwLinPtr2.log"]
+    # labels = ['CARTON', 'LASAGNE', 'CARTONwNERwLinPtr']
+    # main_old(log_files, labels)
+    #
+    # json_log_files = []
+    # for log_file in log_files:
+    #     extract_individual_losses_from_train_log(log_file)
+    #
+    #     json_log_files.append('out_' + log_file.split('.')[0] + '.json')
+    #     # plot_from_jsom_multiloss_file(json_log_files[-1])
+    #
+    # # plot collectively:
+    # plot_from_multi_json_files(json_log_files, labels)
+    #
+    # plt.show()
 
-    json_log_files = []
-    for log_file in log_files:
-        extract_individual_losses_from_train_log(log_file)
+    # cropping for testing purposes
+    num_entries = 10000
+    path_to_rdf_index = 'knowledge_graph/index_rdf_dict.json'
+    crop_json_file(path_to_rdf_index, num_entries)
 
-        json_log_files.append('out_' + log_file.split('.')[0] + '.json')
-        # plot_from_jsom_multiloss_file(json_log_files[-1])
-
-    # plot collectively:
-    plot_from_multi_json_files(json_log_files, labels)
-
-    plt.show()
+    path_to_ent_index = 'knowledge_graph/index_ent_dict.json'
+    crop_json_file(path_to_ent_index, num_entries)

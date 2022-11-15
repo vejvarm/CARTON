@@ -85,16 +85,6 @@ class KnowledgeGraph:
 class KGMigrator:
     def __init__(self, wikidata_path=f'{ROOT_PATH}'):
         self.wikidata_path = wikidata_path
-        tic = time.perf_counter()
-
-        # 1: INDEX_ENT
-        # self.index_ent_dict = self.construct_index_ent_dict(dump_to='index_ent_dict.json')
-
-        # 2: INDEX_REL ... rid -> relation label
-        # self.index_rel_dict = self.construct_index_rel_dict(dump_to='index_rel_dict.json')
-        # NOTE: No need for any changes
-
-        # TODO: 3: INDEX_RDF (triples) ... in progress
 
     def construct_index_ent_dict(self, merge=True, update_entries=True, dump_to=None):
         """ Index for storing labels and types of entities retrievable by entitiy id
