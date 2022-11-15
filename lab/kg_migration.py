@@ -39,4 +39,4 @@ if __name__ == '__main__':
     # make_index_jsons()
     pass
 
-    # ANCHOR: For filling ES indices, refer to fill_es.py
+    # NOTE: For filling ES indices, refer to fill_es.py

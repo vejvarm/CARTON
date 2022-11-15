@@ -13,16 +13,16 @@ from tqdm import tqdm
 from unidecode import unidecode
 from knowledge_graph.knowledge_graph import MiniKG
 from elasticsearch import Elasticsearch
-import ujson
 
 from constants import args, ROOT_PATH
+from utils import elasticsearch_query
 
 ELASTIC_USER = args.elastic_user
 ELASTIC_PASSWORD = args.elastic_password  # refer to args.py --elastic_password for alternatives
 
 CLIENT = Elasticsearch(
     args.elastic_host,
-    ca_certs=args.elastic_certs,
+    ca_certs=f'{ROOT_PATH}/{args.elastic_certs.removeprefix("./")}',
     basic_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
     retry_on_timeout=True,
 )
@@ -270,3 +270,7 @@ if __name__ == '__main__':
 
     # test out searching
     # run_search_tests()
+
+    query = 'Cheb River'
+    res = elasticsearch_query(CLIENT, query, "Q4022")
+    print(res)

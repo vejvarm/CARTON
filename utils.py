@@ -429,9 +429,9 @@ def elasticsearch_query(client, query: str, filter_type: str, res_size=50):
     :param str filter_type: type_id which restricts the search to only entities of this type
     :param int res_size: maximum number of results
     """
-    res = client.search(index=args.elastic_index, size=res_size, query={'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}})
+    res = client.search(index=args.elastic_index_ent, size=res_size, query={'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}})
     results = []
-    for hit in res['hits']['hits']: results.append([hit['_source']['id'], hit['_source']['type']])
+    for hit in res['hits']['hits']: results.append([hit['_id'], hit['_source']['types']])
     filtered_results = [res for res in results if filter_type in res[1]]
     return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
 

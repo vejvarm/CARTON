@@ -195,3 +195,9 @@ if __name__ == '__main__':
     # CREATE, MAP and FILL indices
     subset = ''  # alternative for testing: '_first_10000'
     fill_csqa_from_index_jsons(index, subset, create=True, max_workers=10)
+
+
+#  DONE 1 (almost): utils.elasticsearch_query: test reimplementation of inverse index (entity label) search to work with new index layout!
+#   ・ partially tested in es_search_and_indexing_tests.py
+#  TODO 2: should we implement inverse index search in actions.py?
+#  TODO 3: in actions.py: finish implementing insert
