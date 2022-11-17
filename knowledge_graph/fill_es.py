@@ -16,7 +16,7 @@ import ujson
 from constants import args, ROOT_PATH
 
 ELASTIC_USER = args.elastic_user
-ELASTIC_PASSWORD = args.elastic_password  # refer to args.py --elastic_password for alternatives
+ELASTIC_PASSWORD = args.elastic_password['notebook']  # refer to args.py --elastic_password for alternatives
 
 CLIENT = Elasticsearch(
     args.elastic_host,
@@ -196,8 +196,15 @@ if __name__ == '__main__':
     subset = ''  # alternative for testing: '_first_10000'
     fill_csqa_from_index_jsons(index, subset, create=True, max_workers=10)
 
-
-#  DONE 1 (almost): utils.elasticsearch_query: test reimplementation of inverse index (entity label) search to work with new index layout!
-#   ・ partially tested in es_search_and_indexing_tests.py
-#  TODO 2: should we implement inverse index search in actions.py?
-#  TODO 3: in actions.py: finish implementing insert
+# TODO list
+#  DONE 0: utils.search_by_label: test reimplementation of inverse index (entity label) search to work with new index layout!
+#   ・ tested in es_search_and_indexing_tests.py
+#  DONE 1: should we implement inverse index search in actions.py?
+#  TODO 2: in actions.py: finish implementing insert, insert_reverse, set_labels, set_types
+#  TODO 4: in train.py.train() implement ner module functionality and evaluation
+#  TODO 5: how to deal with initial incompetence of the NER module while adding entities? Warmup with adding disabled, but reward gained?
+#   .a what if we just simulate the adding to KG during training and give the reward ... but how then to account for rewarding changing the decision based on existance?
+#   .b just simulate 50/50 chance that it already exists? (50% - search from index_ent 50% - search from index_ent_full)
+#   .c how to evaluate the final performance?
+#  TODO 6: implement resetting of the index at the beginning of training (not necessary if we implement the TODO 5.b)
+#  TODO 7: T5 for transcribing questions to statements

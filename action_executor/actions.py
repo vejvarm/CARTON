@@ -1,7 +1,12 @@
+from __future__ import division
+
 from typing import Union
 import logging
 
 from ordered_set import OrderedSet
+from unidecode import unidecode
+from random import randint
+
 from constants import args
 
 LOGGER = logging.getLogger(__name__)
@@ -294,48 +299,34 @@ class ESActionOperator:
     def difference(self, s1, s2):
         return s1.difference(s2)
 
-    def insert(self, s_label: str, r: str, o_labels: OrderedSet[str]):
+    def insert(self, sid: str, rid: str, oid: str):
+        """ Add a single entry into the knowledge graph
+
+        If exists: do nothing
+
+        :param sid: (str) id of subject
+        :param rid: (str) id of relation
+        :param oid: (str) id of object (NOTE: can be '')
+        :return:
         """
-        :param s_label: from user input based on NER module
-        :param r: based on relation Pointer Network
-        :param o_labels: from user input based on NER module
-        """
-        sub_id = None
-        obj_ids = []
-        # TODO: during training non-existant entities will be "randomly" assigned the gold label!
-        # TODO: type should be added from the NER module (don't just use type None, but loss must account for right types!)
-        #   for both subjects and objects, because they all sould be present in the user input
-        # TODO: during inference, we just need to assign random value (is the system gonna be able to account for this new value?) - it should because all we are searching for is labels of entities from user input and fuzzy linking them to the KG
-        # check if s_label exists in KG: FUZZY INVERSE INDEX SEARCH
+        _id = f'{sid}{rid}{oid}'.upper()
+        if self.client.exists(index=self.index_rdf, id=_id):
+            LOGGER.info(f'insert in actions: entry with id {_id} already exists in index_rdf.')
+            return None
 
+        if not self.client.exists(index=self.index_ent, id=sid):
+            LOGGER.info(f"insert in actions: entry with id {sid} doesn't exists in index_ent. Creating empty")
 
-        # if s_label exists:
-        #   check if o_label objects exist
-        #   for olab in o_labels:
-        #       oid = FUZZY INVERSE INDEX SEARCH
-        #       if exists:
-        #           TODO: get that object_id and just update the label (and type?)
-        #           self.client.update(index=self.index_ent, id=oid, document={'label': olab})
-        #       if not exists:
-        #           TODO: create new object_id with type None
-
-        # if s_label doesn't exist:
-        # TODO: how to set id if it is a new subject?
-        # TODO: use update instead of index?
-        self.client.index(index=self.index_ent, id=sub_id, document={'label': s_label, 'type': None})
-
-        for oid, olab in zip(obj_ids, o_labels):
-            self.client.index(index=self.index_rdf, document={'sid': sub_id,
-                                                              'rid': r,
-                                                              'oid': list(obj_ids)})
-            self.client.index(index=self.index_ent, id=oid, document={'label': olab, 'type': None})
-
-        # what if objects don't exist?
-
-        # TODO: return OrderedSet() of all entities !!!(subject first, folowed by all objects)
+        return OrderedSet([sid, oid])
 
     def insert_reverse(self, o, r, s):
+        # TODO: finish implementation
         pass
+
+    def set_labels(self, ent_set: OrderedSet[str], label_list: list[str]):
+        # TODO: finish implementation
+        for ent in ent_set:
+            pass
 
     def set_types(self, entity_set: OrderedSet[str], type_set: OrderedSet[str], override=False):
         """
@@ -344,14 +335,68 @@ class ESActionOperator:
         :param type_set: if s exists in KG: keep type from KG (if override=False) | else: from NER module
         :param override: (bool) switch between overriding non None types (True) or not (False)
         """
-        # TODO: check only for types which are None
+        # TODO: check only for types which are None?
         # TODO: DATASET: how are we gonna reflect this in the dataset gold actions???
         for e, t in zip(entity_set, type_set):
-            self.client.update(index=self.index_ent, id=e, document={'type': t})
+            self.client.update(index=self.index_ent, id=e, document={'types': t})
         # DONE: in order to preserve order, use dictionaries instead of sets
 
     def update_entity(self, e_set, ein, num):
         pass
+
+
+def search_by_label(client, query: str, filter_type: str, res_size=50, index=args.elastic_index_ent):
+    """ ElasticSearch implementation of inverse index Fuzzy search. Essentially searching for a document with specific label
+    utilizing a bit of fuzziness to account for misspellings and typos.
+
+    :param client: elasticsearch client
+    :param str query: label to search for
+    :param str filter_type: type_id which restricts the search to only entities of this type
+    :param int res_size: maximum number of results
+    :param str index: client index in which to search
+    """
+    res = client.search(index=index, size=res_size, query={'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}})
+    results = []
+    for hit in res['hits']['hits']: results.append([hit['_id'], hit['_source']['types']])
+    filtered_results = [res for res in results if filter_type in res[1]]
+    return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
+
+
+def create_entity(client, eid: str=None, label: str=None, types: list[str] = tuple(), production=False, eid_range=(1000000, 9999999)):
+    """ create new entity in args.elastic_index_ent
+
+    :param client: Elasticsearch client object
+    :param eid: (str) entity id, if eid is None, generate random unique eid
+    :param label: (str) label of the newly created entity
+    :param types: (list[str]) list of types of the newly create entity
+    :param production: (bool) if production==True, eids are generated by random generator, else it is taken from dataset
+    :param eid_range: (tuple[int]) minimum and maximum value for random eid generator
+    :return eid: (str) newly generated entity id OR passthrough of eid from input (if eid is not None)
+    """
+
+    if label is None:
+        label = ''
+
+    if not types:
+        types = []
+
+    if eid is None:
+        if production:
+            # generate new id randomly until we generate unique id
+            while True:
+                eid = f'Q{randint(eid_range[0], eid_range[1])}'
+
+                if not client.exists(index=args.elastic_index_ent, id=eid):
+                    break
+        else:
+            # 'generate' new id corresponding to index_ent_full
+            # NOTE: for traning purposes, this randomness is artificially made to reflect training set entity ids
+            eid = search_by_label(client, label, '', res_size=1, index=args.elastic_index_ent_full)[0]
+
+    client.index(index=args.elastic_index_ent, id=eid, document={'label': label, 'types': types})
+    LOGGER.info(f'create_entity in actions: added new entry to {args.elastic_index_ent} with id: {eid} label: {label}, types: {types}')
+
+    return eid
 
 
 class ActionOperator:

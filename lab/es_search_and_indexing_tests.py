@@ -7,6 +7,7 @@ import time
 import logging
 
 from multiprocessing import Pool
+from random import randint
 
 import elastic_transport
 from tqdm import tqdm
@@ -15,10 +16,10 @@ from knowledge_graph.knowledge_graph import MiniKG
 from elasticsearch import Elasticsearch
 
 from constants import args, ROOT_PATH
-from utils import elasticsearch_query
+from action_executor.actions import search_by_label
 
 ELASTIC_USER = args.elastic_user
-ELASTIC_PASSWORD = args.elastic_password  # refer to args.py --elastic_password for alternatives
+ELASTIC_PASSWORD = args.elastic_password['notebook']  # refer to args.py --elastic_password for alternatives
 
 CLIENT = Elasticsearch(
     args.elastic_host,
@@ -94,7 +95,7 @@ def index_mock_entry(index):
 
     # label is gonna be id'd be the actual entry
     CLIENT.index(index=index, id=id,
-                 document={'label': label, 'type': type})  # TODO: Question: can there be more types for one entity?
+                 document={'label': label, 'types': [type]})
     for p, o in zip(preds, objs):
         print(f's: {id} -> p:{p} -> o:{o}')
         CLIENT.index(index=index, document={'id': id,
@@ -271,6 +272,25 @@ if __name__ == '__main__':
     # test out searching
     # run_search_tests()
 
-    query = 'Cheb River'
-    res = elasticsearch_query(CLIENT, query, "Q4022")
+    # if tp exists in types field of entity:
+    # query, tp = ('Cheb River', "Q4022")                           # expected -> ['Q13609920']
+    # if type field is empty in ent_index:
+    # query, tp = ("2002 in South Africa televison", "Q12737077")   # expected -> ['Q19570438']
+    # if tp doesn't exists in types field of entity:
+    query, tp = ("dubel poort", "Q12737077")                      # expected -> ['Q19057085']
+    res = search_by_label(CLIENT, query, tp)
     print(res)
+
+    res = CLIENT.exists(index=args.elastic_index_rdf, id='Q1253487P735Q381702')
+    print(res)
+
+    # res = CLIENT.exists(index=args.elastic_index_ent, id='')
+
+    eid = f'Q19057085'
+    # generate new id randomly until we generate unique id
+    while True:
+        eid = f'Q{randint(1000000, 9999999)}'
+        print(eid)
+
+        if not CLIENT.exists(index=args.elastic_index_ent, id=eid):
+            break

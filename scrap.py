@@ -38,7 +38,7 @@ if __name__ == '__main__':
     kg = BTreeDB('./knowledge_graph/Wikidata.fs', run_adapter=True)
     kg_memory = MiniKG()
     client = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
-                            basic_auth=(args.elastic_user, args.elastic_password))  # for inverse index search
+                            basic_auth=(args.elastic_user, args.elastic_password['notebook']))  # for inverse index search
 
     print(client.info())
 

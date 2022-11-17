@@ -144,6 +144,12 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         # compute output
         output = model(input, logical_form[:, :-1])
 
+        # NER module in TRAIN
+        # TODO: implement the ner module functionality, as in Inference,
+        #   goal: missing entities added to index
+        #   loss: compare added entities and their labels with the args.elastic_index_ent_full (Levenshtein distance? naah, either it's right or not)
+        # output[NER]
+
         # prepare targets
         target = {
             LOGICAL_FORM: logical_form[:, 1:].contiguous().view(-1),

@@ -1,18 +1,12 @@
 from __future__ import division
-import os
 import re
 import time
 import json
-import torch
-import random
 import logging
-import numpy as np
 import torch.nn as nn
-from pathlib import Path
 
 import helpers
-from args import get_parser
-from unidecode import unidecode
+from action_executor.actions import search_by_label, create_entity
 from collections import OrderedDict
 from transformers import BertTokenizer
 from elasticsearch import Elasticsearch
@@ -24,10 +18,10 @@ from rapidfuzz.distance.Levenshtein import distance
 from constants import *
 
 # import CSQA ZODB KG
-from knowledge_graph.ZODBConnector import BTreeDB
 
-# set logger
-logger = logging.getLogger(__name__)
+# set LOGGER
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
 
 class NoamOpt:
     "Optim wrapper that implements rate."
@@ -236,9 +230,9 @@ class Scorer(object):
             })
 
             if (i+1) % 500 == 0:
-                logger.info(f'* {OVERALL} Data Results {i+1}:')
+                LOGGER.info(f'* {OVERALL} Data Results {i+1}:')
                 for task, task_result in self.results[OVERALL].items():
-                    logger.info(f'\t\t{task}: {task_result.accuracy:.4f}')
+                    LOGGER.info(f'\t\t{task}: {task_result.accuracy:.4f}')
 
     def write_results(self):
         save_dict = json.dumps(self.data_dict, indent=4)
@@ -259,12 +253,12 @@ class Inference(object):
         self.tokenizer = BertTokenizer.from_pretrained(BERT_BASE_UNCASED)
         self.inference_actions = []
         self.es = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
-                                basic_auth=(args.elastic_user, args.elastic_password),
+                                basic_auth=(args.elastic_user, args.elastic_password['notebook']),
                                 retry_on_timeout=True)  # for inverse index search
         # self.kg = BTreeDB(args.kg_path, run_adapter=True)  # ANCHOR: ZODB implementation
 
     def construct_actions(self, inference_data, predictor):
-        logger.info(f'Constructing actions for: {args.question_type}')
+        LOGGER.info(f'Constructing actions for: {args.question_type}')
         self.inference_actions = []  # clear inference actions from previous run
         tic = time.perf_counter()
         # based on model outpus create a final logical form to execute
@@ -273,11 +267,13 @@ class Inference(object):
             predictions = predictor.predict(sample[CONTEXT_QUESTION])
             actions = []
             logical_form_prediction = predictions[LOGICAL_FORM]
-            ent_count_pos = 0
+            ent_count_pos = 0  # counts how many ENTITY actions we encountered in the LF so far
             for j, action in enumerate(logical_form_prediction):
+                # TODO: if action == 'insert', change behaviour of ENTITY fills
+                #   in that case
                 if action not in [ENTITY, RELATION, TYPE, VALUE, PREV_ANSWER]:
                     actions.append([ACTION, action])
-                elif action == ENTITY:
+                elif action == ENTITY:  # ANCHOR: this is where we deal with filling the right entities to LF 'ENTITY' action
                     # get predictions
                     context_question = sample[CONTEXT_QUESTION]
                     ner_prediction = predictions[NER]
@@ -287,14 +283,14 @@ class Inference(object):
                                                tag.startswith(B) or tag.startswith(I)})  # idx: type_id
                     coref_indices = OrderedDict({k: tag for k, tag in enumerate(coref_prediction) if tag not in ['NA']})
                     # create a ner dictionary with index as key and entity as value
-                    ner_idx_ent = self.create_ner_idx_ent_dict(ner_indices, context_question)
+                    ner_idx_ent = self.create_ner_idx_ent_dict(ner_indices, context_question)  # {int: list[str]} ... {1: ['Q1', 'Q2'], 2: ['Q1', 'Q2'], 4: ['UNK'], 5: ['UNK']}
                     if str(ent_count_pos) not in list(coref_indices.values()):
                         if args.question_type in [CLARIFICATION, QUANTITATIVE_COUNT] and len(
                                 list(coref_indices.values())) == ent_count_pos:  # simple constraint for clarification and quantitative count
-                            for l, (cidx, ctag) in enumerate(coref_indices.items()):
+                            for l, (cidx, ctag) in enumerate(coref_indices.items()):  # cidx = position in input ... ctag = desired position in LF
                                 if ctag == str(ent_count_pos - 1):
                                     if cidx in ner_idx_ent:
-                                        actions.append([ENTITY, ner_idx_ent[cidx][0]])
+                                        actions.append([ENTITY, ner_idx_ent[cidx][0]])  # NOTE: this is where we permute! BEWARE: we only take the first entity from list?!
                                         break
                                     else:
                                         print(f'Coref index {cidx} not in ner entities!')
@@ -361,37 +357,53 @@ class Inference(object):
         self.write_inference_actions()
 
     def create_ner_idx_ent_dict(self, ner_indices, context_question):
+        """
+
+        :param ner_indices: (OrderedDict[int: str]) {pos_idx: type_id} positions and types of entity entries
+        :param context_question: (list[str]) word list of current and previous (context) input from the user
+        :return ner_idx_ent: (OrderedDict[int: list[str]]) dictionary of candidate entities and their positions in context_question
+            eg: {1: ['Q1'], 2: ['Q1'], 5: ['Q2', 'Q3'], 6: ['Q2', 'Q3']}  # can be ['UNK']
+        """
         ent_idx = []
         ner_idx_ent = OrderedDict()
+
         for index, span_type in ner_indices.items():  # index is just word order in the context question
-            if not ent_idx or index-1 == ent_idx[-1][0]:
+            if not ent_idx or index-1 == ent_idx[-1][0]:  # NOTE: index-1 == ent_idx[-1][0] one entity will have continuous sequence
+                # populate ent_idx with all parts of one entity
                 ent_idx.append([index, span_type]) # check whether token start with ## then include previous token also from context_question
-            else:
+                # [[0, 'Q123']]
+                # [[0, 'Q123'], [1, 'Q123']]
+                # ...
+                # until index jumps over to higher value than +1
+            else:  # if ent_idx and index-1 != ent_idx[-1][0]:
+                # after ent_idx is populated, do search for this entity
                 # get ent tokens from input context
                 ent_tokens = [context_question[idx] for idx, _ in ent_idx]
                 # get string from tokens using tokenizer
-                ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
+                ent_label = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')  # NOTE: this is label of one entity
                 # get elastic search results
-                es_results = elasticsearch_query(self.es, ent_string, ent_idx[0][1])  # use type from B tag only
-                # es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
-                # add idices to dict
-                if es_results:
-                    for idx, _ in ent_idx:
-                        ner_idx_ent[idx] = es_results
+                es_results = search_by_label(self.es, ent_label, ent_idx[0][1])  # use type from B tag only (rest is redundant)
+                if not es_results:
+                    # if no entity was found, generate new entity!
+                    es_results = [create_entity(self.es, label=ent_label, types=[ent_idx[0][1]])]
+                # add indices to dict
+                for idx, _ in ent_idx:
+                    ner_idx_ent[idx] = es_results
                 # clean ent_idx
                 ent_idx = [[index, span_type]]
-        if ent_idx:
+        if ent_idx:  # NOTE: for the last entry to be considered as well
             # get ent tokens from input context
             ent_tokens = [context_question[idx] for idx, _ in ent_idx]
             # get string from tokens using tokenizer
-            ent_string = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')
+            ent_label = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')  # NOTE: this is label of one entity
             # get elastic search results
-            es_results = elasticsearch_query(self.es, ent_string, ent_idx[0][1])
-            # es_results = rapidfuzz_query(ent_string, ent_idx[0][1], self.kg)  # ANCHOR: RapidFuzz implementation
-            # add idices to dict
-            if es_results:
-                for idx, _ in ent_idx:
-                    ner_idx_ent[idx] = es_results
+            es_results = search_by_label(self.es, ent_label, ent_idx[0][1])  # use type from B tag only (rest is redundant)
+            if not es_results:
+                # if no entity was found, generate new entity!
+                es_results = [create_entity(self.es, label=ent_label, types=[ent_idx[0][1]])]
+            # add indices to dict
+            for idx, _ in ent_idx:
+                ner_idx_ent[idx] = es_results
         return ner_idx_ent
 
     def get_value(self, question):
@@ -419,21 +431,6 @@ class Inference(object):
         with open(f'{ROOT_PATH}/{args.path_inference}/{args.model_path.rsplit("/", 1)[-1].rsplit(".", 2)[0]}_{args.question_type}.json', 'w', encoding='utf-8') as json_file:
             json_file.write(json.dumps(self.inference_actions, indent=4))
 
-
-def elasticsearch_query(client, query: str, filter_type: str, res_size=50):
-    """ ElasticSearch implementation of inverse index Fuzzy search. Essentially searching for a document with specific label
-    utilizing a bit of fuzziness to account for misspellings and typos.
-
-    :param client: elasticsearch client
-    :param str query: label to search for
-    :param str filter_type: type_id which restricts the search to only entities of this type
-    :param int res_size: maximum number of results
-    """
-    res = client.search(index=args.elastic_index_ent, size=res_size, query={'match': {'label': {'query': unidecode(query), 'fuzziness': 'AUTO'}}})
-    results = []
-    for hit in res['hits']['hits']: results.append([hit['_id'], hit['_source']['types']])
-    filtered_results = [res for res in results if filter_type in res[1]]
-    return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
 
 def rapidfuzz_query(query, filter_type, kg, res_size=50):
     """
@@ -465,6 +462,7 @@ def save_checkpoint(state):
     filename = f'{ROOT_PATH}/{args.snapshots}/{MODEL_NAME}_e{state[EPOCH]}_v{state[CURR_VAL]:.4f}_{args.task}.pth.tar'
     torch.save(state, filename)
 
+
 class SingleTaskLoss(nn.Module):
     '''Single Task Loss'''
     def __init__(self, ignore_index):
@@ -473,6 +471,7 @@ class SingleTaskLoss(nn.Module):
 
     def forward(self, output, target):
         return self.criterion(output, target)
+
 
 class MultiTaskLoss(nn.Module):
     '''Multi Task Learning Loss'''
