@@ -1,5 +1,6 @@
 import argparse
 
+INDEX_ROOT = 'csqa_wikidata_test'
 
 def get_parser():
     parser = argparse.ArgumentParser(description='CARTON')
@@ -74,10 +75,11 @@ def get_parser():
 
     # elasticsearch related
     # parser.add_argument('--elastic_index_root', default='csqa_wikidata')
-    parser.add_argument('--elastic_index_ent', default='csqa_wikidata_test_ent')
-    parser.add_argument('--elastic_index_ent_full', default='csqa_wikidata_test_ent_full')
-    parser.add_argument('--elastic_index_rel', default='csqa_wikidata_test_rel')  # TODO: implement relation search
-    parser.add_argument('--elastic_index_rdf', default='csqa_wikidata_test_rdf')
+    parser.add_argument('--elastic_index_ent', default=f'{INDEX_ROOT}_ent')
+    parser.add_argument('--elastic_index_ent_full', default=f'{INDEX_ROOT}_ent_full')
+    parser.add_argument('--elastic_index_rel', default=f'{INDEX_ROOT}_rel')  # TODO: implement relation search
+    parser.add_argument('--elastic_index_rdf', default=f'{INDEX_ROOT}_rdf')
+    parser.add_argument(f'--elastic_index_rdf_full', default=f'{INDEX_ROOT}_rdf_full')
     parser.add_argument('--elastic_host', default='https://localhost:9200')
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')

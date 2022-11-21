@@ -294,3 +294,29 @@ if __name__ == '__main__':
 
         if not CLIENT.exists(index=args.elastic_index_ent, id=eid):
             break
+
+    eid = f'Q13609920'  # Chet River
+    # eid = f'Qnonexistant'
+    print(CLIENT.get(index=args.elastic_index_ent, id=eid))
+    print(CLIENT.update(index=args.elastic_index_ent, id=eid, doc={'label': 'Chet River'}))
+    print(CLIENT.get(index=args.elastic_index_ent, id=eid)['_source']['label'])
+    # update:
+    #   if exists and is updated: res['result'] == 'updated' | res['_version'] += 1
+    #   if exists and is the same: res['result'] == 'noop'
+    #   if doesn't exist: raise elasticsearch.NotFoundError
+
+    # setting types
+    eid = f'Q13609920'  # Chet River
+    tp = ['Qnew']
+    print(CLIENT.get(index=args.elastic_index_ent, id=eid))
+    print(CLIENT.update(index=args.elastic_index_ent, id=eid, doc={'types': tp}))
+    print(CLIENT.get(index=args.elastic_index_ent, id=eid)['_source']['types'])
+    #   if exists: the field is completely overwritten
+
+    # updating types
+    # TODO Alternative: use append pipeline processor?
+    tp_list = ['Qnew', 'Qnew2', 'Qnew3']
+    tp_set = set(CLIENT.get(index=args.elastic_index_ent, id=eid)['_source']['types'])
+    tp_set.update(tp_list)
+    res = CLIENT.update(index=args.elastic_index_ent, id=eid, doc={'types': list(tp_set)})
+    print(CLIENT.get(index=args.elastic_index_ent, id=eid)['_source']['types'])

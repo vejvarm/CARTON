@@ -85,3 +85,14 @@ if __name__ == '__main__':
     print(count)
     count = aop.find_reverse_tuple_counts('P155', None, None)  # lot of 1 counts because we dont filter by types
     print(count)
+
+
+    # INSERT OP
+    # 1. exists already
+    # 2. doesn't exist
+
+
+    # UPDATE_LABEL OP
+
+
+    # UPDATE TYPES OP

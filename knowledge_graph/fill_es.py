@@ -200,7 +200,7 @@ if __name__ == '__main__':
 #  DONE 0: utils.search_by_label: test reimplementation of inverse index (entity label) search to work with new index layout!
 #   ・ tested in es_search_and_indexing_tests.py
 #  DONE 1: should we implement inverse index search in actions.py?
-#  TODO 2: in actions.py: finish implementing insert, insert_reverse, set_labels, set_types
+#  DONE 2: in actions.py: finish implementing insert, insert_reverse, set_labels, set_types
 #  TODO 4: in train.py.train() implement ner module functionality and evaluation
 #  TODO 5: how to deal with initial incompetence of the NER module while adding entities? Warmup with adding disabled, but reward gained?
 #   .a what if we just simulate the adding to KG during training and give the reward ... but how then to account for rewarding changing the decision based on existance?

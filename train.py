@@ -143,11 +143,20 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
 
         # compute output
         output = model(input, logical_form[:, :-1])
+        print(f'output[NER] in train: {output[NER]}')
+        print(f'output[COREF] in train: {output[COREF]}')
 
         # NER module in TRAIN
         # TODO: implement the ner module functionality, as in Inference,
         #   goal: missing entities added to index
         #   loss: compare added entities and their labels with the args.elastic_index_ent_full (Levenshtein distance? naah, either it's right or not)
+        # ner_prediction = output[NER]
+        # coref_prediction = output[COREF]
+        # ner_indices = OrderedDict({k: tag.split('-')[-1] for k, tag in enumerate(ner_prediction) if
+        #                            tag.startswith(B) or tag.startswith(I)})  # idx: type_id
+        # coref_indices = OrderedDict({k: tag for k, tag in enumerate(coref_prediction) if tag not in ['NA']})
+        # # create a ner dictionary with index as key and entity as value
+        # ner_idx_ent = self.create_ner_idx_ent_dict(ner_indices, context_question)
         # output[NER]
 
         # prepare targets

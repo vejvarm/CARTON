@@ -3,6 +3,7 @@ from __future__ import division
 from typing import Union
 import logging
 
+import elasticsearch
 from ordered_set import OrderedSet
 from unidecode import unidecode
 from random import randint
@@ -311,38 +312,79 @@ class ESActionOperator:
         """
         _id = f'{sid}{rid}{oid}'.upper()
         if self.client.exists(index=self.index_rdf, id=_id):
-            LOGGER.info(f'insert in actions: entry with id {_id} already exists in index_rdf.')
+            LOGGER.info(f'insert in actions: entry with id {_id} already exists in {self.index_rdf}')
             return None
 
         if not self.client.exists(index=self.index_ent, id=sid):
             LOGGER.info(f"insert in actions: entry with id {sid} doesn't exists in index_ent. Creating empty")
+            # NOTE: This shouldn't be possile to happen, as we create new entities in NER module
+
+        # TODO: maybe disable during training and just reward if the correct rdf was added
+        #   reward?: loss function: cross_entropy {sid} {rid} {oid} vs target {sid} {rid} {oid}
+        self.client.index(index=self.index_rdf, id=_id, document={'sid': sid, 'rid': rid, 'oid': oid})
+        LOGGER.info(f'insert in actions: entry with id {_id} was added to {self.index_rdf}')
 
         return OrderedSet([sid, oid])
 
-    def insert_reverse(self, o, r, s):
-        # TODO: finish implementation
+    def insert_reverse(self, oid, rid, sid):
+        # NOTE we don't need this, the system should be able to learn the difference between oid and sid and
+        #   just use the insert function
         pass
 
-    def set_labels(self, ent_set: OrderedSet[str], label_list: list[str]):
+    def update_labels(self, ent_set: OrderedSet[str], label_list: list[str], overwrite=False):
+        """
+
+        :param ent_set: (OrderedSet[str]) ids of entities which should be affected
+        :param label_list: (list[str]) new labels for each entity (same order as ent_set)
+        :param overwrite: (bool) switch between overriding non empty labels (True) or not (False) TODO: implement
+
+        :return op_results: (list[str]) 'noop' if no change | 'updated' if changed
+        """
+        op_results = []
+        for eid, labl in zip(ent_set, label_list):
+            try:
+                cur_label = self.client.get(index=self.index_ent, id=eid)['_source']['label']
+                LOGGER.debug(f'cur_label in update_labels: {cur_label}')
+                if not cur_label or overwrite:
+                    res = self.client.update(index=self.index_ent, id=eid, doc={'label': labl})
+                    op_results.append(res['result'])
+                else:
+                    LOGGER.info(f'in update_labels: entity {eid} already has label {cur_label} and overwrite==False. Skipping')
+            except elasticsearch.NotFoundError:
+                LOGGER.warning(f'set_labels in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
+                op_results.append('noop')
+
+        return op_results
+
+    def update_types(self, ent_set: OrderedSet[str], types_list: list[list[str]], overwrite=False):
+        """
+
+        :param ent_set: (OrderedSet[str]) set of entities to check/change types of
+        :param types_list: (list[list[str]]) new type lists for each entity (same order as ent_set)
+        :param overwrite: (bool) switch between overwriting non empty type lists (True) or not (False) TODO: implement
+
+        :return op_results: (list[str]) 'noop' if no change | 'updated' if changed
+        """
         # TODO: finish implementation
-        for ent in ent_set:
-            pass
+        op_results = []
+        for eid, tp_list in zip(ent_set, types_list):
+            if isinstance(tp_list, str):
+                tp_list = [tp_list]
+            try:
+                if overwrite:  # overwrite existing list of types with new ones
+                    res = self.client.update(index=self.index_ent, id=eid, doc={'types': tp_list})
+                    op_results.append(res['result'])
+                else:  # append to existing field
+                    tp_set = set(self.client.get(index=self.index_ent, id=eid)['_source']['types'])
+                    tp_set.update(tp_list)
+                    res = self.client.update(index=self.index_ent, id=eid, doc={'types': list(tp_set)})
+                    op_results.append(res['result'])
+                    # TODO: Alternatively use append pipeline processor?
+            except elasticsearch.NotFoundError:
+                LOGGER.warning(f'set_types in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
+                op_results.append('noop')
 
-    def set_types(self, entity_set: OrderedSet[str], type_set: OrderedSet[str], override=False):
-        """
-
-        :param entity_set: set of entities to check/change types of
-        :param type_set: if s exists in KG: keep type from KG (if override=False) | else: from NER module
-        :param override: (bool) switch between overriding non None types (True) or not (False)
-        """
-        # TODO: check only for types which are None?
-        # TODO: DATASET: how are we gonna reflect this in the dataset gold actions???
-        for e, t in zip(entity_set, type_set):
-            self.client.update(index=self.index_ent, id=e, document={'types': t})
-        # DONE: in order to preserve order, use dictionaries instead of sets
-
-    def update_entity(self, e_set, ein, num):
-        pass
+        return op_results
 
 
 def search_by_label(client, query: str, filter_type: str, res_size=50, index=args.elastic_index_ent):
