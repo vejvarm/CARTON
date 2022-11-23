@@ -17,7 +17,7 @@ from constants import args, ROOT_PATH
 from helpers import setup_logger
 
 ELASTIC_USER = args.elastic_user
-ELASTIC_PASSWORD = args.elastic_password['freya']  # refer to args.py --elastic_password for alternatives
+ELASTIC_PASSWORD = args.elastic_password  # refer to args.py --elastic_password for alternatives
 
 CLIENT = Elasticsearch(
     args.elastic_host,

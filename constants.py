@@ -8,7 +8,7 @@ ROOT_PATH = Path(os.path.dirname(__file__))
 
 # read parser
 parser = get_parser()
-args = parser.parse_args()
+args = parser.parse_args(args=[])
 
 # model name
 MODEL_NAME = 'CARTON'

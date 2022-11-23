@@ -3,8 +3,8 @@ from glob import glob
 from transformers import BertTokenizer
 from torchtext.data import Field, Example, Dataset
 
-# import constants
 from constants import *
+
 
 class CSQADataset:
     def __init__(self):
@@ -13,7 +13,6 @@ class CSQADataset:
         self.val_path = str(ROOT_PATH) + args.data_path + '/val/*'
         self.test_path = str(ROOT_PATH) + args.data_path + '/test/*'
         self.load_data_and_fields()
-        print(self.train_path)
 
     def _prepare_data(self, data):
         input_data = []

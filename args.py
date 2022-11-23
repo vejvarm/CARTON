@@ -1,13 +1,48 @@
 import argparse
+from enum import Enum
 
 INDEX_ROOT = 'csqa_wikidata'
+
+
+class Task(Enum):
+    MULTITASK = 'multitask'
+    LOGICAL_FORM = 'logical_form'
+    PREDICATE_POINTER = 'predicate_pointer'
+    TYPE_POINTER = 'type_pointer'
+    NER = 'ner'
+    COREF = 'coref'
+
+
+class QuestionTypes(Enum):
+    ALL = 'all'
+    CLARIFICATION = 'Clarification'
+    COMPARATIVE = 'Comparative Reasoning (All)'
+    LOGICAL = 'Logical Reasoning (All)'
+    QUANTITATIVE = 'Quantitative Reasoning (All)'
+    SIMPLE_COREF = 'Simple Question (Coreferenced)'
+    SIMPLE_DIRECT = 'Simple Question (Direct)'
+    SIMPLE_ELLIPSIS = 'Simple Question (Ellipsis)'
+    VERIFICATION = 'Verification (Boolean) (All)'
+    QUANTITATIVE_COUNT = 'Quantitative Reasoning (Count) (All)'
+    COMPARATIVE_COUNT = 'Comparative Reasoning (Count) (All)'
+
+
+class InferencePartition(Enum):
+    TEST = 'test'
+    VAL = 'val'
+
+
+class Passwords(Enum):
+    NOTEBOOK = 'hZiYNU+ye9izCApoff-v'
+    FREYA = '1jceIiR5k6JlmSyDpNwK'
+
 
 def get_parser():
     parser = argparse.ArgumentParser(description='CARTON')
 
     # general
     parser.add_argument('--seed', default=1234, type=int)
-    parser.add_argument('--no-cuda', action='store_true')
+    parser.add_argument('--no_cuda', action='store_true')
     parser.add_argument('--cuda_device', default=0, type=int)
 
     # data
@@ -22,12 +57,7 @@ def get_parser():
     parser.add_argument('--path_inference', default='experiments/inference', type=str)
 
     # task
-    parser.add_argument('--task', default='multitask', choices=['multitask',
-                                                                'logical_form',
-                                                                'predicate_pointer',
-                                                                'type_pointer',
-                                                                'ner',
-                                                                'coref'], type=str)
+    parser.add_argument('--task', default=Task.MULTITASK.value, choices=[tsk.value for tsk in Task], type=str)
 
     # model
     parser.add_argument('--emb_dim', default=300, type=int)     # default: 300 (dkg?)  # ANCHOR EMBDIM in model.py if you want to change this
@@ -58,19 +88,10 @@ def get_parser():
     parser.add_argument('--model_path', default='experiments/models/CARTONwNERwLinPtr_e42_v0.0145_multitask.pth.tar',
                         type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
-    parser.add_argument('--inference_partition', default='test', choices=['val', 'test'], type=str)
-    parser.add_argument('--question_type', default='Simple Question (Direct)',
-                        choices=['all',
-                                 'Clarification',
-                                 'Comparative Reasoning (All)',
-                                 'Logical Reasoning (All)',
-                                 'Quantitative Reasoning (All)',
-                                 'Simple Question (Coreferenced)',
-                                 'Simple Question (Direct)',
-                                 'Simple Question (Ellipsis)',
-                                 'Verification (Boolean) (All)',
-                                 'Quantitative Reasoning (Count) (All)',
-                                 'Comparative Reasoning (Count) (All)'], type=str)
+    parser.add_argument('--inference_partition', default=InferencePartition.TEST.value,
+                        choices=[ip.value for ip in InferencePartition], type=str)
+    parser.add_argument('--question_type', default=QuestionTypes.SIMPLE_DIRECT.value,
+                        choices=[qt.value for qt in QuestionTypes], type=str)
     parser.add_argument('--max_results', default=1000, help='maximum number of results', type=int)
     parser.add_argument('--ner_max_distance', default=[0, 0, 1, 1, 1, 2])
 
@@ -84,7 +105,6 @@ def get_parser():
     parser.add_argument('--elastic_host', default='https://localhost:9200')
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')
-    parser.add_argument('--elastic_password', default={'freya': '1jceIiR5k6JlmSyDpNwK',
-                                                       'notebook': 'hZiYNU+ye9izCApoff-v'})
+    parser.add_argument('--elastic_password', default=Passwords.FREYA.value, choices=[pw.value for pw in Passwords])
 
     return parser

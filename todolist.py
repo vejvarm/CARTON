@@ -6,7 +6,7 @@
 # NOPE 4: how to deal with initial incompetence of the NER module while adding entities? Warmup with adding disabled, but reward gained?
 # TODO 5:
 #  .b just simulate 50/50 chance that entity already exists (50% - search from index_ent 50% - search from index_ent_full)
-#   action for VALIDATE EXISTANCE?
+#   +action for VALIDATE EXISTANCE needed?
 # NOPE 6: implement resetting of the index at the beginning of training (NOTE not necessary if we implement the TODO 5.b)
 # TODO 7: T5 for transcribing questions to statements
 # TODO 8: how to evaluate the final performance?

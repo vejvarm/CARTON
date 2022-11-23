@@ -16,9 +16,9 @@ LOGGER.setLevel(logging.WARNING)
 
 class ESActionOperator:
     def __init__(self, es_client,
-                 index_ent=args.elastic_index_ent,
+                 index_ent=args.elastic_index_ent_full,
                  index_rel=args.elastic_index_rel,
-                 index_rdf=args.elastic_index_rdf):  # TODO: switch to individual indices for label_and_type and rdf
+                 index_rdf=args.elastic_index_rdf_full):
         self.kg = None
         self.client = es_client
         self.index_ent = index_ent
@@ -308,7 +308,7 @@ class ESActionOperator:
         :param sid: (str) id of subject
         :param rid: (str) id of relation
         :param oid: (str) id of object (NOTE: can be '')
-        :return:
+        :return: OrderedSet[sid, oid]
         """
         _id = f'{sid}{rid}{oid}'.upper()
         if self.client.exists(index=self.index_rdf, id=_id):
@@ -319,8 +319,6 @@ class ESActionOperator:
             LOGGER.info(f"insert in actions: entry with id {sid} doesn't exists in index_ent. Creating empty")
             # NOTE: This shouldn't be possile to happen, as we create new entities in NER module
 
-        # TODO: maybe disable during training and just reward if the correct rdf was added
-        #   reward?: loss function: cross_entropy {sid} {rid} {oid} vs target {sid} {rid} {oid}
         self.client.index(index=self.index_rdf, id=_id, document={'sid': sid, 'rid': rid, 'oid': oid})
         LOGGER.info(f'insert in actions: entry with id {_id} was added to {self.index_rdf}')
 
@@ -336,7 +334,7 @@ class ESActionOperator:
 
         :param ent_set: (OrderedSet[str]) ids of entities which should be affected
         :param label_list: (list[str]) new labels for each entity (same order as ent_set)
-        :param overwrite: (bool) switch between overriding non empty labels (True) or not (False) TODO: implement
+        :param overwrite: (bool) switch between overriding non empty labels (True) or not (False
 
         :return op_results: (list[str]) 'noop' if no change | 'updated' if changed
         """
@@ -361,11 +359,10 @@ class ESActionOperator:
 
         :param ent_set: (OrderedSet[str]) set of entities to check/change types of
         :param types_list: (list[list[str]]) new type lists for each entity (same order as ent_set)
-        :param overwrite: (bool) switch between overwriting non empty type lists (True) or not (False) TODO: implement
+        :param overwrite: (bool) switch between overwriting non empty type lists (True) or not (False)
 
         :return op_results: (list[str]) 'noop' if no change | 'updated' if changed
         """
-        # TODO: finish implementation
         op_results = []
         for eid, tp_list in zip(ent_set, types_list):
             if isinstance(tp_list, str):

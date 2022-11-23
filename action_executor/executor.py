@@ -1,14 +1,15 @@
 from collections import OrderedDict
-from actions import ActionOperator
+from actions import ESActionOperator
 action_input_size_constrain = {'find': 2, 'find_reverse': 2, 'filter_type': 2,
                             'filter_multi_types': 3, 'find_tuple_counts': 3, 'find_reverse_tuple_counts': 3,
                             'greater': 2, 'less': 2, 'equal': 2, 'approx': 2, 'atmost': 2, 'atleast': 2, 'argmin': 1,
-                            'argmax': 1, 'is_in': 2, 'count': 1, 'union': 10, 'intersection': 2, 'difference': 2}
+                            'argmax': 1, 'is_in': 2, 'count': 1, 'union': 10, 'intersection': 2, 'difference': 2,
+                            'insert': 2}
 
 
 class ActionExecutor:
     def __init__(self, kg):
-        self.operator = ActionOperator(kg)
+        self.operator = ESActionOperator(kg)
 
     def _parse_actions(self, actions):
         actions_to_execute = OrderedDict()
