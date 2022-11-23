@@ -1,3 +1,4 @@
+import logging
 import json
 import ujson
 import os.path
@@ -239,6 +240,19 @@ def crop_json_file(path_to_json_file: str, num_entries=10000):
     ujson.dump({k: full_dict[k] for k in keys},
                open(f'{path_to_json_file.removesuffix(".json")}_first_{num_entries}.json', 'w'),
                indent=4, escape_forward_slashes=False)
+
+
+def setup_logger(name=__name__, loglevel=logging.WARNING, handlers=(logging.StreamHandler(),)):
+    logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        datefmt='%d/%m/%Y %I:%M:%S %p',
+                        level=loglevel,
+                        handlers=handlers)
+
+    # disable PUT INFO responses from ElasticSearch search command
+    logging.getLogger('elastic_transport.transport').setLevel(logging.WARNING)
+
+    return logging.getLogger(name)
+
 
 
 if __name__ == '__main__':

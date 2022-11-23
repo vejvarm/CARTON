@@ -17,19 +17,16 @@ from utils import (NoamOpt, AverageMeter,
                     SingleTaskLoss, MultiTaskLoss,
                     save_checkpoint, init_weights)
 
+from helpers import setup_logger
+
 # import constants
 from constants import *
 
 # set LOGGER
-logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%d/%m/%Y %I:%M:%S %p',
-                    level=logging.INFO,
-                    handlers=[
-                        logging.FileHandler(f'{args.path_results}/train_{args.task}.log', 'w'),
-                        logging.StreamHandler()
-                    ])
-LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
+LOGGER = setup_logger(__name__,
+                      loglevel=logging.INFO,
+                      handlers=[logging.FileHandler(f'{args.path_results}/train_{args.task}.log', 'w'),
+                              logging.StreamHandler()])
 
 # set a seed value
 random.seed(args.seed)

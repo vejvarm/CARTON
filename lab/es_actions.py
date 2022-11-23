@@ -15,6 +15,8 @@ from action_executor.actions import ESActionOperator
 from elasticsearch import Elasticsearch
 import elasticsearch
 
+from helpers import setup_logger
+
 ELASTIC_USER = 'elastic'
 ELASTIC_PASSWORD = 'hZiYNU+ye9izCApoff-v'  # '1jceIiR5k6JlmSyDpNwK'
 
@@ -25,13 +27,7 @@ CLIENT = Elasticsearch(
     retry_on_timeout=True,
 )
 
-logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%d/%m/%Y %I:%M:%S %p',
-                    level=logging.INFO,
-                    handlers=[logging.StreamHandler()])
-
-logging.getLogger('elastic_transport.transport').setLevel(logging.WARNING)
-
+LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 if __name__ == '__main__':
     aop = ESActionOperator(CLIENT)

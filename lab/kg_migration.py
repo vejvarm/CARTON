@@ -4,9 +4,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ujson
 import logging
 from knowledge_graph.knowledge_graph import KGMigrator, check_consistency
+from helpers import setup_logger
 
 
-logging.basicConfig(level=logging.INFO)
+LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 
 def make_index_jsons():

@@ -17,6 +17,7 @@ from elasticsearch import Elasticsearch
 
 from constants import args, ROOT_PATH
 from action_executor.actions import search_by_label
+from helpers import setup_logger
 
 ELASTIC_USER = args.elastic_user
 ELASTIC_PASSWORD = args.elastic_password['freya']  # refer to args.py --elastic_password for alternatives
@@ -30,13 +31,7 @@ CLIENT = Elasticsearch(
 
 # CLIENT.indices.put_mapping(index='')
 
-logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%d/%m/%Y %I:%M:%S %p',
-                    level=logging.INFO,
-                    handlers=[logging.StreamHandler()])
-
-logging.getLogger('elastic_transport.transport').setLevel(logging.WARNING)
-LOGGER = logging.getLogger(__name__)
+LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 
 def _index_one(item, kg_types: dict = None, index='csqa_wikidata'):
