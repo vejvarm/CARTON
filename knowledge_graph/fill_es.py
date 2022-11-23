@@ -16,7 +16,7 @@ import ujson
 from constants import args, ROOT_PATH
 
 ELASTIC_USER = args.elastic_user
-ELASTIC_PASSWORD = args.elastic_password['notebook']  # refer to args.py --elastic_password for alternatives
+ELASTIC_PASSWORD = args.elastic_password['freya']  # refer to args.py --elastic_password for alternatives
 
 CLIENT = Elasticsearch(
     args.elastic_host,
@@ -35,7 +35,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 # ENT INDEX
-def create_and_map_ent_index(index=args.elastic_index_ent):
+def create_and_map_ent_index(index=args.elastic_index_ent_full):
+    # delete index if already exists:
+    if CLIENT.indices.exists(index=index):
+        CLIENT.indices.delete(index=index)
+
     mapping = {'properties': {
                     'label': {
                         'type': 'text',
@@ -59,7 +63,7 @@ def _ent_index_op(item, index):
     CLIENT.index(index=index, id=eid, document={'label': lab, 'types': tps})
 
 
-def fill_ent_index(index=args.elastic_index_ent, source_json='index_ent_dict.json', max_workers=5):
+def fill_ent_index(index=args.elastic_index_ent_full, source_json='index_ent_dict.json', max_workers=5):
     """entity-label-type index for all unique entities in KG
 
     :param index: (str) name of ElasticSearch index
@@ -78,6 +82,10 @@ def fill_ent_index(index=args.elastic_index_ent, source_json='index_ent_dict.jso
 
 # REL INDEX
 def create_and_map_rel_index(index=args.elastic_index_rel):
+    # delete index if already exists:
+    if CLIENT.indices.exists(index=index):
+        CLIENT.indices.delete(index=index)
+
     mapping = {'properties': {
                     'label': {
                         'type': 'text',
@@ -85,6 +93,7 @@ def create_and_map_rel_index(index=args.elastic_index_rel):
                     }
               }}
 
+    # create index with above mapping
     CLIENT.indices.create(index=index, mappings=mapping)
 
 
@@ -107,7 +116,11 @@ def fill_rel_index(index=args.elastic_index_rel, source_json='index_rel_dict.jso
 
 
 # RDF INDEX
-def create_and_map_rdf_index(index=args.elastic_index_rdf):
+def create_and_map_rdf_index(index=args.elastic_index_rdf_full):
+    # delete index if already exists:
+    if CLIENT.indices.exists(index=index):
+        CLIENT.indices.delete(index=index)
+
     mapping = {'properties': {
                     'sid': {
                         'type': 'keyword',
@@ -139,7 +152,7 @@ def _rdf_index_op(item, index):
             CLIENT.index(index=index, id=_id, document={'sid': sid, 'rid': rid, 'oid': oid})
 
 
-def fill_rdf_index(index=args.elastic_index_rdf, source_json='index_rdf_dict.json', max_workers=5):
+def fill_rdf_index(index=args.elastic_index_rdf_full, source_json='index_rdf_dict.json', max_workers=5):
     """rdf index for all unique rdf entries (subject-relation-object) in KG
 
     :param index: (str) name of ElasticSearch index
@@ -162,39 +175,35 @@ def fill_rdf_index(index=args.elastic_index_rdf, source_json='index_rdf_dict.jso
         list(tqdm(executor.map(lambda item: _rdf_index_op(item, index), index_dict.items()), total=len(index_dict)))
 
 
-def fill_csqa_from_index_jsons(index, subset='', create=False, max_workers=5):
-    source = 'index_rel_dict.json'
-    index_rel = f'{index}_rel'
+def fill_csqa_from_index_jsons(subset='', create=False, max_workers=5):
+    index_rel, source_rel = (args.elastic_index_rel, 'index_rel_dict.json')
+    index_ent, source_ent = (args.elastic_index_ent_full, f'index_ent_dict{subset}.json')
+    index_rdf, source_rdf = (args.elastic_index_rdf_full, f'index_rdf_dict{subset}.json')
+
     if create:
         create_and_map_rel_index(index_rel)
-    fill_rel_index(index=index_rel, source_json=source)
+    fill_rel_index(index=index_rel, source_json=source_rel)
 
-    source = f'index_ent_dict{subset}.json'
-    index_ent = f'{index}_ent'
     if create:
         create_and_map_ent_index(index_ent)
-    fill_ent_index(index=index_ent, source_json=source, max_workers=max_workers)
+    fill_ent_index(index=index_ent, source_json=source_ent, max_workers=max_workers)
 
-    source = f'index_rdf_dict{subset}.json'
-    index_rdf = f'{index}_rdf'
     if create:
         create_and_map_rdf_index(index_rdf)
-    fill_rdf_index(index=index_rdf, source_json=source, max_workers=max_workers)
+    fill_rdf_index(index=index_rdf, source_json=source_rdf, max_workers=max_workers)
 
 
 if __name__ == '__main__':
     # INDEX OPERATIONS
-    index = 'csqa_wikidata'
+    old_index = 'csqa_wikidata'
 
-    # # DELETE indices
-    # CLIENT.indices.delete(index=f'{index}')  # BEWARE: This deletes EVERYTHING in the old index
-    CLIENT.indices.delete(index=f'{index}_ent')
-    CLIENT.indices.delete(index=f'{index}_rel')
-    CLIENT.indices.delete(index=f'{index}_rdf')
+    # # DELETE old index
+    if CLIENT.indices.exists(index=old_index):
+        CLIENT.indices.delete(index=old_index)  # BEWARE: This deletes EVERYTHING in the old index
 
     # CREATE, MAP and FILL indices
     subset = ''  # alternative for testing: '_first_10000'
-    fill_csqa_from_index_jsons(index, subset, create=True, max_workers=10)
+    fill_csqa_from_index_jsons(subset, create=True, max_workers=5)
 
 # TODO list
 #  DONE 0: utils.search_by_label: test reimplementation of inverse index (entity label) search to work with new index layout!
@@ -208,3 +217,7 @@ if __name__ == '__main__':
 #   .c how to evaluate the final performance?
 #  TODO 6: implement resetting of the index at the beginning of training (not necessary if we implement the TODO 5.b)
 #  TODO 7: T5 for transcribing questions to statements
+#  BONUSES:
+#  TODO B1: unify ES CLIENT inits to utils.py
+#  TODO B2: polish kg_migration of index_rdf.json
+#  TODO B3: analyze ES disk usage (https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-disk-usage.html)

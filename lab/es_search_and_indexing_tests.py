@@ -19,7 +19,7 @@ from constants import args, ROOT_PATH
 from action_executor.actions import search_by_label
 
 ELASTIC_USER = args.elastic_user
-ELASTIC_PASSWORD = args.elastic_password['notebook']  # refer to args.py --elastic_password for alternatives
+ELASTIC_PASSWORD = args.elastic_password['freya']  # refer to args.py --elastic_password for alternatives
 
 CLIENT = Elasticsearch(
     args.elastic_host,

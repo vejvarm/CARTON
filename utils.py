@@ -253,7 +253,7 @@ class Inference(object):
         self.tokenizer = BertTokenizer.from_pretrained(BERT_BASE_UNCASED)
         self.inference_actions = []
         self.es = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
-                                basic_auth=(args.elastic_user, args.elastic_password['notebook']),
+                                basic_auth=(args.elastic_user, args.elastic_password['freya']),
                                 retry_on_timeout=True)  # for inverse index search
         # self.kg = BTreeDB(args.kg_path, run_adapter=True)  # ANCHOR: ZODB implementation
 
@@ -264,7 +264,7 @@ class Inference(object):
         # based on model outpus create a final logical form to execute
         question_type_inference_data = [data for data in inference_data if args.question_type in data[QUESTION_TYPE]]
         for i, sample in enumerate(question_type_inference_data):  # ANCHOR: u wot m8? ... how is having CONTEXT_ENTITIES not cheating?
-            predictions = predictor.predict(sample[CONTEXT_QUESTION])
+            predictions = predictor.predict(sample[CONTEXT_QUESTION])  # NOTE: detokenized predictions!
             actions = []
             logical_form_prediction = predictions[LOGICAL_FORM]
             ent_count_pos = 0  # counts how many ENTITY actions we encountered in the LF so far

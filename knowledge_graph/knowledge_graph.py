@@ -179,96 +179,96 @@ class KGMigrator:
         LOGGER.info(f'Loaded subject_triples {time.perf_counter()-tic:0.2f}s')
 
         # object -> relation -> subject  # DONE
-        object_triples = ujson.loads(open(f'{self.wikidata_path}/comp_wikidata_rev.json').read())
-        LOGGER.info(f'Loaded object_triples {time.perf_counter()-tic:0.2f}s')
+        # object_triples = ujson.loads(open(f'{self.wikidata_path}/comp_wikidata_rev.json').read())
+        # LOGGER.info(f'Loaded object_triples {time.perf_counter()-tic:0.2f}s')
 
-        # relation -> subject -> object | relation -> object -> subject  # DONE
-        relation_subject_object = ujson.loads(open(f'{self.wikidata_path}/relation_subject_object.json').read())
-        relation_object_subject = ujson.loads(open(f'{self.wikidata_path}/relation_object_subject.json').read())
-        LOGGER.info(f'Loaded relation_triples {time.perf_counter()-tic:0.2f}s')
+        # # relation -> subject -> object | relation -> object -> subject  # DONE
+        # relation_subject_object = ujson.loads(open(f'{self.wikidata_path}/relation_subject_object.json').read())
+        # relation_object_subject = ujson.loads(open(f'{self.wikidata_path}/relation_object_subject.json').read())
+        # LOGGER.info(f'Loaded relation_triples {time.perf_counter()-tic:0.2f}s')
 
         # 3.a: transform all triples into unique s - r - o RDFs
         # 3.b: check if every entity in RDF has label and type
         # 3.c: add rdf entries to index
 
         # subject_triples are good as they are ... check against the subjects in those
-        LOGGER.info(f'Loaded all necessary KG files.')
-        LOGGER.info(f'RDF count: {len(subject_triples)}')
-        LOGGER.info('Starting object-rel-subject triple migration:')
-        sub_rel_objs_added = 0
-        rel_objs_added = 0
-        objs_added = 0
-        for oid, relsub_dict in tqdm(object_triples.items()):
-            for rid, sid_list in relsub_dict.items():
-                # exists already?
-                for sid in sid_list:
-                    if sid in subject_triples.keys():
-                        if rid in subject_triples[sid].keys():
-                            if oid in subject_triples[sid][rid]:
-                                pass  # this rdf already exists, so don't do anything
-                            else:  # object not present in object list for this s - r -
-                                subject_triples[sid][rid].append(oid)
-                                objs_added += 1
-                        else: # subject exists but relation doesnt for this one
-                            subject_triples[sid][rid] = [oid, ]
-                            rel_objs_added += 1
-                    else:  # subject doesn't exist yet
-                        subject_triples[sid] = {rid: [oid, ]}
-                        sub_rel_objs_added += 1
-
-        LOGGER.info(f'\t results: +sro_count: {sub_rel_objs_added} | +ro_count {rel_objs_added} | +o_count {objs_added}')
-        LOGGER.info(f'RDF count: {len(subject_triples)}')
-
-        LOGGER.info('Starting rel-subject-object triple migration:')
-        sub_rel_objs_added = 0
-        rel_objs_added = 0
-        objs_added = 0
-        for rid, subobj_dict in tqdm(relation_subject_object.items()):
-            for sid, oid_list in subobj_dict.items():
-                for oid in oid_list:
-                    # exists already?
-                    if sid in subject_triples.keys():
-                        if rid in subject_triples[sid].keys():
-                                if oid in subject_triples[sid][rid]:
-                                    pass  # this rdf already exists, so don't do anything
-                                else:  # object not present in object list for this s - r -
-                                    subject_triples[sid][rid].append(oid)
-                                    objs_added += 1
-                        else: # subject exists but relation doesnt for this one
-                            subject_triples[sid][rid] = [oid, ]
-                            rel_objs_added += 1
-                    else:  # subject doesn't exist yet
-                        subject_triples[sid] = {rid: [oid, ]}
-                        sub_rel_objs_added += 1
-
-        LOGGER.info(f'\t results: +sro_count: {sub_rel_objs_added} | +ro_count {rel_objs_added} | +o_count {objs_added}')
-        LOGGER.info(f'RDF count: {len(subject_triples)}')
-
-        LOGGER.info('Starting rel-object-subject triple migration:')
-        sub_rel_objs_added = 0
-        rel_objs_added = 0
-        objs_added = 0
-        for rid, objsub_dict in tqdm(relation_object_subject.items()):
-            for oid, sid_list in objsub_dict.items():
-                for sid in sid_list:
-                    # exists already?
-                    if sid in subject_triples.keys():
-                        if rid in subject_triples[sid].keys():
-                            if oid in subject_triples[sid][rid]:
-                                pass  # this rdf already exists, so don't do anything
-                            else:  # object not present in object list for this s - r -
-                                subject_triples[sid][rid].append(oid)
-                                objs_added += 1
-                        else: # subject exists but relation doesnt for this one
-                            subject_triples[sid][rid] = [oid, ]
-                            rel_objs_added += 1
-                    else:  # subject doesn't exist yet
-                        subject_triples[sid] = {rid: [oid, ]}
-                        sub_rel_objs_added += 1
-
-        LOGGER.info(
-            f'\t results: +sro_count: {sub_rel_objs_added} | +ro_count {rel_objs_added} | +o_count {objs_added}')
-        LOGGER.info(f'RDF count: {len(subject_triples)}')
+        # LOGGER.info(f'Loaded all necessary KG files.')
+        # LOGGER.info(f'RDF count: {len(subject_triples)}')
+        # LOGGER.info('Starting object-rel-subject triple migration:')
+        # sub_rel_objs_added = 0
+        # rel_objs_added = 0
+        # objs_added = 0
+        # for oid, relsub_dict in tqdm(object_triples.items()):
+        #     for rid, sid_list in relsub_dict.items():
+        #         # exists already?
+        #         for sid in sid_list:
+        #             if sid in subject_triples.keys():
+        #                 if rid in subject_triples[sid].keys():
+        #                     if oid in subject_triples[sid][rid]:
+        #                         pass  # this rdf already exists, so don't do anything
+        #                     else:  # object not present in object list for this s - r -
+        #                         subject_triples[sid][rid].append(oid)
+        #                         objs_added += 1
+        #                 else: # subject exists but relation doesnt for this one
+        #                     subject_triples[sid][rid] = [oid, ]
+        #                     rel_objs_added += 1
+        #             else:  # subject doesn't exist yet
+        #                 subject_triples[sid] = {rid: [oid, ]}
+        #                 sub_rel_objs_added += 1
+        #
+        # LOGGER.info(f'\t results: +sro_count: {sub_rel_objs_added} | +ro_count {rel_objs_added} | +o_count {objs_added}')
+        # LOGGER.info(f'RDF count: {len(subject_triples)}')
+        #
+        # LOGGER.info('Starting rel-subject-object triple migration:')
+        # sub_rel_objs_added = 0
+        # rel_objs_added = 0
+        # objs_added = 0
+        # for rid, subobj_dict in tqdm(relation_subject_object.items()):
+        #     for sid, oid_list in subobj_dict.items():
+        #         for oid in oid_list:
+        #             # exists already?
+        #             if sid in subject_triples.keys():
+        #                 if rid in subject_triples[sid].keys():
+        #                         if oid in subject_triples[sid][rid]:
+        #                             pass  # this rdf already exists, so don't do anything
+        #                         else:  # object not present in object list for this s - r -
+        #                             subject_triples[sid][rid].append(oid)
+        #                             objs_added += 1
+        #                 else: # subject exists but relation doesnt for this one
+        #                     subject_triples[sid][rid] = [oid, ]
+        #                     rel_objs_added += 1
+        #             else:  # subject doesn't exist yet
+        #                 subject_triples[sid] = {rid: [oid, ]}
+        #                 sub_rel_objs_added += 1
+        #
+        # LOGGER.info(f'\t results: +sro_count: {sub_rel_objs_added} | +ro_count {rel_objs_added} | +o_count {objs_added}')
+        # LOGGER.info(f'RDF count: {len(subject_triples)}')
+        #
+        # LOGGER.info('Starting rel-object-subject triple migration:')
+        # sub_rel_objs_added = 0
+        # rel_objs_added = 0
+        # objs_added = 0
+        # for rid, objsub_dict in tqdm(relation_object_subject.items()):
+        #     for oid, sid_list in objsub_dict.items():
+        #         for sid in sid_list:
+        #             # exists already?
+        #             if sid in subject_triples.keys():
+        #                 if rid in subject_triples[sid].keys():
+        #                     if oid in subject_triples[sid][rid]:
+        #                         pass  # this rdf already exists, so don't do anything
+        #                     else:  # object not present in object list for this s - r -
+        #                         subject_triples[sid][rid].append(oid)
+        #                         objs_added += 1
+        #                 else: # subject exists but relation doesnt for this one
+        #                     subject_triples[sid][rid] = [oid, ]
+        #                     rel_objs_added += 1
+        #             else:  # subject doesn't exist yet
+        #                 subject_triples[sid] = {rid: [oid, ]}
+        #                 sub_rel_objs_added += 1
+        #
+        # LOGGER.info(
+        #     f'\t results: +sro_count: {sub_rel_objs_added} | +ro_count {rel_objs_added} | +o_count {objs_added}')
+        # LOGGER.info(f'RDF count: {len(subject_triples)}')
 
         index_rdf_dict = subject_triples
 

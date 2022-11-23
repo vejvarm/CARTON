@@ -20,7 +20,7 @@ from utils import (NoamOpt, AverageMeter,
 # import constants
 from constants import *
 
-# set logger
+# set LOGGER
 logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     datefmt='%d/%m/%Y %I:%M:%S %p',
                     level=logging.INFO,
@@ -28,7 +28,8 @@ logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
                         logging.FileHandler(f'{args.path_results}/train_{args.task}.log', 'w'),
                         logging.StreamHandler()
                     ])
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.DEBUG)
 
 # set a seed value
 random.seed(args.seed)
@@ -52,7 +53,7 @@ def main():
     # initialize model weights
     init_weights(model)
 
-    logger.info(f'The model has {sum(p.numel() for p in model.parameters() if p.requires_grad):,} trainable parameters')
+    LOGGER.info(f'The model has {sum(p.numel() for p in model.parameters() if p.requires_grad):,} trainable parameters')
 
     # define loss function (criterion)
     criterion = {
@@ -71,15 +72,15 @@ def main():
 
     if args.resume:
         if os.path.isfile(args.resume):
-            logger.info(f"=> loading checkpoint '{args.resume}''")
+            LOGGER.info(f"=> loading checkpoint '{args.resume}''")
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint[EPOCH]
             best_val = checkpoint[BEST_VAL]
             model.load_state_dict(checkpoint[STATE_DICT])
             optimizer.optimizer.load_state_dict(checkpoint[OPTIMIZER])
-            logger.info(f"=> loaded checkpoint '{args.resume}' (epoch {checkpoint[EPOCH]})")
+            LOGGER.info(f"=> loaded checkpoint '{args.resume}' (epoch {checkpoint[EPOCH]})")
         else:
-            logger.info(f"=> no checkpoint found at '{args.resume}'")
+            LOGGER.info(f"=> no checkpoint found at '{args.resume}'")
             best_val = float('inf')
     else:
         best_val = float('inf')
@@ -93,17 +94,17 @@ def main():
 
     # ANCHOR: BucketIterator use deprecated ... use torch.utils.data.dataloader.DataLoader / DataLoader2
 
-    logger.info('Loaders prepared.')
-    logger.info(f"Training data: {len(train_data.examples)}")
-    logger.info(f"Validation data: {len(val_data.examples)}")
-    logger.info(f'Question example: {train_data.examples[0].input}')
-    logger.info(f'Logical form example: {train_data.examples[0].logical_form}')
-    logger.info(f"Unique tokens in input vocabulary: {len(vocabs[INPUT])}")
-    logger.info(f"Unique tokens in logical form vocabulary: {len(vocabs[LOGICAL_FORM])}")
-    logger.info(f"Unique tokens in ner vocabulary: {len(vocabs[NER])}")
-    logger.info(f"Unique tokens in coref vocabulary: {len(vocabs[COREF])}")
-    logger.info(f'Batch: {args.batch_size}')
-    logger.info(f'Epochs: {args.epochs}')
+    LOGGER.info('Loaders prepared.')
+    LOGGER.info(f"Training data: {len(train_data.examples)}")
+    LOGGER.info(f"Validation data: {len(val_data.examples)}")
+    LOGGER.info(f'Question example: {train_data.examples[0].input}')
+    LOGGER.info(f'Logical form example: {train_data.examples[0].logical_form}')
+    LOGGER.info(f"Unique tokens in input vocabulary: {len(vocabs[INPUT])}")
+    LOGGER.info(f"Unique tokens in logical form vocabulary: {len(vocabs[LOGICAL_FORM])}")
+    LOGGER.info(f"Unique tokens in ner vocabulary: {len(vocabs[NER])}")
+    LOGGER.info(f"Unique tokens in coref vocabulary: {len(vocabs[COREF])}")
+    LOGGER.info(f'Batch: {args.batch_size}')
+    LOGGER.info(f'Epochs: {args.epochs}')
 
     # run epochs
     for epoch in range(args.start_epoch, args.epochs):
@@ -120,7 +121,7 @@ def main():
                 BEST_VAL: best_val,
                 OPTIMIZER: optimizer.optimizer.state_dict(),
                 CURR_VAL: val_loss})
-            logger.info(f'* Val loss: {val_loss:.4f}')
+            LOGGER.info(f'* Val loss: {val_loss:.4f}')
 
 
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
@@ -143,8 +144,21 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
 
         # compute output
         output = model(input, logical_form[:, :-1])
-        print(f'output[NER] in train: {output[NER]}')
-        print(f'output[COREF] in train: {output[COREF]}')
+        LOGGER.debug(f'output[NER] in train: ({output[NER].shape}) {output[NER]}')
+        LOGGER.debug(f'output[COREF] in train: ({output[COREF].shape}) {output[COREF]}')
+
+        ner_out = output[NER].detach().argmax(1).tolist()
+        LOGGER.debug(f'ner_out in train: ({len(ner_out)}) {ner_out}')
+        ner_str = [vocabs[NER].itos[i] for i in ner_out][1:-1]
+        LOGGER.debug(f'ner_str in train: ({len(ner_str)}) {ner_str}')
+        ner_indices = {k: tag.split('-')[-1] for k, tag in enumerate(ner_str) if
+                                   tag.startswith(B) or tag.startswith(I)}  # idx: type_id
+        LOGGER.debug(f'ner_indices in train: ({len(ner_indices)}) {ner_indices}')
+        # coref_indices = {k: tag for k, tag in enumerate(coref_str) if tag not in ['NA']}
+        # create a ner dictionary with index as key and entity as value
+        # TODO: WE ACTUALLY DON'T NEED ANY OF THIS!
+        # TODO: THE NER MODULE IS NOT LEARING ANYTHING NEW ... we don't need a specific loss for that
+        # TODO: ONLY THING WE NEED IS TO ADD NEW ENTRIES TO THE CSQA Dataset!
 
         # NER module in TRAIN
         # TODO: implement the ner module functionality, as in Inference,
@@ -186,7 +200,7 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
 
         batch_progress = int(((i+1)/len(train_loader))*100)  # percentage
         if batch_progress > batch_progress_old:
-            logger.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:02d}% - Time: {batch_time.sum:0.2f}s')
+            LOGGER.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:02d}% - Time: {batch_time.sum:0.2f}s')
         batch_progress_old = batch_progress
 
 
@@ -245,7 +259,7 @@ def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss
             losses_pred.update(loss_pred.detach(), input.size(0))
             losses_type.update(loss_type.detach(), input.size(0))
 
-    logger.info(f"Val losses:: LF: {losses_lf.avg} | NER: {losses_ner.avg} | COREF: {losses_coref.avg} | "
+    LOGGER.info(f"Val losses:: LF: {losses_lf.avg} | NER: {losses_ner.avg} | COREF: {losses_coref.avg} | "
                 f"PRED: {losses_pred.avg} | TYPE: {losses_type.avg}")
 
     return losses.avg

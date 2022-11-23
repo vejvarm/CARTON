@@ -1,6 +1,6 @@
 import argparse
 
-INDEX_ROOT = 'csqa_wikidata_test'
+INDEX_ROOT = 'csqa_wikidata'
 
 def get_parser():
     parser = argparse.ArgumentParser(description='CARTON')
@@ -52,10 +52,11 @@ def get_parser():
     parser.add_argument('--valfreq', default=1, type=int)
     parser.add_argument('--resume', default='', type=str)
     parser.add_argument('--clip', default=5, type=int)
-    parser.add_argument('--batch_size', default=200, type=int)  # NOTE: changed from 25
+    parser.add_argument('--batch_size', default=10, type=int)  # NOTE: changed from 25
 
     # test and inference
-    parser.add_argument('--model_path', default='experiments/models/CARTONwNER_e9_v0.0183_multitask.pth.tar', type=str)
+    parser.add_argument('--model_path', default='experiments/models/CARTONwNERwLinPtr_e42_v0.0145_multitask.pth.tar',
+                        type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--inference_partition', default='test', choices=['val', 'test'], type=str)
     parser.add_argument('--question_type', default='Simple Question (Direct)',
@@ -79,7 +80,7 @@ def get_parser():
     parser.add_argument('--elastic_index_ent_full', default=f'{INDEX_ROOT}_ent_full')
     parser.add_argument('--elastic_index_rel', default=f'{INDEX_ROOT}_rel')  # TODO: implement relation search
     parser.add_argument('--elastic_index_rdf', default=f'{INDEX_ROOT}_rdf')
-    parser.add_argument(f'--elastic_index_rdf_full', default=f'{INDEX_ROOT}_rdf_full')
+    parser.add_argument('--elastic_index_rdf_full', default=f'{INDEX_ROOT}_rdf_full')
     parser.add_argument('--elastic_host', default='https://localhost:9200')
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')

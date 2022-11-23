@@ -39,4 +39,8 @@ if __name__ == '__main__':
     # make_index_jsons()
     pass
 
+    kg_migrator = KGMigrator()
+
+    kg_migrator.construct_index_rdf_dict(dump_to='index_rdf_dict.json')
+
     # NOTE: For filling ES indices, refer to fill_es.py
