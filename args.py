@@ -105,6 +105,6 @@ def get_parser():
     parser.add_argument('--elastic_host', default='https://localhost:9200')
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')
-    parser.add_argument('--elastic_password', default=Passwords.FREYA.value, choices=[pw.value for pw in Passwords])
+    parser.add_argument('--elastic_password', default=Passwords.NOTEBOOK.value, choices=[pw.value for pw in Passwords])
 
     return parser

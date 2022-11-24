@@ -1,6 +1,6 @@
 # DONE 0: utils.search_by_label: test reimplementation of inverse index (entity label) search to work with new index layout!
 #  ・ tested in es_search_and_indexing_tests.py
-# DONE 1: should we implement inverse index search in actions.py?
+# DONE 1: should we implement inverse index search in action_executor.actions.py?
 # DONE 2: in actions.py: finish implementing insert, insert_reverse, set_labels, set_types
 # NOPE 3: in train.py.train() implement ner module functionality and evaluation
 # NOPE 4: how to deal with initial incompetence of the NER module while adding entities? Warmup with adding disabled, but reward gained?

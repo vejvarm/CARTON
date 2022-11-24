@@ -17,17 +17,9 @@ from elasticsearch import Elasticsearch
 
 from constants import args, ROOT_PATH
 from action_executor.actions import search_by_label
-from helpers import setup_logger
+from helpers import setup_logger, connect_to_elasticsearch
 
-ELASTIC_USER = args.elastic_user
-ELASTIC_PASSWORD = args.elastic_password  # refer to args.py --elastic_password for alternatives
-
-CLIENT = Elasticsearch(
-    args.elastic_host,
-    ca_certs=f'{ROOT_PATH}/{args.elastic_certs.removeprefix("./")}',
-    basic_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
-    retry_on_timeout=True,
-)
+CLIENT = connect_to_elasticsearch()
 
 # CLIENT.indices.put_mapping(index='')
 

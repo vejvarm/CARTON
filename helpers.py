@@ -5,6 +5,7 @@ import os.path
 import sqlite3
 import numpy as np
 from matplotlib import pyplot as plt
+from elasticsearch import Elasticsearch
 
 from constants import *
 
@@ -253,6 +254,15 @@ def setup_logger(name=__name__, loglevel=logging.WARNING, handlers=(logging.Stre
 
     return logging.getLogger(name)
 
+
+def connect_to_elasticsearch(user=args.elastic_user, password=args.elastic_password):
+    """Connect to Elasticsearch client using urls and credentials from args.py"""
+    return Elasticsearch(
+        args.elastic_host,
+        ca_certs=f'{ROOT_PATH}/{args.elastic_certs.removeprefix("./")}',
+        basic_auth=(user, password),  # refer to args.py --elastic_password for alternatives
+        retry_on_timeout=True,
+    )
 
 
 if __name__ == '__main__':

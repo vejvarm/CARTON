@@ -2,20 +2,22 @@
 # pylint: disable=import-error
 # ----------------------------
 # reload for debugging
+import os
 import sys
-sys.path.append("..")
-from action_annotators.actions import ActionOperator
-from action_annotators.simple import Simple
-from action_annotators.verification import Verification
-from action_annotators.logical import Logical
-from action_annotators.quantitative import Quantitative
-from action_annotators.comparative import Comparative
-from action_annotators.clarification import Clarification
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from action_executor.actions import ESActionOperator
+from annotate_csqa.action_annotators.simple import Simple
+from annotate_csqa.action_annotators.verification import Verification
+from annotate_csqa.action_annotators.logical import Logical
+from annotate_csqa.action_annotators.quantitative import Quantitative
+from annotate_csqa.action_annotators.comparative import Comparative
+from annotate_csqa.action_annotators.clarification import Clarification
+
 
 class ActionAnnotator:
-    def __init__(self, kg):
+    def __init__(self, client):
         # load operations and annotators
-        self.operator = ActionOperator(kg)
+        self.operator = ESActionOperator(client)
         self.simple_annotator = Simple(self.operator)
         self.verification_annotator = Verification(self.operator)
         self.quantitative_annotator = Quantitative(self.operator)

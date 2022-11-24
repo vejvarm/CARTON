@@ -11,7 +11,8 @@ from knowledge_graph.knowledge_graph import KnowledgeGraph
 from knowledge_graph.ZODBConnector import BTreeDB
 from action_annotators.annotate import ActionAnnotator
 from ner_annotators.annotate import NERAnnotator
-ROOT_PATH = Path(os.path.dirname(__file__)).parent
+from constants import ROOT_PATH
+from helpers import connect_to_elasticsearch
 
 # add arguments to parser
 parser = argparse.ArgumentParser(description='Preprocess CSQA dataset')
@@ -38,17 +39,18 @@ print(f'Done, {len(csqa_data)} folders loaded!')
 
 # load kg
 # kg = KnowledgeGraph()
-kg = BTreeDB(args.kg_path)  # ANCHOR: ZODB implementation of KG
+kg = BTreeDB(args.kg_path, run_adapter=True, initialise=False)  # ANCHOR: ZODB implementation of KG
 kg.kg_adapter()  # to fill labels and triples dictionaries
+client = connect_to_elasticsearch()
 
 # create ner and action annotator
 if args.annotation_task == 'all':
-    action_annotator = ActionAnnotator(kg)
-    ner_annotator = NERAnnotator(kg, args.partition)
+    action_annotator = ActionAnnotator(client)
+    ner_annotator = NERAnnotator(client, args.partition)
 elif args.annotation_task == 'actions':
-    action_annotator = ActionAnnotator(kg)
+    action_annotator = ActionAnnotator(client)
 elif args.annotation_task == 'ner':
-    ner_annotator = NERAnnotator(kg, args.partition)
+    ner_annotator = NERAnnotator(client, args.partition)
 
 # create annotated data
 total_conv = len(csqa_files)

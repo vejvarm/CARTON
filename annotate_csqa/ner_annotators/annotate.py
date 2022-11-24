@@ -10,16 +10,17 @@ from glob import glob
 from pathlib import Path
 from unidecode import unidecode
 from transformers import BertTokenizer
-from ner_annotators.simple import Simple
-from ner_annotators.verification import Verification
-from ner_annotators.logical import Logical
-from ner_annotators.quantitative import Quantitative
-from ner_annotators.comparative import Comparative
-from ner_annotators.clarification import Clarification
+from annotate_csqa.ner_annotators.simple import Simple
+from annotate_csqa.ner_annotators.verification import Verification
+from annotate_csqa.ner_annotators.logical import Logical
+from annotate_csqa.ner_annotators.quantitative import Quantitative
+from annotate_csqa.ner_annotators.comparative import Comparative
+from annotate_csqa.ner_annotators.clarification import Clarification
 ROOT_PATH = Path(os.path.dirname(__file__)).parent.parent
 
+
 class NERAnnotator:
-    def __init__(self, kg, partition):
+    def __init__(self, client, partition):
         # read preprocessed data
         self.preprocessed_data = self._read_preprocessed_data(partition)
 
@@ -27,12 +28,12 @@ class NERAnnotator:
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased').tokenize
 
         # create annotators
-        self.simple_annotator = Simple(kg, self.preprocessed_data, self.tokenizer)
-        self.verification_annotator = Verification(kg, self.preprocessed_data, self.tokenizer)
-        self.quantitative_annotator = Quantitative(kg, self.preprocessed_data, self.tokenizer)
-        self.logical_annotator = Logical(kg, self.preprocessed_data, self.tokenizer)
-        self.comparative_annotator = Comparative(kg, self.preprocessed_data, self.tokenizer)
-        self.clarification_annotator = Clarification(kg, self.preprocessed_data, self.tokenizer, self.simple_annotator, self.quantitative_annotator, self.comparative_annotator)
+        self.simple_annotator = Simple(client, self.preprocessed_data, self.tokenizer)
+        self.verification_annotator = Verification(client, self.preprocessed_data, self.tokenizer)
+        self.quantitative_annotator = Quantitative(client, self.preprocessed_data, self.tokenizer)
+        self.logical_annotator = Logical(client, self.preprocessed_data, self.tokenizer)
+        self.comparative_annotator = Comparative(client, self.preprocessed_data, self.tokenizer)
+        self.clarification_annotator = Clarification(client, self.preprocessed_data, self.tokenizer, self.simple_annotator, self.quantitative_annotator, self.comparative_annotator)
 
     def _read_preprocessed_data(self, partition):
         # read preprocessed data

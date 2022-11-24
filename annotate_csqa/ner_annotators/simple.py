@@ -12,10 +12,10 @@ Simple Question (Ellipsis)
 - only subject is changed, parent and predicate remains same - DONE
 - Incomplete|object parent is changed, subject and predicate remain same - DONE
 """
-from ner_annotators.ner_base import NERBase
+from annotate_csqa.ner_annotators.ner_base import NERBase
 class Simple(NERBase):
-    def __init__(self, kg, preprocessed_data, tokenizer):
-        super().__init__(kg, preprocessed_data, tokenizer)
+    def __init__(self, client, preprocessed_data, tokenizer):
+        super().__init__(client, preprocessed_data, tokenizer)
 
     def __call__(self, user, system):
         # Clarification questions, will be handled from clarification class

@@ -7,34 +7,34 @@
 import time
 import logging
 
-from multiprocessing import Pool
-
 from ordered_set import OrderedSet
 
 from action_executor.actions import ESActionOperator
-from elasticsearch import Elasticsearch
-import elasticsearch
+from helpers import connect_to_elasticsearch
 
 from helpers import setup_logger
 
-ELASTIC_USER = 'elastic'
-ELASTIC_PASSWORD = 'hZiYNU+ye9izCApoff-v'  # '1jceIiR5k6JlmSyDpNwK'
-
-CLIENT = Elasticsearch(
-    "https://localhost:9200",
-    ca_certs="../knowledge_graph/certs/http_ca.crt",
-    basic_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
-    retry_on_timeout=True,
-)
+CLIENT = connect_to_elasticsearch()
 
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 if __name__ == '__main__':
-    aop = ESActionOperator(CLIENT)
+    index_ent = 'csqa_wikidata_test_ent'
+    aop = ESActionOperator(CLIENT, index_ent=index_ent)
+
+    # TEST
+    eid = 'Q11606822'
+    res = CLIENT.get(index=index_ent, id=eid)
+    print(f"_id: {res['_id']} | _source: {res['_source']}")
+
+    label = aop.get_label(eid)
+    print(label)
 
     # TEST IF INDEX LOOKS OK
     res = CLIENT.search(index='csqa_wikidata_test_rdf', query={'match_all': {}})
     print(f"_id: {res['hits']['hits'][0]['_id']} | _source: {res['hits']['hits'][0]['_source']}")
+
+    exit()
 
     # FIND OBJECTS by SUBJECT+PRED
     objects = aop.find(['Q1253484', 'Q1253487'], 'P105')  # should return -> Q7432  # ANCHOR: WORKS on csqa_test

@@ -1,6 +1,5 @@
 from __future__ import division
 
-from typing import Union
 import logging
 
 import elasticsearch
@@ -34,9 +33,6 @@ class ESActionOperator:
             terms = [terms]
 
         return {'terms': {field: [t.lower() for t in terms]}}
-
-    def _get_tp_and_label(self, oid: str):
-        pass
 
     def _get_by_ids(self, obj_set: OrderedSet['str'], es_index: str):
         """
@@ -72,6 +68,24 @@ class ESActionOperator:
         LOGGER.debug(f"res_dict in self._get_by_ids: {res_dict}")
 
         return res_dict
+
+    def get_label(self, eid: str):
+        """Get entity label for given entity (eid) if it exists"""
+        index = self.index_ent
+        if not self.client.exists(index=index, id=eid):
+            LOGGER.warning(f"get_label in ESActionOperator: entity with {eid} doesn't exist in {index}.")
+            return 'NA'
+
+        return self.client.get(index=index, id=eid)['_source']['label']
+
+    def get_types(self, eid: str):
+        """Get list of types for given entity (eid) if it exists."""
+        index = self.index_ent
+        if not self.client.exists(index=index, id=eid):
+            LOGGER.warning(f"get_types in ESActionOperator: entity with {eid} doesn't exist in {index}.")
+            return []
+
+        return self.client.get(index=index, id=eid)['_source']['types']
 
     def find(self, e: list[str], rid: str):
         if e is None or rid is None:
