@@ -330,7 +330,7 @@ class ESActionOperator:
             return None
 
         if not self.client.exists(index=self.index_ent, id=sid):
-            LOGGER.info(f"insert in actions: entry with id {sid} doesn't exists in index_ent. Creating empty")
+            LOGGER.warning(f"insert in actions: entry with id {sid} doesn't exists in {self.index_ent}! (Problem in NER module?)")
             # NOTE: This shouldn't be possile to happen, as we create new entities in NER module
 
         self.client.index(index=self.index_rdf, id=_id, document={'sid': sid, 'rid': rid, 'oid': oid})
@@ -396,6 +396,27 @@ class ESActionOperator:
                 op_results.append('noop')
 
         return op_results
+
+    def delete_rdf(self, sid: str, rid: str, oid: str):
+        """ Remove single RDF entry from the KG
+
+        If not exists: do nothing
+
+        :param sid: (str) id of subject
+        :param rid: (str) id of relation
+        :param oid: (str) id of object (NOTE: can be '')
+        :return: OrderedSet[sid, oid]
+        """
+        _id = f'{sid}{rid}{oid}'.upper()
+        if not self.client.exists(index=self.index_rdf, id=_id):
+            LOGGER.info(f"delete_rdf in actions: entry with id {_id} doesn't exist in {self.index_rdf}. No action")
+            return None
+
+        self.client.delete(index=self.index_rdf, id=_id)
+        LOGGER.info(f'delete_rdf in actions: entry with id {_id} was removed from {self.index_rdf}')
+
+        return OrderedSet([sid, oid])
+
 
 
 def search_by_label(client, query: str, filter_type: str, res_size=50, index=args.elastic_index_ent):

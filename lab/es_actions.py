@@ -15,12 +15,27 @@ from helpers import connect_to_elasticsearch
 from helpers import setup_logger
 
 CLIENT = connect_to_elasticsearch()
-
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 if __name__ == '__main__':
     index_ent = 'csqa_wikidata_test_ent'
-    aop = ESActionOperator(CLIENT, index_ent=index_ent)
+    index_rdf = 'csqa_wikidata_test_rdf'
+    aop = ESActionOperator(CLIENT, index_ent=index_ent, index_rdf=index_rdf)
+
+
+    # TEST deleting
+    sid = "Q15140125"
+    rid = "P31"
+    oid = "Q20010800"
+    _id = f"{sid}{rid}{oid}"
+    print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
+    print(f"Try insert: {aop.insert(sid, rid, oid)}")
+    print(f"Before delete: {CLIENT.get(index=index_rdf, id=_id)}")
+    print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
+    print(f"After delete: {CLIENT.exists(index=index_rdf, id=_id)}")
+    print(f"Try insert: {aop.insert(sid, rid, oid)}")
+    print(f"After insert: {CLIENT.get(index=index_rdf, id=_id)}")
+    print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
 
     # TEST
     eid = 'Q11606822'
