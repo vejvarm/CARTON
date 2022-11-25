@@ -22,7 +22,6 @@ if __name__ == '__main__':
     index_rdf = 'csqa_wikidata_test_rdf'
     aop = ESActionOperator(CLIENT, index_ent=index_ent, index_rdf=index_rdf)
 
-
     # TEST deleting
     sid = "Q15140125"
     rid = "P31"

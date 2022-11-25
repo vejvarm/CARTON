@@ -20,6 +20,6 @@
 #       3. embed those to the new dataset
 
 # BONUSES:
-# TODO B1: unify ES CLIENT inits to utils.py
+# DONE B1: unify ES CLIENT inits to utils.py
 # TODO B2: polish kg_migration of index_rdf.json
 # TODO B3: analyze ES disk usage (https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-disk-usage.html)
