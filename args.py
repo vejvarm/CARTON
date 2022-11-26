@@ -4,6 +4,12 @@ from enum import Enum
 INDEX_ROOT = 'csqa_wikidata'
 
 
+class KGType(Enum):
+    MEMORY = 'memory'
+    ZODB = 'zodb'
+    ELASTICSEARCH = 'elasticsearch'
+
+
 class Task(Enum):
     MULTITASK = 'multitask'
     LOGICAL_FORM = 'logical_form'
@@ -48,7 +54,7 @@ def get_parser():
     # data
     parser.add_argument('--data_path', default='/data/final/csqa')
     parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
-    parser.add_argument('--kg_path', default='./knowledge_graph/Wikidata.fs')
+    parser.add_argument('--kg_type', default=KGType.ELASTICSEARCH.value, choices=[tp.value for tp in KGType])
 
     # experiments
     parser.add_argument('--snapshots', default='experiments/snapshots', type=str)

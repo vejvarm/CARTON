@@ -7,8 +7,6 @@ import json
 import argparse
 from glob import glob
 from pathlib import Path
-from knowledge_graph.knowledge_graph import KnowledgeGraph
-from knowledge_graph.ZODBConnector import BTreeDB
 from action_annotators.annotate import ActionAnnotator
 from ner_annotators.annotate import NERAnnotator
 from constants import ROOT_PATH
@@ -38,9 +36,7 @@ for path in csqa_files:
 print(f'Done, {len(csqa_data)} folders loaded!')
 
 # load kg
-# kg = KnowledgeGraph()
-kg = BTreeDB(args.kg_path, run_adapter=True, initialise=False)  # ANCHOR: ZODB implementation of KG
-kg.kg_adapter()  # to fill labels and triples dictionaries
+# TODO: make more universal for other types of data source (ZODBKG vs JSONKG vs Elasticsearch client)
 client = connect_to_elasticsearch()
 
 # create ner and action annotator

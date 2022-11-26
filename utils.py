@@ -255,7 +255,6 @@ class Inference(object):
         self.es = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
                                 basic_auth=(args.elastic_user, args.elastic_password),
                                 retry_on_timeout=True)  # for inverse index search
-        # self.kg = BTreeDB(args.kg_path, run_adapter=True)  # ANCHOR: ZODB implementation
 
     def construct_actions(self, inference_data, predictor):
         LOGGER.info(f'Constructing actions for: {args.question_type}')

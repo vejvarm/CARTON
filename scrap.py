@@ -1,7 +1,6 @@
 from unidecode import unidecode
 from time import perf_counter
-from knowledge_graph.ZODBConnector import BTreeDB
-from knowledge_graph.knowledge_graph import MiniKG
+from knowledge_graph.KnowledgeGraphs import KGZODB, MiniKGWikidataJSON
 from elasticsearch import Elasticsearch
 
 from utils import rapidfuzz_query
@@ -35,8 +34,8 @@ def es_query(query, client):
 
 
 if __name__ == '__main__':
-    kg = BTreeDB('./knowledge_graph/Wikidata.fs', run_adapter=True)
-    kg_memory = MiniKG()
+    kg = KGZODB('./knowledge_graph/Wikidata.fs', run_adapter=True)
+    kg_memory = MiniKGWikidataJSON()
     client = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
                             basic_auth=(args.elastic_user, args.elastic_password))  # for inverse index search
 

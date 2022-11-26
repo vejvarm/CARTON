@@ -3,6 +3,7 @@ from __future__ import division
 import logging
 
 import elasticsearch
+from elasticsearch import Elasticsearch
 from ordered_set import OrderedSet
 from unidecode import unidecode
 from random import randint
@@ -16,7 +17,8 @@ LOGGER.setLevel(logging.WARNING)
 class ActionOperator:
 
     def __init__(self, kg):
-        self.kg = kg
+        if kg is not None:
+            self.kg = kg
 
     def find(self, e, p):
         if isinstance(e, list):
@@ -177,12 +179,12 @@ class ActionOperator:
 
 
 class ESActionOperator(ActionOperator):
-    def __init__(self, es_client,
+    def __init__(self, client: Elasticsearch,
                  index_ent=args.elastic_index_ent_full,
                  index_rel=args.elastic_index_rel,
                  index_rdf=args.elastic_index_rdf_full):
         super().__init__(None)
-        self.client = es_client
+        self.client = client
         self.index_ent = index_ent
         self.index_rel = index_rel
         self.index_rdf = index_rdf
@@ -534,7 +536,7 @@ class ESActionOperator(ActionOperator):
         return OrderedSet([sid, oid])
 
 
-def search_by_label(client, query: str, filter_type: str, res_size=50, index=args.elastic_index_ent):
+def search_by_label(client: Elasticsearch, query: str, filter_type: str, res_size=50, index=args.elastic_index_ent):
     """ ElasticSearch implementation of inverse index Fuzzy search. Essentially searching for a document with specific label
     utilizing a bit of fuzziness to account for misspellings and typos.
 
@@ -551,7 +553,7 @@ def search_by_label(client, query: str, filter_type: str, res_size=50, index=arg
     return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
 
 
-def create_entity(client, eid: str=None, label: str=None, types: list[str] = tuple(), production=False, eid_range=(1000000, 9999999)):
+def create_entity(client: Elasticsearch, eid: str=None, label: str=None, types: list[str] = tuple(), production=False, eid_range=(1000000, 9999999)):
     """ create new entity in args.elastic_index_ent
 
     :param client: Elasticsearch client object

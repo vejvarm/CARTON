@@ -4,14 +4,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import time
 import json
 import argparse
-from pathlib import Path
-from knowledge_graph.ZODBConnector import BTreeDB
+from knowledge_graph.KnowledgeGraphs import KGLoader
 from executor import ActionExecutor
 from meters import AccuracyMeter, F1scoreMeter
 from helpers import enforce_question_type
-ROOT_PATH = Path(os.path.dirname(__file__)).parent
-
-from constants import *
+from constants import args, ROOT_PATH
 
 # add arguments to parser
 parser = argparse.ArgumentParser(description='Execute actions')
@@ -20,12 +17,9 @@ parser.add_argument('--question_type', default='Simple Question (Direct)', help=
 parser.add_argument('--max_results', default=1000, help='maximum number of results')
 # args = parser.parse_args()
 
-# load kg
-kg = BTreeDB(args.kg_path)  # ANCHOR: ZODB implementation
-kg.kg_adapter()  # to fill labels and triples dictionaries
-
 # load action executor
-action_executor = ActionExecutor(kg)
+source = KGLoader.load_kg()
+action_executor = ActionExecutor(source)
 
 # define question type meters
 question_types_meters = {

@@ -12,7 +12,7 @@ from random import randint
 import elastic_transport
 from tqdm import tqdm
 from unidecode import unidecode
-from knowledge_graph.knowledge_graph import MiniKG
+from knowledge_graph.KnowledgeGraphs import MiniKGWikidataJSON
 from elasticsearch import Elasticsearch
 
 from constants import args, ROOT_PATH
@@ -138,7 +138,7 @@ def mock_entries_experiment():
 
 def run_indexing_tests(index='csqa_wikidata'):
     # load necessary KG entries
-    kg = MiniKG()
+    kg = MiniKGWikidataJSON()
     kg_entities = kg.id_entity.items()
     kg_types = kg.entity_type
     print(f'Num of wikidata entities: {len(kg_entities)}')

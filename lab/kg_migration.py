@@ -3,7 +3,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ujson
 import logging
-from knowledge_graph.knowledge_graph import KGMigrator, check_consistency
+from knowledge_graph.KnowledgeGraphs import KG2ElasticIndexMigrator, check_consistency
 from helpers import setup_logger
 
 
@@ -11,7 +11,7 @@ LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 
 def make_index_jsons():
-    kg_migrator = KGMigrator()
+    kg_migrator = KG2ElasticIndexMigrator()
     # DONE 1: INDEX_ENT ... eid -> {label: str, types: list[str]}
     kg_migrator.construct_index_ent_dict(merge=True, update_entries=True, dump_to='index_ent_dict.json')
     kg_migrator.construct_index_ent_dict(merge=True, update_entries=False, dump_to='index_ent_dict_merge_but_no_update.json')
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     # make_index_jsons()
     pass
 
-    kg_migrator = KGMigrator()
+    kg_migrator = KG2ElasticIndexMigrator()
 
     kg_migrator.construct_index_rdf_dict(dump_to='index_rdf_dict.json')
 
