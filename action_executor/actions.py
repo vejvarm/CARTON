@@ -241,7 +241,7 @@ class ESActionOperator(ActionOperator):
             LOGGER.warning(f"get_rdf in ESActionOperator: rdf with _id {_id} doesn't exist in {index}.")
             return {}
 
-        return self.client.get(index=index, id=_id)
+        return self.client.get(index=index, id=_id)['_source']
 
     def get_label(self, eid: str):
         """Get entity label for given entity (eid) if it exists"""

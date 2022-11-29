@@ -13,13 +13,14 @@ from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch
 
 from helpers import setup_logger
+from args import ElasticIndices
 
 CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 if __name__ == '__main__':
-    index_ent = 'elastic_index_ent_full'
-    index_rdf = 'elastic_index_rdf_full'
+    index_ent = ElasticIndices.ENT_FULL.value
+    index_rdf = ElasticIndices.RDF_FULL.value
     # aop = ESActionOperator(CLIENT, index_ent=index_ent, index_rdf=index_rdf)
     aop = ESActionOperator(CLIENT)
 

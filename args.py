@@ -43,6 +43,14 @@ class Passwords(Enum):
     FREYA = '1jceIiR5k6JlmSyDpNwK'
 
 
+class ElasticIndices(Enum):
+    ENT = f'{INDEX_ROOT}_ent'
+    ENT_FULL = f'{INDEX_ROOT}_ent_full'
+    REL = f'{INDEX_ROOT}_rel'
+    RDF = f'{INDEX_ROOT}_rdf'
+    RDF_FULL = f'{INDEX_ROOT}_rdf_full'
+
+
 def get_parser():
     parser = argparse.ArgumentParser(description='CARTON')
 
@@ -102,12 +110,11 @@ def get_parser():
     parser.add_argument('--ner_max_distance', default=[0, 0, 1, 1, 1, 2])
 
     # elasticsearch related
-    # parser.add_argument('--elastic_index_root', default='csqa_wikidata')
-    parser.add_argument('--elastic_index_ent', default=f'{INDEX_ROOT}_ent')
-    parser.add_argument('--elastic_index_ent_full', default=f'{INDEX_ROOT}_ent_full')
-    parser.add_argument('--elastic_index_rel', default=f'{INDEX_ROOT}_rel')  # TODO: implement relation search
-    parser.add_argument('--elastic_index_rdf', default=f'{INDEX_ROOT}_rdf')
-    parser.add_argument('--elastic_index_rdf_full', default=f'{INDEX_ROOT}_rdf_full')
+    parser.add_argument('--elastic_index_ent', default=ElasticIndices.ENT.value)
+    parser.add_argument('--elastic_index_ent_full', default=ElasticIndices.ENT_FULL.value)
+    parser.add_argument('--elastic_index_rel', default=ElasticIndices.REL.value)  # TODO: implement relation search
+    parser.add_argument('--elastic_index_rdf', default=ElasticIndices.RDF.value)
+    parser.add_argument('--elastic_index_rdf_full', default=ElasticIndices.RDF_FULL.value)
     parser.add_argument('--elastic_host', default='https://localhost:9200')
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')
