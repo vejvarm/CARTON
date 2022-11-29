@@ -239,6 +239,7 @@ class ESActionOperator(ActionOperator):
         index = self.index_rdf
         if not self.client.exists(index=index, id=_id):
             LOGGER.warning(f"get_rdf in ESActionOperator: rdf with _id {_id} doesn't exist in {index}.")
+            return {}
 
         return self.client.get(index=index, id=_id)
 
