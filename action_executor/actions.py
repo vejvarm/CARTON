@@ -234,6 +234,14 @@ class ESActionOperator(ActionOperator):
 
         return res_dict
 
+    def get_rdf(self, _id: str):
+        """Get RDF with given _id, which follows {sid}{rid}{oid} structure, if it exists"""
+        index = self.index_rdf
+        if not self.client.exists(index=index, id=_id):
+            LOGGER.warning(f"get_rdf in ESActionOperator: rdf with _id {_id} doesn't exist in {index}.")
+
+        return self.client.get(index=index, id=_id)
+
     def get_label(self, eid: str):
         """Get entity label for given entity (eid) if it exists"""
         index = self.index_ent
@@ -252,7 +260,7 @@ class ESActionOperator(ActionOperator):
 
         return self.client.get(index=index, id=eid)['_source']['types']
 
-    def find(self, e: list[str], rid: str):
+    def find(self, e: list[str] or str, rid: str):
         if e is None or rid is None:
             return None
 

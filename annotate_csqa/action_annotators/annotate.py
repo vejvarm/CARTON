@@ -6,6 +6,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from action_executor.actions import ESActionOperator
+from annotate_csqa.action_annotators.simple_insert import SimpleInsert
 from annotate_csqa.action_annotators.simple import Simple
 from annotate_csqa.action_annotators.verification import Verification
 from annotate_csqa.action_annotators.logical import Logical
@@ -18,6 +19,7 @@ class ActionAnnotator:
     def __init__(self, client):
         # load operations and annotators
         self.operator = ESActionOperator(client)
+        self.simple_insert_annotator = SimpleInsert(self.operator)
         self.simple_annotator = Simple(self.operator)
         self.verification_annotator = Verification(self.operator)
         self.quantitative_annotator = Quantitative(self.operator)
@@ -41,6 +43,8 @@ class ActionAnnotator:
             user = conversation[2*i]
             system = conversation[2*i + 1]
 
+            if user['question-type'] in ['Simple Insert (Direct)', 'Simple Insert (Coreferenced)', 'Simple Insert (Ellipsis)']:
+                user, system = self.simple_insert_annotator(user, system)
             if user['question-type'] in ['Simple Question (Direct)', 'Simple Question (Coreferenced)', 'Simple Question (Ellipsis)']:
                 user, system = self.simple_annotator(user, system)
             elif user['question-type'] == 'Verification (Boolean) (All)':

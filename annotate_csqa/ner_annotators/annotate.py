@@ -10,6 +10,7 @@ from glob import glob
 from pathlib import Path
 from unidecode import unidecode
 from transformers import BertTokenizer
+from annotate_csqa.ner_annotators.simple_insert import SimpleInsert
 from annotate_csqa.ner_annotators.simple import Simple
 from annotate_csqa.ner_annotators.verification import Verification
 from annotate_csqa.ner_annotators.logical import Logical
@@ -28,6 +29,7 @@ class NERAnnotator:
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased').tokenize
 
         # create annotators
+        self.simple_insert_annotator = SimpleInsert(client, self.preprocessed_data, self.tokenizer)
         self.simple_annotator = Simple(client, self.preprocessed_data, self.tokenizer)
         self.verification_annotator = Verification(client, self.preprocessed_data, self.tokenizer)
         self.quantitative_annotator = Quantitative(client, self.preprocessed_data, self.tokenizer)
@@ -88,6 +90,8 @@ class NERAnnotator:
             user['utterance'] = unidecode(user['utterance'])
             system['utterance'] = unidecode(system['utterance'])
 
+            if user['question-type'] in ['Simple Insert (Direct)', 'Simple Insert (Coreferenced)', 'Simple Insert (Ellipsis)']:
+                user, system = self.simple_insert_annotator(user, system)
             if user['question-type'] == 'Simple Question (Direct)' or user['question-type'] == 'Simple Question (Coreferenced)' or user['question-type'] == 'Simple Question (Ellipsis)':
                 user, system = self.simple_annotator(user, system)
             elif user['question-type'] == 'Verification (Boolean) (All)':

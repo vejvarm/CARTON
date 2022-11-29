@@ -18,9 +18,10 @@ CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 if __name__ == '__main__':
-    index_ent = 'csqa_wikidata_test_ent'
-    index_rdf = 'csqa_wikidata_test_rdf'
-    aop = ESActionOperator(CLIENT, index_ent=index_ent, index_rdf=index_rdf)
+    index_ent = 'elastic_index_ent_full'
+    index_rdf = 'elastic_index_rdf_full'
+    # aop = ESActionOperator(CLIENT, index_ent=index_ent, index_rdf=index_rdf)
+    aop = ESActionOperator(CLIENT)
 
     # TEST deleting
     sid = "Q15140125"
@@ -29,11 +30,11 @@ if __name__ == '__main__':
     _id = f"{sid}{rid}{oid}"
     print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
     print(f"Try insert: {aop.insert(sid, rid, oid)}")
-    print(f"Before delete: {CLIENT.get(index=index_rdf, id=_id)}")
+    print(f"Before delete: {aop.find(sid, rid)}")
     print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
-    print(f"After delete: {CLIENT.exists(index=index_rdf, id=_id)}")
+    print(f"After delete: {aop.find(sid, rid)}")
     print(f"Try insert: {aop.insert(sid, rid, oid)}")
-    print(f"After insert: {CLIENT.get(index=index_rdf, id=_id)}")
+    print(f"After insert: {aop.find(sid, rid)}")
     print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
 
     # TEST
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     print(label)
 
     # TEST IF INDEX LOOKS OK
-    res = CLIENT.search(index='csqa_wikidata_test_rdf', query={'match_all': {}})
+    res = CLIENT.search(index=index_rdf, query={'match_all': {}})
     print(f"_id: {res['hits']['hits'][0]['_id']} | _source: {res['hits']['hits'][0]['_source']}")
 
     exit()
