@@ -31,11 +31,11 @@ if __name__ == '__main__':
     _id = f"{sid}{rid}{oid}"
     print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
     print(f"Try insert: {aop.insert(sid, rid, oid)}")
-    print(f"Before delete: {aop.find(sid, rid)}")
+    print(f"Before delete: {aop.get_rdf(_id)}")
     print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
-    print(f"After delete: {aop.find(sid, rid)}")
+    print(f"After delete: {aop.get_rdf(_id)}")
     print(f"Try insert: {aop.insert(sid, rid, oid)}")
-    print(f"After insert: {aop.find(sid, rid)}")
+    print(f"After insert: {aop.get_rdf(_id)}")
     print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
 
     # TEST
