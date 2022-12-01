@@ -131,7 +131,7 @@ class CSQADataset:
                             else:
                                 coref.append(NA_TOKEN)
 
-                    # entities turn
+                    # entities turn # NOTE: this just takes all available entities in this turn (needed for Clarification)
                     if 'entities' in prev_user_conv: entity_pointer.update(prev_user_conv['entities'])
                     if 'entities_in_utterance' in prev_user_conv: entity_pointer.update(prev_user_conv['entities_in_utterance'])
                     entity_pointer.update(prev_system_conv['entities_in_utterance'])

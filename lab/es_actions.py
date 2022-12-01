@@ -30,7 +30,7 @@ if __name__ == '__main__':
     oid = "Q20010800"
     _id = f"{sid}{rid}{oid}"
     print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
-    print(f"Try insert: {aop.insert(sid, rid, oid)}")
+    print(f"Try insert: {aop.insert(sid,     rid, oid)}")
     print(f"Before delete: {aop.get_rdf(_id)}")
     print(f"Try delete: {aop.delete_rdf(sid, rid, oid)}")
     print(f"After delete: {aop.get_rdf(_id)}")
