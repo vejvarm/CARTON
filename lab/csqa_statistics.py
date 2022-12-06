@@ -4,7 +4,18 @@ import pandas as pd
 from collections import Counter
 from pathlib import Path, PurePath
 from matplotlib import pyplot as plt
-from constants import args, ROOT_PATH
+from constants import args, ROOT_PATH, ALL_QUESTION_TYPES
+
+
+def try_load_helper_json(path_to_json, object_hook=None):
+    try:
+        with open(path_to_json, 'r') as f:
+            d_out = json.load(f, object_hook=object_hook)
+    except FileNotFoundError:
+        print(f"file '{path_to_json}' doesn't exist. Creating empty dictionary.")
+        d_out = dict()
+
+    return d_out
 
 
 if __name__ == '__main__':
@@ -23,14 +34,11 @@ if __name__ == '__main__':
     # description to unique index mapping
 
     path_to_desc2id_file = PurePath(f'{ROOT_PATH}{args.read_folder}', "d_desc2id.json")
-    try:
-        with open(path_to_desc2id_file, 'r') as f:
-            d_desc2id = json.load(f)
-            unique_count = len(d_desc2id) - 1
-    except FileNotFoundError:
-        print(f"file '{path_to_desc2id_file}' doesn't exist. Creating empty dictionary.")
-        d_desc2id = dict()
-        unique_count = 0
+    d_desc2id = try_load_helper_json(path_to_desc2id_file)
+    unique_count = len(d_desc2id)
+
+    path_to_dids_file = PurePath(f'{ROOT_PATH}{args.read_folder}', "d_did2order.json")
+    d_did2order = try_load_helper_json(path_to_dids_file, object_hook=lambda d: {int(k): v for k, v in d.items()})
 
     c_question_type = Counter()
     c_description = Counter()
@@ -64,6 +72,11 @@ if __name__ == '__main__':
                 d_desc2id[description] = unique_count
                 unique_count += 1
 
+            if d_desc2id[description] not in d_did2order.keys():
+                d_did2order[d_desc2id[description]] = ALL_QUESTION_TYPES.index(question_type)
+            else:
+                d_did2order[d_desc2id[description]] = min(ALL_QUESTION_TYPES.index(question_type), d_did2order[d_desc2id[description]])
+
             c_question_type.update([question_type])
             c_description.update([description])
             d_qt_desc[question_type].update([d_desc2id[description]])
@@ -81,7 +94,7 @@ if __name__ == '__main__':
     print(f'Found {len(d_qt_desc.keys())} unique question-types and {len(c_description.keys())} uniqe descriptions.')
 
     print(f'Creating and saving contingecy table with Qtype/description:')
-    df = pd.DataFrame.from_dict(d_qt_desc)
+    df = pd.DataFrame(data=d_qt_desc).sort_index(axis=0, key=lambda col: col.map(lambda x: int(f"{d_did2order[x]}{x:02d}")))
     df.to_csv(data_folder.joinpath("qt_desc_contingency.csv"))
 
     print(f'Plotting contingency table as bar plot and saving to {data_folder}')
@@ -91,11 +104,16 @@ if __name__ == '__main__':
     with open(data_folder.joinpath("d_example.json"), 'w', encoding='utf8') as f:
         json.dump(d_example, f, indent=4, ensure_ascii=False)
 
-    print(f'Saving d_desc2id legend to d_desc2id.json')
+    print(f'Saving d_desc2id legend to {path_to_desc2id_file.name}')
     with open(path_to_desc2id_file, 'w', encoding='utf8') as f:
         json.dump(d_desc2id, f, indent=4, ensure_ascii=False)
 
+    print(f'Saving d_did2order legend to {path_to_dids_file.name}')
+    with open(path_to_dids_file, 'w', encoding='utf8') as f:
+        json.dump(d_did2order, f, indent=4, ensure_ascii=False)
+
     print(f'Saving df_example_utterances.csv')
+    df_example_utterances.sort_index(axis=0, inplace=True)
     df_example_utterances.to_csv(data_folder.joinpath("df_example_utterances.csv"))
 
     plt.savefig(data_folder.joinpath("qt_desc_contingency.pdf"))

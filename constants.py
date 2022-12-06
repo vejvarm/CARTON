@@ -1,7 +1,7 @@
 import os
 import torch
 from pathlib import Path
-from args import get_parser
+from args import get_parser, QuestionTypes
 
 # set root path
 ROOT_PATH = Path(os.path.dirname(__file__))
@@ -61,27 +61,18 @@ CURR_VAL = 'curr_val'
 # question types
 TOTAL = 'total'
 OVERALL = 'Overall'
-CLARIFICATION = 'Clarification'
-COMPARATIVE = 'Comparative Reasoning (All)'
-LOGICAL = 'Logical Reasoning (All)'
-QUANTITATIVE = 'Quantitative Reasoning (All)'
-SIMPLE_COREFERENCED = 'Simple Question (Coreferenced)'
-SIMPLE_DIRECT = 'Simple Question (Direct)'
-SIMPLE_ELLIPSIS = 'Simple Question (Ellipsis)'
-VERIFICATION = 'Verification (Boolean) (All)'
-QUANTITATIVE_COUNT = 'Quantitative Reasoning (Count) (All)'
-COMPARATIVE_COUNT = 'Comparative Reasoning (Count) (All)'
+COMPARATIVE = QuestionTypes.COMPARATIVE.value
+LOGICAL = QuestionTypes.LOGICAL.value
+QUANTITATIVE = QuestionTypes.QUANTITATIVE.value
+SIMPLE_COREFERENCED = QuestionTypes.SIMPLE_COREFERENCED.value
+SIMPLE_DIRECT = QuestionTypes.SIMPLE_DIRECT.value
+SIMPLE_ELLIPSIS = QuestionTypes.SIMPLE_ELLIPSIS.value
+VERIFICATION = QuestionTypes.VERIFICATION.value
+QUANTITATIVE_COUNT = QuestionTypes.QUANTITATIVE_COUNT.value
+COMPARATIVE_COUNT = QuestionTypes.COMPARATIVE_COUNT.value
+CLARIFICATION = QuestionTypes.CLARIFICATION.value
 
-ALL_QUESTION_TYPES = (CLARIFICATION,  # done
-                      COMPARATIVE,    # done
-                      LOGICAL,        # done
-                      QUANTITATIVE,   # done
-                      SIMPLE_COREFERENCED,  # done
-                      SIMPLE_DIRECT,        # done
-                      SIMPLE_ELLIPSIS,      # done
-                      VERIFICATION,         # done
-                      QUANTITATIVE_COUNT,
-                      COMPARATIVE_COUNT)
+ALL_QUESTION_TYPES = tuple(qt.value for qt in QuestionTypes)
 
 # action related
 ENTITY = 'entity'
