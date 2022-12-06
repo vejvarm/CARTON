@@ -100,7 +100,8 @@ if __name__ == '__main__':
     df.to_csv(data_folder.joinpath("qt_desc_contingency.csv"))
 
     print(f'Plotting contingency table as bar plot and saving to {data_folder}')
-    df.plot(kind="bar", stacked=True, legend=True, xlabel='description id', ylabel='number of entries')
+    df.plot(kind="bar", stacked=True, legend=True, xlabel='description id',
+            ylabel='number of entries', title=f"partition: {data_folder.name}")
     plt.gcf().set_size_inches(8, 6)
     plt.tight_layout()
 
