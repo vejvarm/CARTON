@@ -94,11 +94,15 @@ if __name__ == '__main__':
     print(f'Found {len(d_qt_desc.keys())} unique question-types and {len(c_description.keys())} uniqe descriptions.')
 
     print(f'Creating and saving contingecy table with Qtype/description:')
-    df = pd.DataFrame(data=d_qt_desc).sort_index(axis=0, key=lambda col: col.map(lambda x: int(f"{d_did2order[x]}{x:02d}")))
+    df = pd.DataFrame(data=d_qt_desc)
+    df = df.sort_index(axis=0, key=lambda col: col.map(lambda x: int(f"{d_did2order[x]}{x:02d}")))
+    df = df.sort_index(axis=1, key=lambda col: col.map(lambda x: ALL_QUESTION_TYPES.index(x)))
     df.to_csv(data_folder.joinpath("qt_desc_contingency.csv"))
 
     print(f'Plotting contingency table as bar plot and saving to {data_folder}')
     df.plot(kind="bar", stacked=True, legend=True, xlabel='description id', ylabel='number of entries')
+    plt.gcf().set_size_inches(8, 6)
+    plt.tight_layout()
 
     print(f'Saving d_example.json')
     with open(data_folder.joinpath("d_example.json"), 'w', encoding='utf8') as f:

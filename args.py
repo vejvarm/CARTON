@@ -21,12 +21,12 @@ class Task(Enum):
 
 class QuestionTypes(Enum):
     ALL = 'all'
+    SIMPLE_DIRECT = 'Simple Question (Direct)'
+    SIMPLE_COREFERENCED = 'Simple Question (Coreferenced)'
+    SIMPLE_ELLIPSIS = 'Simple Question (Ellipsis)'
     COMPARATIVE = 'Comparative Reasoning (All)'
     LOGICAL = 'Logical Reasoning (All)'
     QUANTITATIVE = 'Quantitative Reasoning (All)'
-    SIMPLE_COREFERENCED = 'Simple Question (Coreferenced)'
-    SIMPLE_DIRECT = 'Simple Question (Direct)'
-    SIMPLE_ELLIPSIS = 'Simple Question (Ellipsis)'
     VERIFICATION = 'Verification (Boolean) (All)'
     QUANTITATIVE_COUNT = 'Quantitative Reasoning (Count) (All)'
     COMPARATIVE_COUNT = 'Comparative Reasoning (Count) (All)'
