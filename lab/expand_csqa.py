@@ -60,6 +60,40 @@ def build_active_set(user: dict[list[str] or str], system: dict[list[str] or str
     return active_set
 
 
+def _replace_labels_with_id(utterance: str, entities: list[str], op: ESActionOperator) -> tuple[str, dict]:
+    inverse_map = dict()
+    for ent in entities:
+        label = op.get_label(ent)
+        utterance = utterance.replace(label, ent)
+        inverse_map[ent] = label
+
+    return utterance, inverse_map
+
+
+def transorm_utterances(user: dict[list[str] or str], system: dict[list[str] or str], op: ESActionOperator):
+    user_utterance = user['utterance']
+    user_ents = user['entities_in_utterance']
+    system_utterance = system['utterance']
+    system_ents = system['entities_in_utterance']
+
+    # replace all labels with entity ids
+    new_user_utterance, user_inverse_map = _replace_labels_with_id(user_utterance, user_ents, op)
+    new_system_utterance, system_inverse_map = _replace_labels_with_id(system_utterance, system_ents, op)
+
+    # Tranform user+system utterances into declarative statements using T5-QA2D
+    # TODO: use T5-QA2D --- THIS IS JUST A PLACEHOLDER
+    statement = f'{new_user_utterance}{new_system_utterance}'
+
+    # replace entity ids back with labels
+    for eid, lab in {**user_inverse_map, **system_inverse_map}.items():
+        statement = statement.replace(eid, lab)
+
+    return statement
+
+
+def transform_fields():
+    pass
+
 if __name__ == "__main__":
     # pop unneeded conversations right here?
     args.read_folder = '/data'  # 'folder to read conversations'
@@ -91,9 +125,14 @@ if __name__ == "__main__":
                 print(f"USER: {entry_user['question-type']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
                 print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['active_set']} {entry_system['utterance']}")
 
+                # 1) TRANSFORM active_set field
                 # new_active_set = fill_active_set_with_entities(entry_system['active_set'], entry_system['entities_in_utterance'], op)
                 new_active_set = build_active_set(entry_user, entry_system, op)
                 print(f'new_active_set in {__name__}: {new_active_set}')
+
+                # 2) TRANSFORM utterances to statements
+                statement = transorm_utterances(entry_user, entry_system, op)
+                print(f'statement in {__name__}: {statement}')
                 print(f"".center(50, "-"), end='\n\n')
 
             # conversation types to tweak:
