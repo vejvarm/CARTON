@@ -238,7 +238,7 @@ class ESActionOperator(ActionOperator):
         """Get RDF with given _id, which follows {sid}{rid}{oid} structure, if it exists"""
         index = self.index_rdf
         if not self.client.exists(index=index, id=_id):
-            LOGGER.warning(f"get_rdf in ESActionOperator: rdf with _id {_id} doesn't exist in {index}.")
+            LOGGER.info(f"get_rdf in ESActionOperator: rdf with _id {_id} doesn't exist in {index}.")
             return {}
 
         return self.client.get(index=index, id=_id)['_source']
@@ -247,7 +247,7 @@ class ESActionOperator(ActionOperator):
         """Get entity label for given entity (eid) if it exists"""
         index = self.index_ent
         if not self.client.exists(index=index, id=eid):
-            LOGGER.warning(f"get_label in ESActionOperator: entity with {eid} doesn't exist in {index}.")
+            LOGGER.info(f"get_label in ESActionOperator: entity with {eid} doesn't exist in {index}.")
             return 'NA'
 
         return self.client.get(index=index, id=eid)['_source']['label']
@@ -256,7 +256,7 @@ class ESActionOperator(ActionOperator):
         """Get list of types for given entity (eid) if it exists."""
         index = self.index_ent
         if not self.client.exists(index=index, id=eid):
-            LOGGER.warning(f"get_types in ESActionOperator: entity with {eid} doesn't exist in {index}.")
+            LOGGER.info(f"get_types in ESActionOperator: entity with {eid} doesn't exist in {index}.")
             return []
 
         return self.client.get(index=index, id=eid)['_source']['types']
@@ -490,7 +490,7 @@ class ESActionOperator(ActionOperator):
                 else:
                     LOGGER.info(f'in update_labels: entity {eid} already has label {cur_label} and overwrite==False. Skipping')
             except elasticsearch.NotFoundError:
-                LOGGER.warning(f'set_labels in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
+                LOGGER.info(f'set_labels in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
                 op_results.append('noop')
 
         return op_results
@@ -519,7 +519,7 @@ class ESActionOperator(ActionOperator):
                     op_results.append(res['result'])
                     # TODO: Alternatively use append pipeline processor?
             except elasticsearch.NotFoundError:
-                LOGGER.warning(f'set_types in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
+                LOGGER.info(f'update_types in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
                 op_results.append('noop')
 
         return op_results
