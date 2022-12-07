@@ -12,87 +12,71 @@ from helpers import connect_to_elasticsearch, setup_logger
 CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
-def decode_active_set(active_set: list[str]):
-    decoded_list = []
-    for entry in active_set:
-        category = [ENTITY, RELATION, ENTITY]
-        # entry is either '(Q, P, c(Q))' or '(c(Q), P, Q)'
-        sub, rel, obj = entry[1:-1].split(',')
 
-        if sub.startswith('c'):
-            sub = sub[2:-1]
-            category[0] = TYPE
+class CSQAInsertBuilder:
 
-        if obj.startswith('c'):
-            obj = obj[2:-1]
-            category[-1] = TYPE
+    def __init__(self, operator: ESActionOperator):
+        self.op = operator
 
-        decoded_list.append(list(zip([sub, rel, obj], category)))
+    def build_active_set(self, user: dict[list[str] or str], system: dict[list[str] or str]):
+        user_ents = user['entities_in_utterance']
+        system_ents = system['entities_in_utterance']
+        rels = user['relations']
 
-    return decoded_list
+        # in case of Ellipsis question
+        if not rels:
+            rels = set()
+            rels.update(*[re.findall(r'P\d+', entry) for entry in system['active_set']])
+            rels = list(rels)
 
+        # TODO: for Coreferecnce and Ellipsis, we must keep the previous questions in the dataset!!!
 
-def build_active_set(user: dict[list[str] or str], system: dict[list[str] or str], op: ESActionOperator):
-    user_ents = user['entities_in_utterance']
-    system_ents = system['entities_in_utterance']
-    rels = user['relations']
+        active_set = []
+        _all_possible_ids = []
+        for ue in user_ents:
+            for se in system_ents:
+                for r in rels:
+                    _all_possible_ids.extend([f'{ue}{r}{se}', f'{se}{r}{ue}'])
 
-    # in case of Ellipsis question
-    if not rels:
-        rels = set()
-        rels.update(*[re.findall(r'P\d+', entry) for entry in system['active_set']])
-        rels = list(rels)
+        for _id in _all_possible_ids:
+            rdf = self.op.get_rdf(_id)
+            if rdf:
+                active_set.append(f"i({rdf['sid']},{rdf['rid']},{rdf['oid']})")
 
-    # TODO: for Coreferecnce and Ellipsis, we must keep the previous questions in the dataset!!!
+        return active_set
 
-    active_set = []
-    _all_possible_ids = []
-    for ue in user_ents:
-        for se in system_ents:
-            for r in rels:
-                _all_possible_ids.extend([f'{ue}{r}{se}', f'{se}{r}{ue}'])
+    def _replace_labels_with_id(self, utterance: str, entities: list[str]) -> tuple[str, dict]:
+        inverse_map = dict()
+        for ent in entities:
+            label = self.op.get_label(ent)
+            utterance = utterance.replace(label, ent)
+            inverse_map[ent] = label
 
-    for _id in _all_possible_ids:
-        rdf = op.get_rdf(_id)
-        if rdf:
-            active_set.append(f"i({rdf['sid']},{rdf['rid']},{rdf['oid']})")
+        return utterance, inverse_map
 
-    return active_set
+    def transorm_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str]):
+        user_utterance = user['utterance']
+        user_ents = user['entities_in_utterance']
+        system_utterance = system['utterance']
+        system_ents = system['entities_in_utterance']
 
+        # replace all labels with entity ids
+        new_user_utterance, user_inverse_map = self._replace_labels_with_id(user_utterance, user_ents)
+        new_system_utterance, system_inverse_map = self._replace_labels_with_id(system_utterance, system_ents)
 
-def _replace_labels_with_id(utterance: str, entities: list[str], op: ESActionOperator) -> tuple[str, dict]:
-    inverse_map = dict()
-    for ent in entities:
-        label = op.get_label(ent)
-        utterance = utterance.replace(label, ent)
-        inverse_map[ent] = label
+        # Tranform user+system utterances into declarative statements using T5-QA2D
+        # TODO: use T5-QA2D --- THIS IS JUST A PLACEHOLDER
+        statement = f'{new_user_utterance} {new_system_utterance}'
 
-    return utterance, inverse_map
+        # replace entity ids back with labels
+        for eid, lab in {**user_inverse_map, **system_inverse_map}.items():
+            statement = statement.replace(eid, lab)
 
+        return statement
 
-def transorm_utterances(user: dict[list[str] or str], system: dict[list[str] or str], op: ESActionOperator):
-    user_utterance = user['utterance']
-    user_ents = user['entities_in_utterance']
-    system_utterance = system['utterance']
-    system_ents = system['entities_in_utterance']
+    def transform_fields(self):
+        pass
 
-    # replace all labels with entity ids
-    new_user_utterance, user_inverse_map = _replace_labels_with_id(user_utterance, user_ents, op)
-    new_system_utterance, system_inverse_map = _replace_labels_with_id(system_utterance, system_ents, op)
-
-    # Tranform user+system utterances into declarative statements using T5-QA2D
-    # TODO: use T5-QA2D --- THIS IS JUST A PLACEHOLDER
-    statement = f'{new_user_utterance}{new_system_utterance}'
-
-    # replace entity ids back with labels
-    for eid, lab in {**user_inverse_map, **system_inverse_map}.items():
-        statement = statement.replace(eid, lab)
-
-    return statement
-
-
-def transform_fields():
-    pass
 
 if __name__ == "__main__":
     # pop unneeded conversations right here?
@@ -109,6 +93,7 @@ if __name__ == "__main__":
     # TODO: only take Simple Question types. Those we will need to transform (how about the questions around them?)
 
     op = ESActionOperator(CLIENT)
+    builder = CSQAInsertBuilder(op)
 
     for pth in csqa_files:
         folder = pth.parent.name
@@ -126,12 +111,11 @@ if __name__ == "__main__":
                 print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['active_set']} {entry_system['utterance']}")
 
                 # 1) TRANSFORM active_set field
-                # new_active_set = fill_active_set_with_entities(entry_system['active_set'], entry_system['entities_in_utterance'], op)
-                new_active_set = build_active_set(entry_user, entry_system, op)
+                new_active_set = builder.build_active_set(entry_user, entry_system)
                 print(f'new_active_set in {__name__}: {new_active_set}')
 
                 # 2) TRANSFORM utterances to statements
-                statement = transorm_utterances(entry_user, entry_system, op)
+                statement = builder.transorm_utterances(entry_user, entry_system)
                 print(f'statement in {__name__}: {statement}')
                 print(f"".center(50, "-"), end='\n\n')
 
