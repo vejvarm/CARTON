@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from pathlib import Path
+from unidecode import unidecode
 
 from constants import args, ROOT_PATH, ENTITY, TYPE, RELATION
 
@@ -26,7 +27,7 @@ class T5Q2DA:
         outputs = cls.model.generate(input_ids)
         LOGGER.debug(f"outputs in infer_one: ({outputs.shape}) {outputs}")
 
-        return cls.tokenizer.decode(outputs[0], skip_special_tokens=False)
+        return cls.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 
 class CSQAInsertBuilder:
@@ -64,6 +65,7 @@ class CSQAInsertBuilder:
 
     def _replace_labels_with_id(self, utterance: str, entities: list[str]) -> tuple[str, dict]:
         inverse_map = dict()
+        utterance = unidecode(utterance)
         for ent in entities:
             label = self.op.get_label(ent)
             utterance = utterance.replace(label, ent)
