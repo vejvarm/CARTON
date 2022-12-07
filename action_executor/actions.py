@@ -234,7 +234,7 @@ class ESActionOperator(ActionOperator):
 
         return res_dict
 
-    def get_rdf(self, _id: str):
+    def get_rdf(self, _id: str) -> dict:
         """Get RDF with given _id, which follows {sid}{rid}{oid} structure, if it exists"""
         index = self.index_rdf
         if not self.client.exists(index=index, id=_id):

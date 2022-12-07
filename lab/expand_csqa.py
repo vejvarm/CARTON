@@ -78,6 +78,26 @@ def ver3(user: dict[list[str] or str], system: dict[list[str] or str], op: ESAct
     return new_active_set
 
 
+def ver4(user: dict[list[str] or str], system: dict[list[str] or str], op: ESActionOperator):
+    user_ents = user['entities_in_utterance']
+    system_ents = system['entities_in_utterance']
+    rels = user['relations']
+
+    active_set = []
+    _all_possible_ids = []
+    for ue in user_ents:
+        for se in system_ents:
+            for r in rels:
+                _all_possible_ids.extend([f'{ue}{r}{se}', f'{se}{r}{ue}'])
+
+    for _id in _all_possible_ids:
+        rdf = op.get_rdf(_id)
+        if rdf:
+            active_set.append(f"i({rdf['sid']}{rdf['rid']}{rdf['oid']})")
+
+    return active_set
+
+
 if __name__ == "__main__":
     # pop unneeded conversations right here?
     args.read_folder = '/data'  # 'folder to read conversations'
@@ -110,7 +130,7 @@ if __name__ == "__main__":
                 print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['active_set']} {entry_system['utterance']}")
 
                 # new_active_set = fill_active_set_with_entities(entry_system['active_set'], entry_system['entities_in_utterance'], op)
-                new_active_set = ver3(entry_user, entry_system, op)
+                new_active_set = ver4(entry_user, entry_system, op)
                 LOGGER.debug(f'new_active_set in {__name__}: {new_active_set}')
                 print(f"".center(50, "-"), end='\n\n')
 
