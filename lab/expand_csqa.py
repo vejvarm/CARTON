@@ -26,7 +26,7 @@ class T5Q2DA:
         outputs = cls.model.generate(input_ids)
         LOGGER.debug(f"outputs in infer_one: ({outputs.shape}) {outputs}")
 
-        return cls.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return cls.tokenizer.decode(outputs[0], skip_special_tokens=False)
 
 
 class CSQAInsertBuilder:
@@ -82,9 +82,12 @@ class CSQAInsertBuilder:
         new_system_utterance, system_inverse_map = self._replace_labels_with_id(system_utterance, system_ents)
 
         # Tranform user+system utterances into declarative statements using T5-QA2D
-        # TODO: use T5-QA2D --- THIS IS JUST A PLACEHOLDER
+        # TODO: Tweak for different question types
+        # TODO: Solve this problem: Villar del Río for 3rd -> Villar del Ro for 3rd
         qa_str = f'{new_user_utterance} {new_system_utterance}'
+        LOGGER.info(f'qa_str in transform_utterances: {qa_str}')
         declarative_str = self.qa2d_transformer.infer_one(qa_str)
+        LOGGER.info(f'declarative_str in transform_utterances: {declarative_str}')
 
         # replace entity ids back with labels
         for eid, lab in {**user_inverse_map, **system_inverse_map}.items():
