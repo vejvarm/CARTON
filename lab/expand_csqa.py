@@ -83,6 +83,12 @@ def ver4(user: dict[list[str] or str], system: dict[list[str] or str], op: ESAct
     system_ents = system['entities_in_utterance']
     rels = user['relations']
 
+    # in case of Ellipsis question
+    if not rels:
+        rels = set()
+        rels.update(*[re.findall(r'P\d+', entry) for entry in system['active_set']])
+        rels = list(rels)
+
     active_set = []
     _all_possible_ids = []
     for ue in user_ents:
