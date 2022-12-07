@@ -89,6 +89,8 @@ def ver4(user: dict[list[str] or str], system: dict[list[str] or str], op: ESAct
         rels.update(*[re.findall(r'P\d+', entry) for entry in system['active_set']])
         rels = list(rels)
 
+    # TODO: for Coreferecnce and Ellipsis, we must keep the previous questions in the dataset!!!
+
     active_set = []
     _all_possible_ids = []
     for ue in user_ents:
