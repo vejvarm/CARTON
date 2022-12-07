@@ -5,6 +5,7 @@ from pathlib import Path
 
 from constants import args, ROOT_PATH, ENTITY, TYPE, RELATION
 
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
@@ -13,10 +14,26 @@ CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 
+class T5Q2DA:
+    tokenizer = AutoTokenizer.from_pretrained("domenicrosati/QA2D-t5-small")
+    model = AutoModelForSeq2SeqLM.from_pretrained("domenicrosati/QA2D-t5-small")
+
+    @classmethod
+    def infer_one(cls, qa_string: str):
+        input_ids = cls.tokenizer(qa_string, return_tensors="pt").input_ids
+        LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
+
+        outputs = cls.model.generate(input_ids)
+        LOGGER.debug(f"outputs in infer_one: ({outputs.shape}) {outputs}")
+
+        return cls.tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+
 class CSQAInsertBuilder:
 
-    def __init__(self, operator: ESActionOperator):
+    def __init__(self, operator: ESActionOperator, qa2d_transformer: T5Q2DA):
         self.op = operator
+        self.qa2d_transformer = qa2d_transformer
 
     def build_active_set(self, user: dict[list[str] or str], system: dict[list[str] or str]):
         user_ents = user['entities_in_utterance']
@@ -66,13 +83,14 @@ class CSQAInsertBuilder:
 
         # Tranform user+system utterances into declarative statements using T5-QA2D
         # TODO: use T5-QA2D --- THIS IS JUST A PLACEHOLDER
-        statement = f'{new_user_utterance} {new_system_utterance}'
+        qa_str = f'{new_user_utterance} {new_system_utterance}'
+        declarative_str = self.qa2d_transformer.infer_one(qa_str)
 
         # replace entity ids back with labels
         for eid, lab in {**user_inverse_map, **system_inverse_map}.items():
-            statement = statement.replace(eid, lab)
+            declarative_str = declarative_str.replace(eid, lab)
 
-        return statement
+        return declarative_str
 
     def transform_fields(self):
         pass
@@ -93,7 +111,8 @@ if __name__ == "__main__":
     # TODO: only take Simple Question types. Those we will need to transform (how about the questions around them?)
 
     op = ESActionOperator(CLIENT)
-    builder = CSQAInsertBuilder(op)
+    transformer = T5Q2DA()
+    builder = CSQAInsertBuilder(op, transformer)
 
     for pth in csqa_files:
         folder = pth.parent.name
