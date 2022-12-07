@@ -50,11 +50,11 @@ if __name__ == '__main__':
         file = pth.name
 
         with open(pth) as json_file:
-            data_list = json.load(json_file)
+            conversation = json.load(json_file)
 
-        for i in range(len(data_list)//2):
-            entry_user = data_list[2*i]  # USER
-            entry_system = data_list[2*i + 1]  # SYSTEM
+        for i in range(len(conversation)//2):
+            entry_user = conversation[2*i]  # USER
+            entry_system = conversation[2*i + 1]  # SYSTEM
 
             if 'description' not in entry_user.keys():
                 continue

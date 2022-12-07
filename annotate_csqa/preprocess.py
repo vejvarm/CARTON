@@ -48,6 +48,8 @@ elif args.annotation_task == 'actions':
 elif args.annotation_task == 'ner':
     ner_annotator = NERAnnotator(client, args.partition)
 
+# NOTE: conversation == one QA_*.json file
+
 # create annotated data
 total_conv = len(csqa_files)
 conv_counter = 0
