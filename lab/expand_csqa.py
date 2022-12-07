@@ -32,53 +32,7 @@ def decode_active_set(active_set: list[str]):
     return decoded_list
 
 
-def fill_active_set_with_entities(active_set: list[str], entities: list[str], op: ESActionOperator):
-    decoded_list = []
-    pattern = r'c\(.+?\)'
-    d_type2ent = {}
-    for ent in entities:
-        for tp in op.get_types(ent):
-            if tp not in d_type2ent.keys():
-                d_type2ent[tp] = [ent]
-            else:
-                d_type2ent[tp].append(ent)
-
-    LOGGER.debug(f'd_type2ent in fill_active_set_with_entities: {d_type2ent}')
-
-    for entry in active_set:
-        LOGGER.debug(f'entry in fill_active_set_with_entities: {entry}')
-        for tp, ent_list in d_type2ent.items():
-            entry = re.sub(rf'c\({tp}\)', ent_list.pop(), entry, 1)  # ONLY ONE REPLACEMENT MADE per entity
-            LOGGER.debug(f'entry (out) in fill_active_set_with_entities: {entry}')
-
-        decoded_list.append([entry])
-
-    return decoded_list
-
-
-def ver3(user: dict[list[str] or str], system: dict[list[str] or str], op: ESActionOperator):
-    entities = system['entities_in_utterance']
-    rdfs = []
-    for active_set in system['active_set']:
-        sub, rel, obj = active_set[1:-1].split(',')
-        if sub.startswith('c('):
-            s_tp = sub[2:-1]
-            rdfs.extend([(e, rel, obj) for e in op.filter_type(entities, s_tp)])
-        elif obj.startswith('c('):
-            o_tp = obj[2:-1]
-            rdfs.extend([(sub, rel, e) for e in op.filter_type(entities, o_tp)])
-
-    rdfs = set(rdfs)
-
-    new_active_set = []
-    for rdf in rdfs:
-        s, r, o = rdf
-        new_active_set.append(f'i({s},{r},{o})')
-
-    return new_active_set
-
-
-def ver4(user: dict[list[str] or str], system: dict[list[str] or str], op: ESActionOperator):
+def build_active_set(user: dict[list[str] or str], system: dict[list[str] or str], op: ESActionOperator):
     user_ents = user['entities_in_utterance']
     system_ents = system['entities_in_utterance']
     rels = user['relations']
@@ -138,7 +92,7 @@ if __name__ == "__main__":
                 print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['active_set']} {entry_system['utterance']}")
 
                 # new_active_set = fill_active_set_with_entities(entry_system['active_set'], entry_system['entities_in_utterance'], op)
-                new_active_set = ver4(entry_user, entry_system, op)
+                new_active_set = build_active_set(entry_user, entry_system, op)
                 print(f'new_active_set in {__name__}: {new_active_set}')
                 print(f"".center(50, "-"), end='\n\n')
 
