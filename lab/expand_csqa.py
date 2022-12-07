@@ -9,7 +9,7 @@ from constants import args, ROOT_PATH, ENTITY, TYPE, RELATION
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
 
-# CLIENT = connect_to_elasticsearch()
+CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.DEBUG)
 
 def decode_active_set(active_set: list[str]):
@@ -56,6 +56,28 @@ def fill_active_set_with_entities(active_set: list[str], entities: list[str], op
     return decoded_list
 
 
+def ver3(user: dict[list[str] or str], system: dict[list[str] or str], op: ESActionOperator):
+    entities = system['entities_in_utterance']
+    rdfs = []
+    for active_set in system['active_set']:
+        sub, rel, obj = active_set[1:-1].split(',')
+        if sub.startswith('c('):
+            s_tp = sub[2:-1]
+            rdfs.extend([(e, rel, obj) for e in op.filter_type(entities, s_tp)])
+        elif obj.startswith('c('):
+            o_tp = obj[2:-1]
+            rdfs.extend([(sub, rel, e) for e in op.filter_type(entities, o_tp)])
+
+    rdfs = set(rdfs)
+
+    new_active_set = []
+    for rdf in rdfs:
+        s, r, o = rdf
+        new_active_set.append(f'i({s},{r},{o})')
+
+    return new_active_set
+
+
 if __name__ == "__main__":
     # pop unneeded conversations right here?
     args.read_folder = '/data'  # 'folder to read conversations'
@@ -84,10 +106,11 @@ if __name__ == "__main__":
             entry_system = conversation[2*i + 1]  # SYSTEM
 
             if 'Simple' in entry_user['question-type']:
-                print(f"USER: {entry_user['question-type']}, {entry_user['entities_in_utterance']}, {entry_user['utterance']}")
-                print(f"SYSTEM: {entry_system['all_entities']}, {entry_system['entities_in_utterance']}, {entry_system['active_set']} {entry_system['utterance']}")
+                print(f"USER: {entry_user['question-type']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
+                print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['active_set']} {entry_system['utterance']}")
 
-                new_active_set = fill_active_set_with_entities(entry_system['active_set'], entry_system['entities_in_utterance'], op)
+                # new_active_set = fill_active_set_with_entities(entry_system['active_set'], entry_system['entities_in_utterance'], op)
+                new_active_set = ver3(entry_user, entry_system, op)
                 LOGGER.debug(f'new_active_set in {__name__}: {new_active_set}')
                 print(f"".center(50, "-"), end='\n\n')
 
