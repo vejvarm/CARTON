@@ -10,7 +10,7 @@ from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
 
 CLIENT = connect_to_elasticsearch()
-LOGGER = setup_logger(__name__, loglevel=logging.DEBUG)
+LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 def decode_active_set(active_set: list[str]):
     decoded_list = []
@@ -93,7 +93,7 @@ def ver4(user: dict[list[str] or str], system: dict[list[str] or str], op: ESAct
     for _id in _all_possible_ids:
         rdf = op.get_rdf(_id)
         if rdf:
-            active_set.append(f"i({rdf['sid']}{rdf['rid']}{rdf['oid']})")
+            active_set.append(f"i({rdf['sid']},{rdf['rid']},{rdf['oid']})")
 
     return active_set
 
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
                 # new_active_set = fill_active_set_with_entities(entry_system['active_set'], entry_system['entities_in_utterance'], op)
                 new_active_set = ver4(entry_user, entry_system, op)
-                LOGGER.debug(f'new_active_set in {__name__}: {new_active_set}')
+                print(f'new_active_set in {__name__}: {new_active_set}')
                 print(f"".center(50, "-"), end='\n\n')
 
             # conversation types to tweak:
