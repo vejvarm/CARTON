@@ -5,7 +5,7 @@ from pathlib import Path
 from unidecode import unidecode
 from typing import Protocol
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import Enum, auto
 
 from constants import args, ROOT_PATH, ENTITY, TYPE, RELATION
 
@@ -59,6 +59,13 @@ class QA2DModelChoices(Enum):
     QA2DT5_SMALL = 'domenicrosati/QA2D-t5-small'
     QA2DT5_BASE = 'domenicrosati/QA2D-t5-base'
     QC3B = 'domenicrosati/question_converter-3b'
+
+
+class RepresentEntityLabelAs(Enum):
+    LABEL = auto
+    ENTITY_ID = auto
+    PLACEHOLDER = auto
+    TYPE_ID = auto  # TODO: Implement
 
 
 class Preprocessor(ABC):
@@ -157,23 +164,31 @@ class CSQAInsertBuilder:
 
         return active_set
 
-    def _replace_labels_with_id(self, utterance: str, entities: list[str]) -> tuple[str, dict]:
+    def _replace_labels_in_utterance(self, utterance: str, entities: list[str], labels_as: RepresentEntityLabelAs) -> tuple[str, dict]:
         inverse_map = dict()
         utterance = unidecode(utterance)
-        for ent in entities:
+        if labels_as == RepresentEntityLabelAs.LABEL or labels_as not in RepresentEntityLabelAs:
+            return utterance, inverse_map
+
+        for i, ent in enumerate(entities):
             label = self.op.get_label(ent)
-            ent = ent.lower()
-            utterance = utterance.replace(label, ent)
-            inverse_map[ent] = label
+            if labels_as == RepresentEntityLabelAs.ENTITY_ID:
+                repl = ent.lower()
+            elif labels_as == RepresentEntityLabelAs.PLACEHOLDER:
+                repl = f"entity{i}"
+            else:
+                raise NotImplementedError(f'Chosen RepresentEntityLabeAs ({labels_as}) Enum is not supported.')
+            utterance = utterance.replace(label, repl)
+            inverse_map[repl] = label
 
         return utterance, inverse_map
 
-    def transorm_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str], use_ids: bool = True) -> str:
+    def transorm_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str], labels_as: RepresentEntityLabelAs) -> str:
         """ Transform user utterance (Question) and system utterance (Answer) to declarative statements.
 
         :param user: conversation turn of the user from the CSQA dataset
         :param system: conversation turn of the system from the CSQA dataset
-        :param use_ids: if True, replace labels with respective entity IDs before transformation (and back after trans)
+        :param labels_as: substitute labels to respective choice before transformation (and back after trans)
         :return: declarative string
         """
         user_utterance = user['utterance']
@@ -181,12 +196,10 @@ class CSQAInsertBuilder:
         system_utterance = system['utterance']
         system_ents = system['entities_in_utterance']
 
-        # replace all labels with entity ids
-        inverse_map = {}
-        if use_ids:
-            user_utterance, user_inverse_map = self._replace_labels_with_id(user_utterance, user_ents)
-            system_utterance, system_inverse_map = self._replace_labels_with_id(system_utterance, system_ents)
-            inverse_map = {**user_inverse_map, **system_inverse_map}
+        # substitute all labels with chosen replacement
+        user_utterance, user_inverse_map = self._replace_labels_in_utterance(user_utterance, user_ents, labels_as)
+        system_utterance, system_inverse_map = self._replace_labels_in_utterance(system_utterance, system_ents, labels_as)
+        inverse_map = {**user_inverse_map, **system_inverse_map}
 
         LOGGER.info(f'utterances in transform_utterances: U: {user_utterance} S: {system_utterance}')
         declarative_str = self.qa2d_model.infer_one(user_utterance, system_utterance)
