@@ -73,26 +73,56 @@ class CSQAInsertBuilder:
 
         return utterance, inverse_map
 
-    def transorm_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str]):
+    def transorm_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str], use_ids: bool = True) -> str:
+        """ transform user utterance (Question) and system utterance (Answer) to declarative statements
+
+        :param user: conversation turn of the user from the CSQA dataset
+        :param system: conversation turn of the system from the CSQA dataset
+        :param use_ids: if True, replace labels with respective entity IDs before transformation (and back after trans)
+        :return: declarative string
+        """
         user_utterance = user['utterance']
         user_ents = user['entities_in_utterance']
         system_utterance = system['utterance']
         system_ents = system['entities_in_utterance']
 
         # replace all labels with entity ids
-        new_user_utterance, user_inverse_map = self._replace_labels_with_id(user_utterance, user_ents)
-        new_system_utterance, system_inverse_map = self._replace_labels_with_id(system_utterance, system_ents)
+        inverse_map = {}
+        if use_ids:
+            user_utterance, user_inverse_map = self._replace_labels_with_id(user_utterance, user_ents)
+            system_utterance, system_inverse_map = self._replace_labels_with_id(system_utterance, system_ents)
+            inverse_map = {**user_inverse_map, **system_inverse_map}
 
         # Tranform user+system utterances into declarative statements using T5-QA2D
         # TODO: Tweak for different question types
-        # TODO: Solve this problem: Villar del Río for 3rd -> Villar del Ro for 3rd
-        qa_str = f'{new_user_utterance} {new_system_utterance}'
-        LOGGER.info(f'qa_str in transform_utterances: {qa_str}')
+        # TODO: Simple (Direct)
+        #   Simple Question
+        #   Simple Question|Single Entity
+        #   Simple Question|Mult. Entity|Indirect
+        #       07/12/2022 11:22:25 PM __main__     INFO     qa_str in transform_utterances: Which people are the life partner of Q63749 and Q213671 ? Q288703, Q813294, Q542719
+        #       07/12/2022 11:22:25 PM __main__     INFO     declarative_str in transform_utterances: Q288703, Q813294, Q542719 are the life partner of
+        #       07/12/2022 11:22:25 PM __main__     INFO     qa_str in transform_utterances: Which person have that architectural structure as their work location ? Q91103
+        #       statement in __main__: Landgravine Caroline Louise of Hesse-Darmstadt, Beatrix of Julich-Berg, Louise Caroline of Hochberg are the life partner of
+
+        # TODO: Simple (Coreference)
+        #   Simple Question|Single Entity|Indirect
+        #   Simple Question|Mult. Entity
+        #       07/12/2022 11:22:27 PM __main__     INFO     qa_str in transform_utterances: Which political territories are bordered by those ones ? Q183 for 1st, 2nd, Q834010 for 3rd
+        #       07/12/2022 11:22:27 PM __main__     INFO     declarative_str in transform_utterances: Q183 for 1st, 2nd, Q834010 for 3rd are
+        #       07/12/2022 11:22:27 PM __main__     INFO     qa_str in transform_utterances: And what about Q19893635? Q21
+        #       statement in __main__: Germany for 1st, 2nd, Villar del Rio for 3rd are
+
+        # TODO: Simple (Ellipsis)
+        #   only subject is changed, parent and predicate remains same
+        #   Incomplete|object parent is changed, subject and predicate remain same
+        # DONE: Solve this problem: Villar del Río for 3rd -> Villar del Ro for 3rd
+        qa_str = f'{user_utterance} {system_utterance}'
+        print(f'qa_str in transform_utterances: {qa_str}')
         declarative_str = self.qa2d_transformer.infer_one(qa_str)
-        LOGGER.info(f'declarative_str in transform_utterances: {declarative_str}')
+        print(f'declarative_str in transform_utterances: {declarative_str}')
 
         # replace entity ids back with labels
-        for eid, lab in {**user_inverse_map, **system_inverse_map}.items():
+        for eid, lab in inverse_map.items():
             declarative_str = declarative_str.replace(eid, lab)
 
         return declarative_str
@@ -113,7 +143,8 @@ if __name__ == "__main__":
     csqa_files = data_folder.glob('**/d_dataset_like_example_file.json')
     print(f'Reading folders for partition {args.partition}')
 
-    # TODO: only take Simple Question types. Those we will need to transform (how about the questions around them?)
+    # DONE: only take Simple Question types. Those we will need to transform
+    #  TODO: how about the questions around them?
 
     op = ESActionOperator(CLIENT)
     transformer = T5Q2DA()
@@ -131,30 +162,21 @@ if __name__ == "__main__":
             entry_system = conversation[2*i + 1]  # SYSTEM
 
             if 'Simple' in entry_user['question-type']:
-                print(f"USER: {entry_user['question-type']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
-                print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['active_set']} {entry_system['utterance']}")
+                print(f"USER: {entry_user['description']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
+                print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
+                print(f"active_set: {entry_system['active_set']}")
+
 
                 # 1) TRANSFORM active_set field
                 new_active_set = builder.build_active_set(entry_user, entry_system)
-                print(f'new_active_set in {__name__}: {new_active_set}')
+                print(f'new_active_set: {new_active_set}')
 
-                # 2) TRANSFORM utterances to statements
+                # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
                 statement = builder.transorm_utterances(entry_user, entry_system)
-                print(f'statement in {__name__}: {statement}')
+                print(f'statement: {statement}')
                 print(f"".center(50, "-"), end='\n\n')
+
+                # 3) TRANSFORM all other fields in conversation turns TODO: implement
 
             # conversation types to tweak:
             # and how?
-
-            # TODO: Simple (Direct)
-            #   Simple Question
-            #   Simple Question|Single Entity
-            #   Simple Question|Mult. Entity|Indirect
-
-            # TODO: Simple (Coreference)
-            #   Simple Question|Single Entity|Indirect
-            #   Simple Question|Mult. Entity
-
-            # TODO: Simple (Ellipsis)
-            #   only subject is changed, parent and predicate remains same
-            #   Incomplete|object parent is changed, subject and predicate remain same
