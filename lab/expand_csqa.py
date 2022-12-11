@@ -194,7 +194,7 @@ class CSQAInsertBuilder:
 
         # replace entity ids back with labels
         for eid, lab in inverse_map.items():
-            declarative_str = declarative_str.replace(eid, lab)
+            declarative_str = re.sub(eid, lab, declarative_str, flags=re.IGNORECASE)
 
         return declarative_str
 
