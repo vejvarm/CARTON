@@ -3,6 +3,8 @@ import logging
 import re
 from pathlib import Path
 from unidecode import unidecode
+from typing import Protocol
+from abc import ABC
 
 from constants import args, ROOT_PATH, ENTITY, TYPE, RELATION
 
@@ -15,12 +17,28 @@ CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 
-class T5Q2DA:
-    tokenizer = AutoTokenizer.from_pretrained("domenicrosati/QA2D-t5-small")
-    model = AutoModelForSeq2SeqLM.from_pretrained("domenicrosati/QA2D-t5-small")
+# class QA2DModel(Protocol):
+#     tokenizer: AutoTokenizer
+#     model: AutoModelForSeq2SeqLM
+#     SEP: str
+#
+#     @classmethod
+#     def infer_one(cls, question: str, answer: str) -> str:
+#         raise NotImplementedError
+
+
+class QA2DModel(ABC):
+    tokenizer: AutoTokenizer()
+    model: AutoModelForSeq2SeqLM()
+    SEP: str
+
+    @staticmethod
+    def _preprocess(question: str, answer: str, sep: str) -> str:
+        raise NotImplementedError
 
     @classmethod
-    def infer_one(cls, qa_string: str):
+    def infer_one(cls, question: str, answer: str) -> str:
+        qa_string = cls._preprocess(question, answer, cls.SEP)
         input_ids = cls.tokenizer(qa_string, return_tensors="pt").input_ids
         LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
 
@@ -30,11 +48,35 @@ class T5Q2DA:
         return cls.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 
+class QA2DT5(QA2DModel):
+    tokenizer = AutoTokenizer.from_pretrained("domenicrosati/QA2D-t5-small")
+    model = AutoModelForSeq2SeqLM.from_pretrained("domenicrosati/QA2D-t5-small")
+    SEP = ". "
+
+    @staticmethod
+    def _preprocess(question: str, answer: str, sep=SEP) -> str:
+        q = question.replace("?", "").strip()
+        a = answer.strip()
+        return f'{q}{sep}{a}'
+
+
+class QuestionConverter3B(QA2DModel):
+    tokenizer = AutoTokenizer.from_pretrained('domenicrosati/question_converter-3b')
+    model = AutoModelForSeq2SeqLM.from_pretrained('domenicrosati/question_converter-3b')
+    SEP = "</s>"
+
+    @staticmethod
+    def _preprocess(question: str, answer: str, sep=SEP) -> str:
+        q = question.replace(" ?", "?").strip()
+        a = answer.strip()
+        return f"{q} {sep} {a}"
+
+
 class CSQAInsertBuilder:
 
-    def __init__(self, operator: ESActionOperator, qa2d_transformer: T5Q2DA):
+    def __init__(self, operator: ESActionOperator, qa2d_model: QA2DModel):
         self.op = operator
-        self.qa2d_transformer = qa2d_transformer
+        self.qa2d_model = qa2d_model
 
     def build_active_set(self, user: dict[list[str] or str], system: dict[list[str] or str]):
         user_ents = user['entities_in_utterance']
@@ -116,9 +158,8 @@ class CSQAInsertBuilder:
         #   only subject is changed, parent and predicate remains same
         #   Incomplete|object parent is changed, subject and predicate remain same
         # DONE: Solve this problem: Villar del Río for 3rd -> Villar del Ro for 3rd
-        qa_str = f'{user_utterance} {system_utterance}'
-        print(f'qa_str in transform_utterances: {qa_str}')
-        declarative_str = self.qa2d_transformer.infer_one(qa_str)
+        print(f'utterances in transform_utterances: U: {user_utterance} S: {system_utterance}')
+        declarative_str = self.qa2d_model.infer_one(user_utterance, system_utterance)
         print(f'declarative_str in transform_utterances: {declarative_str}')
 
         # replace entity ids back with labels
@@ -147,7 +188,7 @@ if __name__ == "__main__":
     #  TODO: how about the questions around them?
 
     op = ESActionOperator(CLIENT)
-    transformer = T5Q2DA()
+    transformer = QA2DT5()  # or QuestionConverter3B
     builder = CSQAInsertBuilder(op, transformer)
 
     for pth in csqa_files:
