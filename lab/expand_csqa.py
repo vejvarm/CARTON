@@ -19,7 +19,7 @@ from helpers import connect_to_elasticsearch, setup_logger
 #   DONE: Use plain question and answer strings (use_ent_id_in_transformations = False)
 #   DONE: Use entity identifiers (id) in place of labels (use_ent_id_in_transformations = True)
 #   DONE: Make entitiy ids lowercased (e.g. Q1235 -> q1235)
-#   TODO: use placeholder names for entities (instead of Q1234, use e.g. f'entity{i}' )
+#   DONE: use placeholder names for entities (instead of Q1234, use e.g. f'entity{i}' )
 #   TODO: Use type labels as placeholder for multiple entities in answer
 #   TODO: Use type ids as placeholder for multiple entities in answer
 #   TODO: Always look on the bright side of life
@@ -65,6 +65,7 @@ class RepresentEntityLabelAs(Enum):
     LABEL = auto()
     ENTITY_ID = auto()
     PLACEHOLDER = auto()
+    PLACEHOLDER_NAMES = auto()
     TYPE_ID = auto()  # TODO: Implement
 
 
@@ -140,6 +141,8 @@ class CSQAInsertBuilder:
         self.op = operator
         self.qa2d_model = qa2d_model
 
+        self.placeholder_names = ["Mary", "Anna", "Emma", "Elizabeth", "Minnie", "Margaret", "Ida", "Alice", "Bertha", "Sarah", "Annie", "Clara", "Ella", "Florence", "Cora", "Martha", "Laura", "Nellie", "Grace", "Carrie", "Maude", "Mabel", "Bessie", "Jennie", "Gertrude", "Julia", "Hattie", "Edith", "Mattie", "Rose", "Catherine", "Lillian", "Ada", "Lillie", "Helen", "Jessie", "Louise", "Ethel", "Lula", "Myrtle", "Eva", "Frances", "Lena", "Lucy", "Edna", "Maggie", "Pearl", "Daisy", "Fannie", "Josephine", "Dora", "Rosa", "Katherine", "Agnes", "Marie", "Nora", "May", "Mamie", "Blanche", "Stella", "Ellen", "Nancy", "Effie", "Sallie", "Nettie", "Della", "Lizzie", "Flora", "Susie", "Maud", "Mae", "Etta", "Harriet", "Sadie", "Caroline", "Katie", "Lydia", "Elsie", "Kate", "Susan", "Mollie", "Alma", "Addie", "Georgia", "Eliza", "Lulu", "Nannie", "Lottie", "Amanda", "Belle", "Charlotte", "Rebecca", "Ruth", "Viola", "Olive", "Amelia", "Hannah", "Jane", "Virginia"]
+
     def build_active_set(self, user: dict[list[str] or str], system: dict[list[str] or str]):
         user_ents = user['entities_in_utterance']
         system_ents = system['entities_in_utterance']
@@ -177,6 +180,8 @@ class CSQAInsertBuilder:
                 repl = ent.lower()
             elif labels_as == RepresentEntityLabelAs.PLACEHOLDER:
                 repl = f"entity{i}"
+            elif labels_as == RepresentEntityLabelAs.PLACEHOLDER_NAMES:
+                repl = self.placeholder_names[i]
             else:
                 raise NotImplementedError(f'Chosen RepresentEntityLabeAs ({labels_as}) Enum is not supported.')
             utterance = utterance.replace(label, repl)
@@ -218,7 +223,7 @@ class CSQAInsertBuilder:
 
 if __name__ == "__main__":
     model_choice = QA2DModelChoices.QA2DT5_SMALL
-    represent_entity_labels_as = RepresentEntityLabelAs.PLACEHOLDER
+    represent_entity_labels_as = RepresentEntityLabelAs.PLACEHOLDER_NAMES
 
     # pop unneeded conversations right here?
     args.read_folder = '/data'  # 'folder to read conversations'
