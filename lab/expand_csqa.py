@@ -244,7 +244,7 @@ if __name__ == "__main__":
                 # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
                 statement = builder.transorm_utterances(entry_user, entry_system, use_ids=use_ent_id_in_transformations)
                 LOGGER.info(f'statement: {statement}')
-                LOGGER.info(f"".center(50, "-"), end='\n\n')
+                LOGGER.info(f"".center(50, "-")+"\n\n")
 
                 # 3) TRANSFORM all other fields in conversation turns TODO: implement
 
