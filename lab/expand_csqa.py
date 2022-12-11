@@ -116,6 +116,7 @@ class QA2DModel:
 
     def infer_one(self, question: str, answer: str) -> str:
         qa_string = self.preprocessor.combine_qa(question, answer)
+        LOGGER.info(f"qa_string in infer_one: {qa_string}")
         input_ids = self.tokenizer(qa_string, return_tensors="pt").input_ids
         LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
 
@@ -168,7 +169,7 @@ class CSQAInsertBuilder:
         return utterance, inverse_map
 
     def transorm_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str], use_ids: bool = True) -> str:
-        """ transform user utterance (Question) and system utterance (Answer) to declarative statements
+        """ Transform user utterance (Question) and system utterance (Answer) to declarative statements.
 
         :param user: conversation turn of the user from the CSQA dataset
         :param system: conversation turn of the system from the CSQA dataset
@@ -187,9 +188,9 @@ class CSQAInsertBuilder:
             system_utterance, system_inverse_map = self._replace_labels_with_id(system_utterance, system_ents)
             inverse_map = {**user_inverse_map, **system_inverse_map}
 
-        print(f'utterances in transform_utterances: U: {user_utterance} S: {system_utterance}')
+        LOGGER.info(f'utterances in transform_utterances: U: {user_utterance} S: {system_utterance}')
         declarative_str = self.qa2d_model.infer_one(user_utterance, system_utterance)
-        print(f'declarative_str in transform_utterances: {declarative_str}')
+        LOGGER.info(f'declarative_str in transform_utterances: {declarative_str}')
 
         # replace entity ids back with labels
         for eid, lab in inverse_map.items():
@@ -214,7 +215,7 @@ if __name__ == "__main__":
     data_folder = Path(f'{ROOT_PATH}{args.read_folder}/{args.partition}')
     # csqa_files = data_folder.glob('**/QA*.json')
     csqa_files = data_folder.glob('**/d_dataset_like_example_file.json')
-    print(f'Reading folders for partition {args.partition}')
+    LOGGER.info(f'Reading folders for partition {args.partition}')
 
     op = ESActionOperator(CLIENT)
     transformer = QA2DModel(model_choice)  # or QuestionConverter3B
@@ -232,18 +233,18 @@ if __name__ == "__main__":
             entry_system = conversation[2*i + 1]  # SYSTEM
 
             if 'Simple' in entry_user['question-type']:
-                print(f"USER: {entry_user['description']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
-                print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
-                print(f"active_set: {entry_system['active_set']}")
+                LOGGER.info(f"USER: {entry_user['description']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
+                LOGGER.info(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
+                LOGGER.info(f"active_set: {entry_system['active_set']}")
 
                 # 1) TRANSFORM active_set field
                 new_active_set = builder.build_active_set(entry_user, entry_system)
-                print(f'new_active_set: {new_active_set}')
+                LOGGER.info(f'new_active_set: {new_active_set}')
 
                 # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
                 statement = builder.transorm_utterances(entry_user, entry_system, use_ids=use_ent_id_in_transformations)
-                print(f'statement: {statement}')
-                print(f"".center(50, "-"), end='\n\n')
+                LOGGER.info(f'statement: {statement}')
+                LOGGER.info(f"".center(50, "-"), end='\n\n')
 
                 # 3) TRANSFORM all other fields in conversation turns TODO: implement
 
