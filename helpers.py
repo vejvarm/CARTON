@@ -4,6 +4,8 @@ import ujson
 import os.path
 import sqlite3
 import numpy as np
+from typing import Sequence, Union
+from ordered_set import OrderedSet
 from matplotlib import pyplot as plt
 from elasticsearch import Elasticsearch
 
@@ -263,6 +265,34 @@ def connect_to_elasticsearch(user=args.elastic_user, password=args.elastic_passw
         basic_auth=(user, password),  # refer to args.py --elastic_password for alternatives
         retry_on_timeout=True,
     )
+
+
+def _uppercase_sequence(sequence: Union[Sequence[str], OrderedSet[str]], tp):
+    if not isinstance(sequence, tp):
+        return sequence
+
+    new_sequence = []
+    for ent in sequence:
+        try:
+            new_sequence.append(ent.upper())
+        except AttributeError:
+            raise AttributeError("Entity in sequence is not a string!")
+    return tp(new_sequence)
+
+
+def uppercase(f):
+
+    def wrap(entry, *args, **kwargs):
+        if isinstance(entry, str):
+            entry = entry.upper()
+        else:
+            entry = _uppercase_sequence(entry, OrderedSet)
+            entry = _uppercase_sequence(entry, list)
+            entry = _uppercase_sequence(entry, tuple)
+
+        return f(entry, *args, **kwargs)
+
+    return wrap
 
 
 if __name__ == '__main__':

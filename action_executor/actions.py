@@ -1,5 +1,4 @@
 from __future__ import division
-
 import logging
 
 import elasticsearch
@@ -9,6 +8,7 @@ from unidecode import unidecode
 from random import randint
 
 from constants import args
+from helpers import uppercase
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.WARNING)
@@ -189,17 +189,20 @@ class ESActionOperator(ActionOperator):
         self.index_rel = index_rel
         self.index_rdf = index_rdf
 
-    def _match(self, field: str, term: str):
+    @staticmethod
+    def _match(field: str, term: str):
         return {'match': {field: term}}
 
-    def _terms(self, field: str, terms: list[str]):
+    @staticmethod
+    def _terms(field: str, terms: list[str]):
         if isinstance(terms, str):
             LOGGER.warning(f"in self._terms: 'terms' argument should be a list, instead we got {type(terms)}.")
             terms = [terms]
 
         return {'terms': {field: [t.lower() for t in terms]}}
 
-    def _get_by_ids(self, obj_set: OrderedSet['str'], es_index: str):
+    @uppercase
+    def _get_by_ids(self, obj_set: OrderedSet[str], es_index: str):
         """
 
         # special cases:
@@ -234,6 +237,7 @@ class ESActionOperator(ActionOperator):
 
         return res_dict
 
+    @uppercase
     def get_rdf(self, _id: str) -> dict:
         """Get RDF with given _id, which follows {sid}{rid}{oid} structure, if it exists"""
         index = self.index_rdf
@@ -243,6 +247,7 @@ class ESActionOperator(ActionOperator):
 
         return self.client.get(index=index, id=_id)['_source']
 
+    @uppercase
     def get_label(self, eid: str):
         """Get entity label for given entity (eid) if it exists"""
         index = self.index_ent
@@ -252,6 +257,7 @@ class ESActionOperator(ActionOperator):
 
         return self.client.get(index=index, id=eid)['_source']['label']
 
+    @uppercase
     def get_types(self, eid: str):
         """Get list of types for given entity (eid) if it exists."""
         index = self.index_ent
@@ -261,12 +267,16 @@ class ESActionOperator(ActionOperator):
 
         return self.client.get(index=index, id=eid)['_source']['types']
 
-    def find(self, e: list[str] or str, rid: str):
+    @uppercase
+    def find(self, e: OrderedSet[str] or list[str] or str, rid: str):
         if e is None or rid is None:
             return None
 
-        if not isinstance(e, list):
+        if isinstance(e, str):
             e = [e]
+
+        if isinstance(e, OrderedSet):
+            e = list(e)
 
         res = self.client.search(index=self.index_rdf,
                                  query={
@@ -289,12 +299,16 @@ class ESActionOperator(ActionOperator):
 
         return result_set
 
-    def find_reverse(self, e: list[str], rid: str):
+    @uppercase
+    def find_reverse(self, e: OrderedSet[str] or list[str] or str, rid: str):
         if e is None or rid is None:
             return None
 
-        if not isinstance(e, list):
+        if isinstance(e, str):
             e = [e]
+
+        if isinstance(e, OrderedSet):
+            e = list(e)
 
         res = self.client.search(index=self.index_rdf,
                                  query={
@@ -317,6 +331,7 @@ class ESActionOperator(ActionOperator):
 
         return result_set
 
+    @uppercase
     def filter_type(self, ent_set: OrderedSet, typ: str):
         result = OrderedSet()
         if not ent_set:
@@ -348,6 +363,7 @@ class ESActionOperator(ActionOperator):
 
         return result
 
+    @uppercase
     def filter_multi_types(self, ent_set: OrderedSet, t1: str, t2: str):
         """ filter set of entities by two types (t1, t2)
 
@@ -470,6 +486,7 @@ class ESActionOperator(ActionOperator):
         #   just use the insert function
         pass
 
+    @uppercase
     def update_labels(self, ent_set: OrderedSet[str], label_list: list[str], overwrite=False):
         """
 
@@ -495,6 +512,7 @@ class ESActionOperator(ActionOperator):
 
         return op_results
 
+    @uppercase
     def update_types(self, ent_set: OrderedSet[str], types_list: list[list[str]], overwrite=False):
         """
 
