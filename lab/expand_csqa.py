@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from unidecode import unidecode
 from typing import Protocol
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from constants import args, ROOT_PATH, ENTITY, TYPE, RELATION
 
@@ -22,17 +22,22 @@ LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 #     model: AutoModelForSeq2SeqLM
 #     SEP: str
 #
+#     @staticmethod
+#     def _preprocess(question: str, answer: str, sep: str) -> str:
+#         raise NotImplementedError
+#
 #     @classmethod
 #     def infer_one(cls, question: str, answer: str) -> str:
 #         raise NotImplementedError
 
 
 class QA2DModel(ABC):
-    tokenizer: AutoTokenizer()
-    model: AutoModelForSeq2SeqLM()
+    tokenizer: AutoTokenizer
+    model: AutoModelForSeq2SeqLM
     SEP: str
 
     @staticmethod
+    @abstractmethod
     def _preprocess(question: str, answer: str, sep: str) -> str:
         raise NotImplementedError
 
