@@ -217,7 +217,7 @@ class CSQAInsertBuilder:
 
 if __name__ == "__main__":
     model_choice = QA2DModelChoices.QA2DT5_SMALL
-    use_ent_id_in_transformations = True
+    represent_entity_labels_as = RepresentEntityLabelAs.PLACEHOLDER
 
     # pop unneeded conversations right here?
     args.read_folder = '/data'  # 'folder to read conversations'
@@ -255,7 +255,7 @@ if __name__ == "__main__":
                 LOGGER.info(f'new_active_set: {new_active_set}')
 
                 # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
-                statement = builder.transorm_utterances(entry_user, entry_system, use_ids=use_ent_id_in_transformations)
+                statement = builder.transorm_utterances(entry_user, entry_system, labels_as=represent_entity_labels_as)
                 LOGGER.info(f'statement: {statement}')
                 LOGGER.info(f"".center(50, "-")+"\n\n")
 
