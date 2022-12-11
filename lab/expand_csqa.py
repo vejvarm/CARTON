@@ -24,6 +24,8 @@ from helpers import connect_to_elasticsearch, setup_logger
 #   TODO: Use type ids as placeholder for multiple entities in answer
 #   TODO: Always look on the bright side of life
 # Dataset requirements:
+#   DONE: only take Simple Question types. Those we will need to transform
+#   TODO: how about the questions around them? ...
 #   TODO: for Coreferecnce and Ellipsis, we must keep the previous questions in the dataset!!!
 # Question types:
 # Simple (Direct)
@@ -158,8 +160,8 @@ class CSQAInsertBuilder:
         inverse_map = dict()
         utterance = unidecode(utterance)
         for ent in entities:
-            ent = ent.lower()
             label = self.op.get_label(ent)
+            ent = ent.lower()
             utterance = utterance.replace(label, ent)
             inverse_map[ent] = label
 
@@ -213,9 +215,6 @@ if __name__ == "__main__":
     # csqa_files = data_folder.glob('**/QA*.json')
     csqa_files = data_folder.glob('**/d_dataset_like_example_file.json')
     print(f'Reading folders for partition {args.partition}')
-
-    # DONE: only take Simple Question types. Those we will need to transform
-    #  TODO: how about the questions around them?
 
     op = ESActionOperator(CLIENT)
     transformer = QA2DModel(model_choice)  # or QuestionConverter3B
