@@ -62,10 +62,10 @@ class QA2DModelChoices(Enum):
 
 
 class RepresentEntityLabelAs(Enum):
-    LABEL = auto
-    ENTITY_ID = auto
-    PLACEHOLDER = auto
-    TYPE_ID = auto  # TODO: Implement
+    LABEL = auto()
+    ENTITY_ID = auto()
+    PLACEHOLDER = auto()
+    TYPE_ID = auto()  # TODO: Implement
 
 
 class Preprocessor(ABC):
@@ -121,9 +121,10 @@ class QA2DModel:
             raise NotImplementedError(
                 f'Chosen model type ({model_type}) is not supported. Refer to QA2DModelChoices class.')
 
-    def infer_one(self, question: str, answer: str) -> str:
-        qa_string = self.preprocessor.combine_qa(question, answer)
-        LOGGER.info(f"qa_string in infer_one: {qa_string}")
+    def preprocess_and_combine(self, question: str, answer: str) -> str:
+        return self.preprocessor.combine_qa(question, answer)
+
+    def infer_one(self, qa_string: str) -> str:
         input_ids = self.tokenizer(qa_string, return_tensors="pt").input_ids
         LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
 
@@ -196,13 +197,13 @@ class CSQAInsertBuilder:
         system_utterance = system['utterance']
         system_ents = system['entities_in_utterance']
 
-        # substitute all labels with chosen replacement
-        user_utterance, user_inverse_map = self._replace_labels_in_utterance(user_utterance, user_ents, labels_as)
-        system_utterance, system_inverse_map = self._replace_labels_in_utterance(system_utterance, system_ents, labels_as)
-        inverse_map = {**user_inverse_map, **system_inverse_map}
-
         LOGGER.info(f'utterances in transform_utterances: U: {user_utterance} S: {system_utterance}')
-        declarative_str = self.qa2d_model.infer_one(user_utterance, system_utterance)
+        qa_string = self.qa2d_model.preprocess_and_combine(user_utterance, system_utterance)
+        LOGGER.info(f"qa_string in infer_one before replace: {qa_string}")
+        qa_entities = [*user_ents, *system_ents]
+        qa_string, inverse_map = self._replace_labels_in_utterance(qa_string, qa_entities, labels_as)
+        LOGGER.info(f"qa_string in infer_one after replace: {qa_string}")
+        declarative_str = self.qa2d_model.infer_one(qa_string)
         LOGGER.info(f'declarative_str in transform_utterances: {declarative_str}')
 
         # replace entity ids back with labels
