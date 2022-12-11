@@ -5,6 +5,7 @@ from pathlib import Path
 from unidecode import unidecode
 from typing import Protocol
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from constants import args, ROOT_PATH, ENTITY, TYPE, RELATION
 
@@ -13,68 +14,113 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
 
+# TODOlist
+# Question Answer processing during QA2D transformation:
+#   DONE: Use plain question and answer strings (use_ent_id_in_transformations = False)
+#   DONE: Use entity identifiers (id) in place of labels (use_ent_id_in_transformations = True)
+#   DONE: Make entitiy ids lowercased (e.g. Q1235 -> q1235)
+#   TODO: use placeholder names for entities (instead of Q1234, use e.g. f'entity{i}' )
+#   TODO: Use type labels as placeholder for multiple entities in answer
+#   TODO: Use type ids as placeholder for multiple entities in answer
+#   TODO: Always look on the bright side of life
+# Dataset requirements:
+#   TODO: for Coreferecnce and Ellipsis, we must keep the previous questions in the dataset!!!
+# Question types:
+# Simple (Direct)
+#   Simple Question
+#   Simple Question|Single Entity
+#   Simple Question|Mult. Entity|Indirect
+#   TODO fix:
+#       07/12/2022 11:22:25 PM __main__     INFO     qa_str in transform_utterances: Which people are the life partner of Q63749 and Q213671 ? Q288703, Q813294, Q542719
+#       07/12/2022 11:22:25 PM __main__     INFO     declarative_str in transform_utterances: Q288703, Q813294, Q542719 are the life partner of
+#       07/12/2022 11:22:25 PM __main__     INFO     qa_str in transform_utterances: Which person have that architectural structure as their work location ? Q91103
+#       statement in __main__: Landgravine Caroline Louise of Hesse-Darmstadt, Beatrix of Julich-Berg, Louise Caroline of Hochberg are the life partner of
+
+# Simple (Coreference)
+#   Simple Question|Single Entity|Indirect
+#   Simple Question|Mult. Entity
+#   TODO fix:
+#       07/12/2022 11:22:27 PM __main__     INFO     qa_str in transform_utterances: Which political territories are bordered by those ones ? Q183 for 1st, 2nd, Q834010 for 3rd
+#       07/12/2022 11:22:27 PM __main__     INFO     declarative_str in transform_utterances: Q183 for 1st, 2nd, Q834010 for 3rd are
+#       07/12/2022 11:22:27 PM __main__     INFO     qa_str in transform_utterances: And what about Q19893635? Q21
+#       statement in __main__: Germany for 1st, 2nd, Villar del Rio for 3rd are
+
+# Simple (Ellipsis)
+#   only subject is changed, parent and predicate remains same
+#   Incomplete|object parent is changed, subject and predicate remain same
+
 CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
 
 
-# class QA2DModel(Protocol):
-#     tokenizer: AutoTokenizer
-#     model: AutoModelForSeq2SeqLM
-#     SEP: str
-#
-#     @staticmethod
-#     def _preprocess(question: str, answer: str, sep: str) -> str:
-#         raise NotImplementedError
-#
-#     @classmethod
-#     def infer_one(cls, question: str, answer: str) -> str:
-#         raise NotImplementedError
+class QA2DModelChoices(Enum):
+    QA2DT5_SMALL = 'domenicrosati/QA2D-t5-small'
+    QA2DT5_BASE = 'domenicrosati/QA2D-t5-base'
+    QC3B = 'domenicrosati/question_converter-3b'
 
 
-class QA2DModel(ABC):
-    tokenizer: AutoTokenizer
-    model: AutoModelForSeq2SeqLM
+class Preprocessor(ABC):
     SEP: str
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def _preprocess(question: str, answer: str, sep: str) -> str:
+    def combine_qa(cls, question: str, answer: str) -> str:
         raise NotImplementedError
 
-    @classmethod
-    def infer_one(cls, question: str, answer: str) -> str:
-        qa_string = cls._preprocess(question, answer, cls.SEP)
-        input_ids = cls.tokenizer(qa_string, return_tensors="pt").input_ids
-        LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
 
-        outputs = cls.model.generate(input_ids)
-        LOGGER.debug(f"outputs in infer_one: ({outputs.shape}) {outputs}")
-
-        return cls.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-
-class QA2DT5(QA2DModel):
-    tokenizer = AutoTokenizer.from_pretrained("domenicrosati/QA2D-t5-small")
-    model = AutoModelForSeq2SeqLM.from_pretrained("domenicrosati/QA2D-t5-small")
+class QA2DPreprocessor(Preprocessor):
     SEP = ". "
 
-    @staticmethod
-    def _preprocess(question: str, answer: str, sep=SEP) -> str:
+    @classmethod
+    def combine_qa(cls, question: str, answer: str) -> str:
         q = question.replace("?", "").strip()
         a = answer.strip()
-        return f'{q}{sep}{a}'
+        return f'{q}{cls.SEP}{a}'
 
 
-class QuestionConverter3B(QA2DModel):
-    tokenizer = AutoTokenizer.from_pretrained('domenicrosati/question_converter-3b')
-    model = AutoModelForSeq2SeqLM.from_pretrained('domenicrosati/question_converter-3b')
+class B3Preprocessor(Preprocessor):
     SEP = "</s>"
 
-    @staticmethod
-    def _preprocess(question: str, answer: str, sep=SEP) -> str:
+    @classmethod
+    def combine_qa(cls, question: str, answer: str) -> str:
         q = question.replace(" ?", "?").strip()
         a = answer.strip()
-        return f"{q} {sep} {a}"
+        return f"{q} {cls.SEP} {a}"
+
+
+class QA2DModel:
+
+    def __init__(self, model_type: QA2DModelChoices):
+        self.model_type = model_type
+        self.tokenizer, self.model = self._get_tokenizer_and_model(model_type)
+        self.preprocessor = self._get_preprocessor(model_type)
+
+    @staticmethod
+    def _get_tokenizer_and_model(model_type: QA2DModelChoices):
+        tokenizer = AutoTokenizer.from_pretrained(model_type.value)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_type.value)
+
+        return tokenizer, model
+
+    @staticmethod
+    def _get_preprocessor(model_type: QA2DModelChoices):
+        if model_type in (QA2DModelChoices.QA2DT5_SMALL, QA2DModelChoices.QA2DT5_BASE):
+            return QA2DPreprocessor
+        elif model_type == QA2DModelChoices.QC3B:
+            return B3Preprocessor
+        else:
+            raise NotImplementedError(
+                f'Chosen model type ({model_type}) is not supported. Refer to QA2DModelChoices class.')
+
+    def infer_one(self, question: str, answer: str) -> str:
+        qa_string = self.preprocessor.combine_qa(question, answer)
+        input_ids = self.tokenizer(qa_string, return_tensors="pt").input_ids
+        LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
+
+        outputs = self.model.generate(input_ids)
+        LOGGER.debug(f"outputs in infer_one: ({outputs.shape}) {outputs}")
+
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 
 class CSQAInsertBuilder:
@@ -94,8 +140,6 @@ class CSQAInsertBuilder:
             rels.update(*[re.findall(r'P\d+', entry) for entry in system['active_set']])
             rels = list(rels)
 
-        # TODO: for Coreferecnce and Ellipsis, we must keep the previous questions in the dataset!!!
-
         active_set = []
         _all_possible_ids = []
         for ue in user_ents:
@@ -114,6 +158,7 @@ class CSQAInsertBuilder:
         inverse_map = dict()
         utterance = unidecode(utterance)
         for ent in entities:
+            ent = ent.lower()
             label = self.op.get_label(ent)
             utterance = utterance.replace(label, ent)
             inverse_map[ent] = label
@@ -140,29 +185,6 @@ class CSQAInsertBuilder:
             system_utterance, system_inverse_map = self._replace_labels_with_id(system_utterance, system_ents)
             inverse_map = {**user_inverse_map, **system_inverse_map}
 
-        # Tranform user+system utterances into declarative statements using T5-QA2D
-        # TODO: Tweak for different question types
-        # TODO: Simple (Direct)
-        #   Simple Question
-        #   Simple Question|Single Entity
-        #   Simple Question|Mult. Entity|Indirect
-        #       07/12/2022 11:22:25 PM __main__     INFO     qa_str in transform_utterances: Which people are the life partner of Q63749 and Q213671 ? Q288703, Q813294, Q542719
-        #       07/12/2022 11:22:25 PM __main__     INFO     declarative_str in transform_utterances: Q288703, Q813294, Q542719 are the life partner of
-        #       07/12/2022 11:22:25 PM __main__     INFO     qa_str in transform_utterances: Which person have that architectural structure as their work location ? Q91103
-        #       statement in __main__: Landgravine Caroline Louise of Hesse-Darmstadt, Beatrix of Julich-Berg, Louise Caroline of Hochberg are the life partner of
-
-        # TODO: Simple (Coreference)
-        #   Simple Question|Single Entity|Indirect
-        #   Simple Question|Mult. Entity
-        #       07/12/2022 11:22:27 PM __main__     INFO     qa_str in transform_utterances: Which political territories are bordered by those ones ? Q183 for 1st, 2nd, Q834010 for 3rd
-        #       07/12/2022 11:22:27 PM __main__     INFO     declarative_str in transform_utterances: Q183 for 1st, 2nd, Q834010 for 3rd are
-        #       07/12/2022 11:22:27 PM __main__     INFO     qa_str in transform_utterances: And what about Q19893635? Q21
-        #       statement in __main__: Germany for 1st, 2nd, Villar del Rio for 3rd are
-
-        # TODO: Simple (Ellipsis)
-        #   only subject is changed, parent and predicate remains same
-        #   Incomplete|object parent is changed, subject and predicate remain same
-        # DONE: Solve this problem: Villar del Río for 3rd -> Villar del Ro for 3rd
         print(f'utterances in transform_utterances: U: {user_utterance} S: {system_utterance}')
         declarative_str = self.qa2d_model.infer_one(user_utterance, system_utterance)
         print(f'declarative_str in transform_utterances: {declarative_str}')
@@ -178,6 +200,9 @@ class CSQAInsertBuilder:
 
 
 if __name__ == "__main__":
+    model_choice = QA2DModelChoices.QA2DT5_SMALL
+    use_ent_id_in_transformations = True
+
     # pop unneeded conversations right here?
     args.read_folder = '/data'  # 'folder to read conversations'
     args.partition = ''  # 'train', 'test', 'val', ''
@@ -193,7 +218,7 @@ if __name__ == "__main__":
     #  TODO: how about the questions around them?
 
     op = ESActionOperator(CLIENT)
-    transformer = QA2DT5()  # or QuestionConverter3B
+    transformer = QA2DModel(model_choice)  # or QuestionConverter3B
     builder = CSQAInsertBuilder(op, transformer)
 
     for pth in csqa_files:
@@ -212,13 +237,12 @@ if __name__ == "__main__":
                 print(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
                 print(f"active_set: {entry_system['active_set']}")
 
-
                 # 1) TRANSFORM active_set field
                 new_active_set = builder.build_active_set(entry_user, entry_system)
                 print(f'new_active_set: {new_active_set}')
 
                 # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
-                statement = builder.transorm_utterances(entry_user, entry_system)
+                statement = builder.transorm_utterances(entry_user, entry_system, use_ids=use_ent_id_in_transformations)
                 print(f'statement: {statement}')
                 print(f"".center(50, "-"), end='\n\n')
 
