@@ -21,7 +21,7 @@ from helpers import connect_to_elasticsearch, setup_logger
 #   DONE: Make entitiy ids lowercased (e.g. Q1235 -> q1235)
 #   DONE: use placeholder names for entities (instead of Q1234, use e.g. f'entity{i}' )
 #   DONE: use common english names as placeholders for entities (insead of Q1234, use e.g. Mary)
-#   TODO: use regexps for substituting sequences of entities (e.g. Q1, Q2 and Q3 -> entities1)
+#   DONE: use regexps for substituting sequences of entities (e.g. Q1, Q2 and Q3 -> entities1) NOTE: WORKS PRETTY GOOD
 #   TODO: Use type labels as placeholder for multiple entities in answer
 #   TODO: Use type ids as placeholder for multiple entities in answer
 #   TODO: Always look on the bright side of life
@@ -256,14 +256,7 @@ class CSQAInsertBuilder:
         pass
 
 
-if __name__ == "__main__":
-    model_choice = QA2DModelChoices.QA2DT5_SMALL
-    represent_entity_labels_as = RepresentEntityLabelAs.GROUP
-
-    # pop unneeded conversations right here?
-    args.read_folder = '/data'  # 'folder to read conversations'
-    args.partition = ''  # 'train', 'test', 'val', ''
-
+def main(model_choice: QA2DModelChoices, labels_as: RepresentEntityLabelAs):
     # read data and create csqa data dict
     # dict: partition -> folder -> file -> conversation
     data_folder = Path(f'{ROOT_PATH}{args.read_folder}/{args.partition}')
@@ -276,31 +269,101 @@ if __name__ == "__main__":
     builder = CSQAInsertBuilder(op, transformer)
 
     for pth in csqa_files:
-        folder = pth.parent.name
-        file = pth.name
 
         with open(pth, encoding='utf8') as json_file:
             conversation = json.load(json_file)
 
-        for i in range(len(conversation)//2):
-            entry_user = conversation[2*i]  # USER
-            entry_system = conversation[2*i + 1]  # SYSTEM
+        for i in range(len(conversation) // 2):
+            entry_user = conversation[2 * i]  # USER
+            entry_system = conversation[2 * i + 1]  # SYSTEM
 
-            if 'Simple' in entry_user['question-type']:
-                LOGGER.info(f"USER: {entry_user['description']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
-                LOGGER.info(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
-                LOGGER.info(f"active_set: {entry_system['active_set']}")
+            if 'Simple' not in entry_user['question-type']:
+                continue
 
-                # 1) TRANSFORM active_set field
-                new_active_set = builder.build_active_set(entry_user, entry_system)
-                LOGGER.info(f'new_active_set: {new_active_set}')
+            LOGGER.info(
+                f"USER: {entry_user['description']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
+            LOGGER.info(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
+            LOGGER.info(f"active_set: {entry_system['active_set']}")
 
-                # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
-                statement = builder.transorm_utterances(entry_user, entry_system, labels_as=represent_entity_labels_as)
-                LOGGER.info(f'statement: {statement}')
-                LOGGER.info(f"".center(50, "-")+"\n\n")
+            # 1) TRANSFORM active_set field
+            new_active_set = builder.build_active_set(entry_user, entry_system)
+            LOGGER.info(f'new_active_set: {new_active_set}')
 
-                # 3) TRANSFORM all other fields in conversation turns TODO: implement
+            # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
+            statement = builder.transorm_utterances(entry_user, entry_system, labels_as=labels_as)
+            LOGGER.info(f'statement: {statement}')
+            LOGGER.info(f"".center(50, "-") + "\n\n")
+
+            # 3) TRANSFORM all other fields in conversation turns TODO: implement
 
             # conversation types to tweak:
             # and how?
+
+
+def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DModelChoices,
+                                 labels_as_list: list[RepresentEntityLabelAs] or RepresentEntityLabelAs):
+    data_folder = Path(f'{ROOT_PATH}{args.read_folder}/{args.partition}')
+    # csqa_files = data_folder.glob('**/QA*.json')
+    csqa_files = data_folder.glob('**/d_dataset_like_example_file.json')
+    LOGGER.info(f'Reading folders for partition {args.partition}')
+
+    op = ESActionOperator(CLIENT)
+
+    results = {}
+
+    for model_choice in model_choices:
+        transformer = QA2DModel(model_choice)  # or QuestionConverter3B
+        builder = CSQAInsertBuilder(op, transformer)
+
+        results[model_choice] = {}
+
+        for pth in csqa_files:
+            results[model_choice][pth] = {}
+
+            with open(pth, encoding='utf8') as json_file:
+                conversation = json.load(json_file)
+
+            for i in range(len(conversation) // 2):
+                entry_user = conversation[2 * i]  # USER
+                entry_system = conversation[2 * i + 1]  # SYSTEM
+
+                if 'Simple' not in entry_user['question-type']:
+                    continue
+
+                if entry_user['question-type'] not in results[model_choice][pth].keys():
+                    results[model_choice][pth][entry_user['question-type']] = {}
+
+                if entry_user['description'] not in results[model_choice][pth][entry_user['question-type']].keys():
+                    results[model_choice][pth][entry_user['question-type']][entry_user['description']] = {
+                        'utterances': (entry_user['utterance'], entry_system['utterance']),
+                        'entities': (entry_user['entities_in_utterance'], entry_system['entities_in_utterance'])
+                    }
+
+                # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
+                for labels_as in labels_as_list:
+                    statement = builder.transorm_utterances(entry_user, entry_system, labels_as=labels_as)
+                    LOGGER.info(f'statement: {statement}')
+                    LOGGER.info(f"".center(50, "-") + "\n\n")
+
+                    if labels_as not in results[model_choice][pth][entry_user['question-type']][entry_user['description']]:
+                        results[model_choice][pth][entry_user['question-type']][entry_user['description']][labels_as] = {}
+
+                    results[model_choice][pth][entry_user['question-type']][entry_user['description']][labels_as] = {
+                        'statement': statement
+                    }
+
+        json.dump(results, data_folder.joinpath('utterance_comparison.json').open('w', encoding='utf8'), indent=4)
+
+
+if __name__ == "__main__":
+    # options
+    args.read_folder = '/data'  # 'folder to read conversations'
+    args.partition = ''  # 'train', 'test', 'val', ''
+
+    # model_choice = QA2DModelChoices.QA2DT5_SMALL
+    # represent_entity_labels_as = RepresentEntityLabelAs.GROUP
+    # main(model_choice, represent_entity_labels_as)
+
+    model_choices = QA2DModelChoices
+    labels_as_list = RepresentEntityLabelAs
+    compare_generated_utterances(model_choices, labels_as_list)
