@@ -20,6 +20,8 @@ from helpers import connect_to_elasticsearch, setup_logger
 #   DONE: Use entity identifiers (id) in place of labels (use_ent_id_in_transformations = True)
 #   DONE: Make entitiy ids lowercased (e.g. Q1235 -> q1235)
 #   DONE: use placeholder names for entities (instead of Q1234, use e.g. f'entity{i}' )
+#   DONE: use common english names as placeholders for entities (insead of Q1234, use e.g. Mary)
+#   TODO: use regexps for substituting sequences of entities (e.g. Q1, Q2 and Q3 -> entities1)
 #   TODO: Use type labels as placeholder for multiple entities in answer
 #   TODO: Use type ids as placeholder for multiple entities in answer
 #   TODO: Always look on the bright side of life
@@ -66,6 +68,7 @@ class RepresentEntityLabelAs(Enum):
     ENTITY_ID = auto()
     PLACEHOLDER = auto()
     PLACEHOLDER_NAMES = auto()
+    GROUP = auto()  # TODO: Implement
     TYPE_ID = auto()  # TODO: Implement
 
 
@@ -168,26 +171,58 @@ class CSQAInsertBuilder:
 
         return active_set
 
-    def _replace_labels_in_utterance(self, utterance: str, entities: list[str], labels_as: RepresentEntityLabelAs) -> tuple[str, dict]:
-        inverse_map = dict()
-        utterance = unidecode(utterance)
-        if labels_as == RepresentEntityLabelAs.LABEL or labels_as not in RepresentEntityLabelAs:
-            return utterance, inverse_map
+    def replace_labels(self, utterance: str, entities: list[str], labels_as: RepresentEntityLabelAs) -> tuple[str, dict]:
+        if labels_as not in RepresentEntityLabelAs:
+            raise NotImplementedError(f'Chosen RepresentEntityLabeAs Enum ({labels_as}) is not supported.')
 
-        for i, ent in enumerate(entities):
+        if labels_as == RepresentEntityLabelAs.LABEL:
+            return unidecode(utterance), dict()
+
+        if labels_as == RepresentEntityLabelAs.GROUP:
+            return self._replace_labels_by_groups(utterance, entities)
+
+        return self._replace_labels_in_utterance(utterance, entities, labels_as)
+
+    def _replace_labels_by_groups(self, utterance: str, entities: list[str]) -> tuple[str, dict]:
+        utterance, inverse_map = self._replace_labels_in_utterance(utterance, entities, RepresentEntityLabelAs.ENTITY_ID)
+
+        group_inverse_map = dict()
+        pattern = r"Q\d+(?:\s?(?:,|and)\s?Q\d+)*"
+        matches = re.findall(pattern, utterance, flags=re.IGNORECASE)
+        for j, match in enumerate(matches):
+            repl = f"group{j}"
+            utterance = utterance.replace(match, repl)
+            group_inverse_map[repl] = self._replace_ids_with_labels(match, inverse_map)
+
+        return utterance, group_inverse_map
+
+    def _replace_labels_in_utterance(self, utterance: str, entities: list[str], labels_as: RepresentEntityLabelAs) -> tuple[str, dict]:
+        # Use a dictionary to map the values of the labels_as parameter to the appropriate replacement string
+        label_replacements = {
+            RepresentEntityLabelAs.ENTITY_ID: lambda e, i: e.lower(),
+            RepresentEntityLabelAs.PLACEHOLDER: lambda e, i: f"entity{i}",
+            RepresentEntityLabelAs.PLACEHOLDER_NAMES: lambda e, i: self.placeholder_names[i],
+        }
+
+        if labels_as not in label_replacements.keys():
+            raise NotImplementedError(f'Chosen RepresentEntityLabeAs Enum ({labels_as}) is not supported.')
+
+        utterance = unidecode(utterance)
+        inverse_map = dict()
+
+        for idx, ent in enumerate(entities):
             label = self.op.get_label(ent)
-            if labels_as == RepresentEntityLabelAs.ENTITY_ID:
-                repl = ent.lower()
-            elif labels_as == RepresentEntityLabelAs.PLACEHOLDER:
-                repl = f"entity{i}"
-            elif labels_as == RepresentEntityLabelAs.PLACEHOLDER_NAMES:
-                repl = self.placeholder_names[i]
-            else:
-                raise NotImplementedError(f'Chosen RepresentEntityLabeAs ({labels_as}) Enum is not supported.')
-            utterance = utterance.replace(label, repl)
-            inverse_map[repl] = label
+            replacement = label_replacements[labels_as](ent, idx)
+            inverse_map[replacement] = label
 
         return utterance, inverse_map
+
+    @staticmethod
+    def _replace_ids_with_labels(utterance: str, inverse_map: dict[str:str]):
+        for eid, lab in inverse_map.items():
+            utterance = re.sub(eid, lab, utterance, flags=re.IGNORECASE)
+
+        return utterance
 
     def transorm_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str], labels_as: RepresentEntityLabelAs) -> str:
         """ Transform user utterance (Question) and system utterance (Answer) to declarative statements.
@@ -206,14 +241,13 @@ class CSQAInsertBuilder:
         qa_string = self.qa2d_model.preprocess_and_combine(user_utterance, system_utterance)
         LOGGER.info(f"qa_string in infer_one before replace: {qa_string}")
         qa_entities = [*user_ents, *system_ents]
-        qa_string, inverse_map = self._replace_labels_in_utterance(qa_string, qa_entities, labels_as)
+        qa_string, inverse_map = self.replace_labels(qa_string, qa_entities, labels_as)
         LOGGER.info(f"qa_string in infer_one after replace: {qa_string}")
         declarative_str = self.qa2d_model.infer_one(qa_string)
         LOGGER.info(f'declarative_str in transform_utterances: {declarative_str}')
 
         # replace entity ids back with labels
-        for eid, lab in inverse_map.items():
-            declarative_str = re.sub(eid, lab, declarative_str, flags=re.IGNORECASE)
+        declarative_str = self._replace_ids_with_labels(declarative_str, inverse_map)
 
         return declarative_str
 
@@ -223,7 +257,7 @@ class CSQAInsertBuilder:
 
 if __name__ == "__main__":
     model_choice = QA2DModelChoices.QA2DT5_SMALL
-    represent_entity_labels_as = RepresentEntityLabelAs.PLACEHOLDER_NAMES
+    represent_entity_labels_as = RepresentEntityLabelAs.GROUP
 
     # pop unneeded conversations right here?
     args.read_folder = '/data'  # 'folder to read conversations'
