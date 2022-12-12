@@ -315,10 +315,10 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
         transformer = QA2DModel(model_choice)  # or QuestionConverter3B
         builder = CSQAInsertBuilder(op, transformer)
 
-        results[model_choice] = {}
+        results[model_choice.name] = {}
 
         for pth in csqa_files:
-            results[model_choice][pth] = {}
+            results[model_choice.name][pth] = {}
 
             with open(pth, encoding='utf8') as json_file:
                 conversation = json.load(json_file)
@@ -330,11 +330,11 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
                 if 'Simple' not in entry_user['question-type']:
                     continue
 
-                if entry_user['question-type'] not in results[model_choice][pth].keys():
-                    results[model_choice][pth][entry_user['question-type']] = {}
+                if entry_user['question-type'] not in results[model_choice.name][pth].keys():
+                    results[model_choice.name][pth][entry_user['question-type']] = {}
 
-                if entry_user['description'] not in results[model_choice][pth][entry_user['question-type']].keys():
-                    results[model_choice][pth][entry_user['question-type']][entry_user['description']] = {
+                if entry_user['description'] not in results[model_choice.name][pth][entry_user['question-type']].keys():
+                    results[model_choice.name][pth][entry_user['question-type']][entry_user['description']] = {
                         'utterances': (entry_user['utterance'], entry_system['utterance']),
                         'entities': (entry_user['entities_in_utterance'], entry_system['entities_in_utterance'])
                     }
@@ -345,10 +345,10 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
                     LOGGER.info(f'statement: {statement}')
                     LOGGER.info(f"".center(50, "-") + "\n\n")
 
-                    if labels_as not in results[model_choice][pth][entry_user['question-type']][entry_user['description']]:
-                        results[model_choice][pth][entry_user['question-type']][entry_user['description']][labels_as] = {}
+                    if labels_as.name not in results[model_choice.name][pth][entry_user['question-type']][entry_user['description']]:
+                        results[model_choice.name][pth][entry_user['question-type']][entry_user['description']][labels_as.name] = {}
 
-                    results[model_choice][pth][entry_user['question-type']][entry_user['description']][labels_as] = {
+                    results[model_choice.name][pth][entry_user['question-type']][entry_user['description']][labels_as.name] = {
                         'statement': statement
                     }
 
