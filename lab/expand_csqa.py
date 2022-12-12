@@ -213,6 +213,7 @@ class CSQAInsertBuilder:
         for idx, ent in enumerate(entities):
             label = self.op.get_label(ent)
             replacement = label_replacements[labels_as](ent, idx)
+            utterance = utterance.replace(label, replacement)
             inverse_map[replacement] = label
 
         return utterance, inverse_map
