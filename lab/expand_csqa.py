@@ -373,16 +373,16 @@ def make_question_specific_csv_from_utterance_comparison():
     for q_type in qc3b_data.keys():
 
         for q_subtype in qc3b_data[q_type].keys():
-            index = []
-            qc3b_utterances = []
-            qa2dt5_utterances = []
+            index = ['original']
+            qc3b_utterances = [' '.join(qc3b_data[q_type][q_subtype][RepresentEntityLabelAs.LABEL]['utterances'])]
+            qa2dt5_utterances = [' '.join(qa2dt5_data[q_type][q_subtype][RepresentEntityLabelAs.LABEL]['utterances'])]
 
             for labels_as_name in qc3b_data[q_type][q_subtype].keys():
                 index.append(labels_as_name)
-                qc3b_utterances.append(qc3b_data[q_type][q_subtype][labels_as_name])
-                qa2dt5_utterances.append(qa2dt5_data[q_type][q_subtype][labels_as_name])
+                qc3b_utterances.append(qc3b_data[q_type][q_subtype][labels_as_name]['statement'])
+                qa2dt5_utterances.append(qa2dt5_data[q_type][q_subtype][labels_as_name]['statement'])
 
-            df = pd.DataFrame(data=list(zip(qc3b_utterances, qa2dt5_utterances)), index=[index])
+            df = pd.DataFrame(data=list(zip(qc3b_utterances, qa2dt5_utterances)), index=[index], columns=[QA2DModelChoices.QC3B.name, QA2DModelChoices.QA2DT5_SMALL.name])
             df.to_csv(data_folder.joinpath(f'f{q_type}_{q_subtype}.csv'))
 
 
