@@ -12,6 +12,7 @@ from enum import Enum, auto
 from constants import args, ROOT_PATH, ENTITY, TYPE, RELATION
 
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from tqdm import tqdm
 
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
@@ -56,7 +57,7 @@ from helpers import connect_to_elasticsearch, setup_logger
 #   Incomplete|object parent is changed, subject and predicate remain same
 
 CLIENT = connect_to_elasticsearch()
-LOGGER = setup_logger(__name__, loglevel=logging.INFO)
+LOGGER = setup_logger(__name__, loglevel=logging.WARNING)
 
 
 class QA2DModelChoices(Enum):
@@ -71,7 +72,7 @@ class RepresentEntityLabelAs(Enum):
     PLACEHOLDER = auto()
     PLACEHOLDER_NAMES = auto()
     GROUP = auto()  # TODO: Implement
-    TYPE_ID = auto()  # TODO: Implement
+    # TYPE_ID = auto()  # TODO: Implement
 
 
 class Preprocessor(ABC):
@@ -306,7 +307,6 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
                                  labels_as_list: list[RepresentEntityLabelAs] or RepresentEntityLabelAs):
     data_folder = Path(f'{ROOT_PATH}{args.read_folder}/{args.partition}')
     # csqa_files = data_folder.glob('**/QA*.json')
-    csqa_files = data_folder.glob('**/d_dataset_like_example_file.json')
     LOGGER.info(f'Reading folders for partition {args.partition}')
 
     op = ESActionOperator(CLIENT)
@@ -319,13 +319,14 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
 
         results[model_choice.name] = {}
 
+        csqa_files = data_folder.glob('**/d_dataset_like_example_file.json')
         for pth in csqa_files:
             results[model_choice.name][pth.parent.name] = {}
 
             with open(pth, encoding='utf8') as json_file:
                 conversation = json.load(json_file)
 
-            for i in range(len(conversation) // 2):
+            for i in tqdm(range(len(conversation) // 2)):
                 entry_user = conversation[2 * i]  # USER
                 entry_system = conversation[2 * i + 1]  # SYSTEM
 
@@ -341,7 +342,7 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
                         'entities': (entry_user['entities_in_utterance'], entry_system['entities_in_utterance'])
                     }
 
-                # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
+                # 2) TRANSFORM utterances to statements
                 for labels_as in labels_as_list:
                     statement = builder.transorm_utterances(entry_user, entry_system, labels_as=labels_as)
                     LOGGER.info(f'statement: {statement}')
@@ -366,8 +367,8 @@ def make_question_specific_csv_from_utterance_comparison():
     d = json.load(utterance_file.open('r', encoding='utf8'))
 
     folder = "original"
-    qc3b_data = d[model_choices.QC3B.name][folder]
-    qa2dt5_data = d[model_choices.QA2DT5_SMALL.name][folder]
+    qc3b_data = d[QA2DModelChoices.QC3B.name][folder]
+    qa2dt5_data = d[QA2DModelChoices.QA2DT5_SMALL.name][folder]
 
     for q_type in qc3b_data.keys():
 
@@ -381,9 +382,9 @@ def make_question_specific_csv_from_utterance_comparison():
                 qc3b_utterances.append(qc3b_data[q_type][q_subtype][labels_as_name])
                 qa2dt5_utterances.append(qa2dt5_data[q_type][q_subtype][labels_as_name])
 
-
             df = pd.DataFrame(data=list(zip(qc3b_utterances, qa2dt5_utterances)), index=[index])
-            df.to_csv(data_folder.joinpath(f'f{q_type}_{q_subtype}'))
+            df.to_csv(data_folder.joinpath(f'f{q_type}_{q_subtype}.csv'))
+
 
 if __name__ == "__main__":
     # options
