@@ -62,8 +62,9 @@ LOGGER = setup_logger(__name__, loglevel=logging.WARNING)
 
 class QA2DModelChoices(Enum):
     QA2DT5_SMALL = 'domenicrosati/QA2D-t5-small'
-    QA2DT5_BASE = 'domenicrosati/QA2D-t5-base'
-    QC3B = 'domenicrosati/question_converter-3b'
+    QA2DT5_BASE = 'domenicrosati/QA2D-t5-base'    # T5
+    QC3B = 'domenicrosati/question_converter-3b'  # T5-3B model fine tuned on the QA2D dataset
+    GhasQA2D = 'Farnazgh/QA2D'
 
 
 class RepresentEntityLabelAs(Enum):
@@ -104,6 +105,16 @@ class B3Preprocessor(Preprocessor):
         return f"{q} {cls.SEP} {a}"
 
 
+class GhasPreprocessor(Preprocessor):
+    SEP = " "
+
+    @classmethod
+    def combine_qa(cls, question: str, answer: str) -> str:
+        q = question.replace(" ?", "?").strip()
+        a = answer.strip()
+        return f"q: {q}{cls.SEP}a: {a}"
+
+
 class QA2DModel:
 
     def __init__(self, model_type: QA2DModelChoices):
@@ -124,6 +135,8 @@ class QA2DModel:
             return QA2DPreprocessor
         elif model_type == QA2DModelChoices.QC3B:
             return B3Preprocessor
+        elif model_type == QA2DModelChoices.GhasQA2D:
+            return GhasPreprocessor
         else:
             raise NotImplementedError(
                 f'Chosen model type ({model_type}) is not supported. Refer to QA2DModelChoices class.')
@@ -139,6 +152,28 @@ class QA2DModel:
         LOGGER.debug(f"outputs in infer_one: ({outputs.shape}) {outputs}")
 
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+
+class GhasQA2DModel(QA2DModel):
+
+    def infer_one(self, qa_string: str, max_length=150) -> str:
+        input_ids = self.tokenizer.encode(qa_string, return_tensors="pt", add_special_tokens=True)
+        LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
+
+        outputs = self.model.generate(input_ids=input_ids, num_beams=2, max_length=max_length, early_stopping=True)
+        LOGGER.debug(f"outputs in infer_one: ({outputs.shape}) {outputs}")
+
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
+
+
+def get_model(model_choice: QA2DModelChoices) -> QA2DModel or GhasQA2DModel:
+    if model_choice not in QA2DModelChoices:
+        raise NotImplementedError()
+
+    if model_choice == QA2DModelChoices.GhasQA2D:
+        return GhasQA2DModel(model_choice)
+    else:
+        return QA2DModel(model_choice)
 
 
 class CSQAInsertBuilder:
@@ -268,7 +303,7 @@ def main(model_choice: QA2DModelChoices, labels_as: RepresentEntityLabelAs):
     LOGGER.info(f'Reading folders for partition {args.partition}')
 
     op = ESActionOperator(CLIENT)
-    transformer = QA2DModel(model_choice)  # or QuestionConverter3B
+    transformer = get_model(model_choice)
     builder = CSQAInsertBuilder(op, transformer)
 
     for pth in csqa_files:
@@ -314,7 +349,7 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
     results = {}
 
     for model_choice in model_choices:
-        transformer = QA2DModel(model_choice)  # or QuestionConverter3B
+        transformer = get_model(model_choice)  # or QuestionConverter3B
         builder = CSQAInsertBuilder(op, transformer)
 
         results[model_choice.name] = {}
@@ -391,12 +426,12 @@ if __name__ == "__main__":
     args.read_folder = '/data'  # 'folder to read conversations'
     args.partition = ''  # 'train', 'test', 'val', ''
 
-    # model_choice = QA2DModelChoices.QA2DT5_SMALL
-    # represent_entity_labels_as = RepresentEntityLabelAs.GROUP
-    # main(model_choice, represent_entity_labels_as)
+    model_choice = QA2DModelChoices.GhasQA2D
+    represent_entity_labels_as = RepresentEntityLabelAs.GROUP
+    main(model_choice, represent_entity_labels_as)
 
     # model_choices = QA2DModelChoices
     # labels_as_list = RepresentEntityLabelAs
     # compare_generated_utterances(model_choices, labels_as_list)
 
-    make_question_specific_csv_from_utterance_comparison()
+    # make_question_specific_csv_from_utterance_comparison()
