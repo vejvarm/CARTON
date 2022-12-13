@@ -2,6 +2,8 @@ import json
 import logging
 import re
 from pathlib import Path
+
+import pandas as pd
 from unidecode import unidecode
 from typing import Protocol
 from abc import ABC, abstractmethod
@@ -355,6 +357,34 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
         json.dump(results, data_folder.joinpath('utterance_comparison.json').open('w', encoding='utf8'), indent=4)
 
 
+def make_question_specific_csv_from_utterance_comparison():
+    data_folder = Path(f'{ROOT_PATH}{args.read_folder}/{args.partition}')
+    # csqa_files = data_folder.glob('**/QA*.json')
+    utterance_file = data_folder.joinpath('utterance_comparison.json')
+    LOGGER.info(f'Reading file {utterance_file.name} for partition {args.partition}')
+
+    d = json.load(utterance_file.open('r', encoding='utf8'))
+
+    folder = "original"
+    qc3b_data = d[model_choices.QC3B.name][folder]
+    qa2dt5_data = d[model_choices.QA2DT5_SMALL.name][folder]
+
+    for q_type in qc3b_data.keys():
+
+        for q_subtype in qc3b_data[q_type].keys():
+            index = []
+            qc3b_utterances = []
+            qa2dt5_utterances = []
+
+            for labels_as_name in qc3b_data[q_type][q_subtype].keys():
+                index.append(labels_as_name)
+                qc3b_utterances.append(qc3b_data[q_type][q_subtype][labels_as_name])
+                qa2dt5_utterances.append(qa2dt5_data[q_type][q_subtype][labels_as_name])
+
+
+            df = pd.DataFrame(data=list(zip(qc3b_utterances, qa2dt5_utterances)), index=[index])
+            df.to_csv(data_folder.joinpath(f'f{q_type}_{q_subtype}'))
+
 if __name__ == "__main__":
     # options
     args.read_folder = '/data'  # 'folder to read conversations'
@@ -364,6 +394,8 @@ if __name__ == "__main__":
     # represent_entity_labels_as = RepresentEntityLabelAs.GROUP
     # main(model_choice, represent_entity_labels_as)
 
-    model_choices = QA2DModelChoices
-    labels_as_list = RepresentEntityLabelAs
-    compare_generated_utterances(model_choices, labels_as_list)
+    # model_choices = QA2DModelChoices
+    # labels_as_list = RepresentEntityLabelAs
+    # compare_generated_utterances(model_choices, labels_as_list)
+
+    make_question_specific_csv_from_utterance_comparison()
