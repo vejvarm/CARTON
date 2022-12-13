@@ -401,6 +401,8 @@ def make_question_specific_csv_from_utterance_comparison():
 
     d = json.load(utterance_file.open('r', encoding='utf8'))
 
+    label_repr_names = [l.name for l in RepresentEntityLabelAs]
+
     folder = "original"
     qc3b_data = d[QA2DModelChoices.QC3B.name][folder]
     qa2dt5_data = d[QA2DModelChoices.QA2DT5_SMALL.name][folder]
@@ -409,15 +411,17 @@ def make_question_specific_csv_from_utterance_comparison():
 
         for q_subtype in qc3b_data[q_type].keys():
             index = ['original']
-            qc3b_utterances = [' '.join(qc3b_data[q_type][q_subtype][RepresentEntityLabelAs.LABEL]['utterances'])]
-            qa2dt5_utterances = [' '.join(qa2dt5_data[q_type][q_subtype][RepresentEntityLabelAs.LABEL]['utterances'])]
+            qa2dt5_utterances = [' '.join(qa2dt5_data[q_type][q_subtype]['utterances'])]
+            qc3b_utterances = [' '.join(qc3b_data[q_type][q_subtype]['utterances'])]
 
             for labels_as_name in qc3b_data[q_type][q_subtype].keys():
+                if labels_as_name not in label_repr_names:
+                    continue
                 index.append(labels_as_name)
-                qc3b_utterances.append(qc3b_data[q_type][q_subtype][labels_as_name]['statement'])
                 qa2dt5_utterances.append(qa2dt5_data[q_type][q_subtype][labels_as_name]['statement'])
+                qc3b_utterances.append(qc3b_data[q_type][q_subtype][labels_as_name]['statement'])
 
-            df = pd.DataFrame(data=list(zip(qc3b_utterances, qa2dt5_utterances)), index=[index], columns=[QA2DModelChoices.QC3B.name, QA2DModelChoices.QA2DT5_SMALL.name])
+            df = pd.DataFrame(data=list(zip(qa2dt5_utterances, qc3b_utterances)), index=[index], columns=[QA2DModelChoices.QA2DT5_SMALL.name, QA2DModelChoices.QC3B.name])
             df.to_csv(data_folder.joinpath(f'f{q_type}_{q_subtype}.csv'))
 
 
