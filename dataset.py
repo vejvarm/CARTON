@@ -4,6 +4,8 @@ from transformers import BertTokenizer
 from torchtext.data import Field, Example, Dataset
 
 from constants import *
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 
 class CSQADataset:

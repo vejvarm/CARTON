@@ -1,17 +1,80 @@
 import os
 import torch
+from enum import Enum, auto
 from pathlib import Path
-from args import get_parser, QuestionTypes
 
 # set root path
 ROOT_PATH = Path(os.path.dirname(__file__))
 
-# read parser
-parser = get_parser()
-args = parser.parse_args(args=[])
-
 # model name
 MODEL_NAME = 'CARTON'
+
+# Elasticsearch
+INDEX_ROOT = 'csqa_wikidata'
+
+
+class ElasticIndices(Enum):
+    ENT = f'{INDEX_ROOT}_ent'
+    ENT_FULL = f'{INDEX_ROOT}_ent_full'
+    REL = f'{INDEX_ROOT}_rel'
+    RDF = f'{INDEX_ROOT}_rdf'
+    RDF_FULL = f'{INDEX_ROOT}_rdf_full'
+
+
+class KGType(Enum):
+    MEMORY = 'memory'
+    ZODB = 'zodb'
+    ELASTICSEARCH = 'elasticsearch'
+
+
+class Task(Enum):
+    MULTITASK = 'multitask'
+    LOGICAL_FORM = 'logical_form'
+    PREDICATE_POINTER = 'predicate_pointer'
+    TYPE_POINTER = 'type_pointer'
+    NER = 'ner'
+    COREF = 'coref'
+
+
+class QuestionTypes(Enum):
+    ALL = 'all'
+    SIMPLE_DIRECT = 'Simple Question (Direct)'
+    SIMPLE_COREFERENCED = 'Simple Question (Coreferenced)'
+    SIMPLE_ELLIPSIS = 'Simple Question (Ellipsis)'
+    COMPARATIVE = 'Comparative Reasoning (All)'
+    LOGICAL = 'Logical Reasoning (All)'
+    QUANTITATIVE = 'Quantitative Reasoning (All)'
+    VERIFICATION = 'Verification (Boolean) (All)'
+    QUANTITATIVE_COUNT = 'Quantitative Reasoning (Count) (All)'
+    COMPARATIVE_COUNT = 'Comparative Reasoning (Count) (All)'
+    CLARIFICATION = 'Clarification'
+
+
+class InferencePartition(Enum):
+    TEST = 'test'
+    VAL = 'val'
+
+
+class Passwords(Enum):
+    NOTEBOOK = 'hZiYNU+ye9izCApoff-v'
+    FREYA = '1jceIiR5k6JlmSyDpNwK'
+
+
+class QA2DModelChoices(Enum):
+    T5_SMALL = 'domenicrosati/QA2D-t5-small'  # T5-Small model fine-tuned on the QA2D dataset
+    T5_BASE = 'domenicrosati/QA2D-t5-base'    # T5-Base model fine-tuned on the QA2D dataset
+    T5_3B = 'domenicrosati/question_converter-3b'  # T5-3B model fine-tuned on the QA2D dataset
+    T5_WHYN = 'Farnazgh/QA2D'  # T5-Large model fine-tuned on QA2D+YesNo type questions from SAMSum corpus
+
+
+class RepresentEntityLabelAs(Enum):
+    LABEL = auto()
+    ENTITY_ID = auto()
+    PLACEHOLDER = auto()
+    PLACEHOLDER_NAMES = auto()
+    GROUP = auto()
+    # TYPE_ID = auto()  # TODO: Implement
+
 
 # define device
 CUDA = 'cuda'

@@ -12,8 +12,11 @@ from dataset import CSQADataset
 from utils import SingleTaskLoss, MultiTaskLoss, AverageMeter, Scorer, Predictor, Inference
 
 # import constants
-from constants import *
+from constants import DEVICE, ROOT_PATH, ALL_QUESTION_TYPES
 from helpers import setup_logger
+from args import parse_and_get_args
+args = parse_and_get_args()
+
 
 # set logger
 logger = setup_logger(__name__,

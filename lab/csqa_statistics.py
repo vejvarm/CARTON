@@ -4,7 +4,9 @@ import pandas as pd
 from collections import Counter
 from pathlib import Path, PurePath
 from matplotlib import pyplot as plt
-from constants import args, ROOT_PATH, ALL_QUESTION_TYPES
+from constants import ROOT_PATH, ALL_QUESTION_TYPES
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 
 def try_load_helper_json(path_to_json, object_hook=None):

@@ -9,7 +9,10 @@ from ordered_set import OrderedSet
 from matplotlib import pyplot as plt
 from elasticsearch import Elasticsearch
 
-from constants import *
+from constants import ROOT_PATH
+from args import parse_and_get_args
+args = parse_and_get_args()
+
 
 def extract_individual_losses_from_train_log(file_name):
     with open(f"{ROOT_PATH}/{args.path_results}/{file_name}", 'r') as f:
@@ -71,7 +74,10 @@ def plot_from_jsom_multiloss_file(json_file_name, title="CrossEntropy losses dur
     plt.show()
 
 
-def plot_from_multi_json_files(json_file_names: list[str], labels: list[str] = tuple(), title="CrossEntropy losses during validation", plot_file_name: str = 'individual_losses', plot_file_types: list[str] = ('png', 'pdf', )):
+def plot_from_multi_json_files(json_file_names: list[str], labels: list[str] = tuple(),
+                               title="CrossEntropy losses during validation",
+                               plot_file_name: str = 'individual_losses',
+                               plot_file_types: list[str] = ('png', 'pdf', )):
     data_dict = {}
     num_fields = 0
     colors = {}
@@ -203,7 +209,9 @@ def get_edit_distance(query=None, confidence_levels=True, default_dist=1):
     return int(max_dist)
 
 
-def main_old(log_files: list[str], labels: list[str] = tuple(), plot_file_name: str = 'training_val_loss', plot_file_types: list[str] = ('png', 'pdf', )):
+def main_old(log_files: list[str], labels: list[str] = tuple(),
+             plot_file_name: str = 'training_val_loss',
+             plot_file_types: list[str] = ('png', 'pdf', )):
 
     fig = plt.figure()
 

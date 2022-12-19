@@ -15,9 +15,10 @@ from unidecode import unidecode
 from knowledge_graph.KnowledgeGraphs import MiniKGWikidataJSON
 from elasticsearch import Elasticsearch
 
-from constants import args, ROOT_PATH
 from action_executor.actions import search_by_label
 from helpers import setup_logger, connect_to_elasticsearch
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 CLIENT = connect_to_elasticsearch()
 

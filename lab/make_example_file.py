@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
 
-from constants import args, ROOT_PATH
+from constants import ROOT_PATH
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 if __name__ == "__main__":
     # pop unneeded conversations right here?

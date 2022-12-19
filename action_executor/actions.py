@@ -7,8 +7,10 @@ from ordered_set import OrderedSet
 from unidecode import unidecode
 from random import randint
 
-from constants import args
 from helpers import uppercase
+
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.WARNING)

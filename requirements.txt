@@ -9,7 +9,7 @@ Deprecated
 elastic-transport
 elasticsearch~=8.4.3
 filelock
-flair
+flair~=0.11.3
 fonttools
 ftfy
 future
@@ -55,7 +55,7 @@ torch
 torchaudio
 torchtext~=0.6.0
 torchvision
-tqdm
+tqdm~=4.64.1
 transformers~=4.18.0
 typing_extensions
 ujson~=5.4.0
@@ -65,4 +65,8 @@ wcwidth
 Wikipedia-API
 wrapt
 zipp
-rapidfuzz
+rapidfuzz~=2.11.1
+pandas~=1.5.1
+transaction~=3.0.1
+zodb~=5.7.0
+btrees~=4.10.1

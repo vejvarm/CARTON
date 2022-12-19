@@ -11,8 +11,7 @@ from dataset import CSQADataset
 from flair.data import Sentence
 from flair.embeddings import BertEmbeddings, DocumentPoolEmbeddings
 
-# import constants
-from constants import *
+from constants import ROOT_PATH, NA_TOKEN, PAD_TOKEN
 
 train, val, test = [], [], []
 # read data

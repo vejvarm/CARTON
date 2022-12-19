@@ -13,7 +13,7 @@ from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch
 
 from helpers import setup_logger
-from args import ElasticIndices
+from constants import ElasticIndices
 
 CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)

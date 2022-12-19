@@ -5,7 +5,7 @@ import json
 import argparse
 from tqdm import tqdm
 
-from constants import *
+from constants import ROOT_PATH
 
 parser = argparse.ArgumentParser(description='Prepare wikidata files')
 parser.add_argument('--wiki_path', default='knowledge_graph', help='Wikidata folder path')

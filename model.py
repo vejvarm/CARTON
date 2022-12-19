@@ -7,6 +7,9 @@ from torch.autograd import Variable
 
 # import constants
 from constants import *
+from args import parse_and_get_args
+args = parse_and_get_args()
+
 
 class CARTON(nn.Module):
     def __init__(self, vocabs):

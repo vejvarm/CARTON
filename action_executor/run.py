@@ -8,7 +8,9 @@ from knowledge_graph.KnowledgeGraphs import KGLoader
 from executor import ActionExecutor
 from meters import AccuracyMeter, F1scoreMeter
 from helpers import enforce_question_type
-from constants import args, ROOT_PATH
+from constants import ROOT_PATH
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 # add arguments to parser
 parser = argparse.ArgumentParser(description='Execute actions')

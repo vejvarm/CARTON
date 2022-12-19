@@ -11,10 +11,12 @@ import ujson
 import ZODB
 from tqdm import tqdm
 
-from args import KGType
-from constants import args
-
 from helpers import setup_logger, connect_to_elasticsearch
+
+from constants import KGType
+from args import parse_and_get_args
+args = parse_and_get_args()
+
 
 ROOT_PATH = Path(os.path.dirname(__file__))
 LOGGER = setup_logger(__name__, logging.INFO)

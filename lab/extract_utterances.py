@@ -1,10 +1,11 @@
 import json
 import logging
 from pathlib import Path
-from unidecode import unidecode
-from constants import args, ROOT_PATH
 
-from helpers import connect_to_elasticsearch, setup_logger
+from helpers import setup_logger
+from constants import ROOT_PATH
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 LOGGER = setup_logger(__name__, logging.INFO)
 

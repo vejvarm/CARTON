@@ -14,8 +14,9 @@ from elasticsearch import Elasticsearch
 from rapidfuzz import process
 from rapidfuzz.distance.Levenshtein import distance
 
-# import constants
 from constants import *
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 # import CSQA ZODB KG
 

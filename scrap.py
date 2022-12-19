@@ -5,7 +5,8 @@ from elasticsearch import Elasticsearch
 
 from utils import rapidfuzz_query
 
-from constants import *
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 
 def time_query(fun):

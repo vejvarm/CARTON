@@ -1,14 +1,10 @@
-import os
-import sys
 import time
 import random
 import logging
-import torch
+
 import numpy as np
 import torch.optim
-import torch.nn as nn
-from pathlib import Path
-from args import get_parser
+
 from model import CARTON
 from dataset import CSQADataset
 from torchtext.data import BucketIterator
@@ -19,8 +15,9 @@ from utils import (NoamOpt, AverageMeter,
 
 from helpers import setup_logger
 
-# import constants
 from constants import *
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 # set LOGGER
 LOGGER = setup_logger(__name__,

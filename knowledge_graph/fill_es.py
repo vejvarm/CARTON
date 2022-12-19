@@ -10,11 +10,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 from tqdm import tqdm
 from unidecode import unidecode
-from elasticsearch import Elasticsearch
 import ujson
 
-from constants import args, ROOT_PATH
 from helpers import setup_logger, connect_to_elasticsearch
+from constants import ROOT_PATH
+from args import parse_and_get_args
+args = parse_and_get_args()
 
 CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, logging.INFO)

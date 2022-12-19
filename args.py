@@ -1,58 +1,10 @@
 import argparse
-from enum import Enum
 
-INDEX_ROOT = 'csqa_wikidata'
-
-
-class KGType(Enum):
-    MEMORY = 'memory'
-    ZODB = 'zodb'
-    ELASTICSEARCH = 'elasticsearch'
-
-
-class Task(Enum):
-    MULTITASK = 'multitask'
-    LOGICAL_FORM = 'logical_form'
-    PREDICATE_POINTER = 'predicate_pointer'
-    TYPE_POINTER = 'type_pointer'
-    NER = 'ner'
-    COREF = 'coref'
-
-
-class QuestionTypes(Enum):
-    ALL = 'all'
-    SIMPLE_DIRECT = 'Simple Question (Direct)'
-    SIMPLE_COREFERENCED = 'Simple Question (Coreferenced)'
-    SIMPLE_ELLIPSIS = 'Simple Question (Ellipsis)'
-    COMPARATIVE = 'Comparative Reasoning (All)'
-    LOGICAL = 'Logical Reasoning (All)'
-    QUANTITATIVE = 'Quantitative Reasoning (All)'
-    VERIFICATION = 'Verification (Boolean) (All)'
-    QUANTITATIVE_COUNT = 'Quantitative Reasoning (Count) (All)'
-    COMPARATIVE_COUNT = 'Comparative Reasoning (Count) (All)'
-    CLARIFICATION = 'Clarification'
-
-
-class InferencePartition(Enum):
-    TEST = 'test'
-    VAL = 'val'
-
-
-class Passwords(Enum):
-    NOTEBOOK = 'hZiYNU+ye9izCApoff-v'
-    FREYA = '1jceIiR5k6JlmSyDpNwK'
-
-
-class ElasticIndices(Enum):
-    ENT = f'{INDEX_ROOT}_ent'
-    ENT_FULL = f'{INDEX_ROOT}_ent_full'
-    REL = f'{INDEX_ROOT}_rel'
-    RDF = f'{INDEX_ROOT}_rdf'
-    RDF_FULL = f'{INDEX_ROOT}_rdf_full'
+from constants import ElasticIndices, Task, KGType, InferencePartition, QuestionTypes, Passwords, MODEL_NAME
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description='CARTON')
+    parser = argparse.ArgumentParser(description=MODEL_NAME)
 
     # general
     parser.add_argument('--seed', default=1234, type=int)
@@ -121,3 +73,9 @@ def get_parser():
     parser.add_argument('--elastic_password', default=Passwords.FREYA.value, choices=[pw.value for pw in Passwords])
 
     return parser
+
+
+def parse_and_get_args(args=tuple()):
+    # read parser
+    parser = get_parser()
+    return parser.parse_args(args=args)
