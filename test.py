@@ -22,7 +22,7 @@ args = parse_and_get_args()
 logger = setup_logger(__name__,
                       loglevel=logging.INFO,
                       handlers=[logging.FileHandler(f'{args.path_results}/test_{args.question_type}.log', 'w'),
-                              logging.StreamHandler()])
+                                logging.StreamHandler()])
 
 # set a seed value
 random.seed(args.seed)
