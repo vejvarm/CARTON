@@ -5,6 +5,8 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
+from lab.expand_csqa import CSQAInsertBuilder
+from lab.qa2d import get_model
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
 from constants import ROOT_PATH, QA2DModelChoices, RepresentEntityLabelAs
@@ -13,6 +15,7 @@ args = parse_and_get_args()
 
 CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
+
 
 def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DModelChoices,
                                  labels_as_list: list[RepresentEntityLabelAs] or RepresentEntityLabelAs):
@@ -25,7 +28,7 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
     results = {}
 
     for model_choice in model_choices:
-        transformer = get_model(model_choice)  # or QuestionConverter3B
+        transformer = get_model(model_choice)
         builder = CSQAInsertBuilder(op, transformer)
 
         results[model_choice.name] = {}
@@ -67,50 +70,6 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
                     }
 
         json.dump(results, data_folder.joinpath('utterance_comparison.json').open('w', encoding='utf8'), indent=4, ensure_ascii=False)
-
-
-def make_question_specific_csv_from_utterance_comparison():
-    data_folder = Path(f'{ROOT_PATH}{args.read_folder}/{args.partition}')
-    # csqa_files = data_folder.glob('**/QA*.json')
-    utterance_file = data_folder.joinpath('utterance_comparison.json')
-    LOGGER.info(f'Reading file {utterance_file.name} for partition {args.partition}')
-
-    d = json.load(utterance_file.open('r', encoding='utf8'))
-
-    label_repr_names = [l.name for l in RepresentEntityLabelAs]
-
-    folder = "original"
-
-    qa2dt5small_data = d[QA2DModelChoices.T5_SMALL.name][folder]
-    qa2dt5_data = d[QA2DModelChoices.T5_BASE.name][folder]
-    qc3b_data = d[QA2DModelChoices.T5_3B.name][folder]
-    ghasqa2d_data = d[QA2DModelChoices.T5_WHYN.name][folder]
-
-    for q_type in qc3b_data.keys():
-
-        for q_subtype in qc3b_data[q_type].keys():
-            index = ['original']
-            qa2dt5small_utterances = [' '.join(qa2dt5small_data[q_type][q_subtype]['utterances'])]
-            qa2dt5_utterances = [' '.join(qa2dt5_data[q_type][q_subtype]['utterances'])]
-            qc3b_utterances = [' '.join(qc3b_data[q_type][q_subtype]['utterances'])]
-            ghasqa2d_utterances = [' '.join(ghasqa2d_data[q_type][q_subtype]['utterances'])]
-
-            for labels_as_name in qc3b_data[q_type][q_subtype].keys():
-                if labels_as_name not in label_repr_names:
-                    continue
-                index.append(labels_as_name)
-                qa2dt5small_utterances.append(qa2dt5small_data[q_type][q_subtype][labels_as_name]['statement'])
-                qa2dt5_utterances.append(qa2dt5_data[q_type][q_subtype][labels_as_name]['statement'])
-                qc3b_utterances.append(qc3b_data[q_type][q_subtype][labels_as_name]['statement'])
-                ghasqa2d_utterances.append(ghasqa2d_data[q_type][q_subtype][labels_as_name]['statement'])
-
-            df = pd.DataFrame(data=list(zip(qa2dt5small_utterances, qa2dt5_utterances, qc3b_utterances, ghasqa2d_utterances)),
-                              index=[index],
-                              columns=['T5-small',
-                                       'T5-base',
-                                       'T5-3B',
-                                       'T5-WH&YN'])
-            df.to_csv(data_folder.joinpath(f'f{q_type}_{q_subtype}.csv'))
 
 
 def make_question_specific_csv_from_utterance_comparison2():
@@ -160,8 +119,8 @@ if __name__ == '__main__':
     args.read_folder = '/data'  # 'folder to read conversations'
     args.partition = ''  # 'train', 'test', 'val', ''
 
-    # model_choices = QA2DModelChoices
-    # labels_as_list = RepresentEntityLabelAs
-    # compare_generated_utterances(model_choices, labels_as_list)
+    model_choices = QA2DModelChoices
+    labels_as_list = RepresentEntityLabelAs
+    compare_generated_utterances(model_choices, labels_as_list)
 
-    make_question_specific_csv_from_utterance_comparison2()
+    # make_question_specific_csv_from_utterance_comparison2()

@@ -9,11 +9,12 @@ args = parse_and_get_args()
 
 
 class CSQADataset:
+    train_path = str(ROOT_PATH) + args.data_path + '/train/*'
+    val_path = str(ROOT_PATH) + args.data_path + '/val/*'
+    test_path = str(ROOT_PATH) + args.data_path + '/test/*'
+
     def __init__(self):
         self.id = 0
-        self.train_path = str(ROOT_PATH) + args.data_path + '/train/*'
-        self.val_path = str(ROOT_PATH) + args.data_path + '/val/*'
-        self.test_path = str(ROOT_PATH) + args.data_path + '/test/*'
         self.load_data_and_fields()
 
     def _prepare_data(self, data):
@@ -300,11 +301,15 @@ class CSQADataset:
 
         return input_data, helper_data
 
-    def get_inference_data(self):
-        files = glob(self.test_path + '/*.json')
+    @classmethod
+    def get_inference_data(cls, max_files: int = None):
+        files = glob(cls.test_path + '/*.json')
 
         partition = []
-        for f in files:
+        for i, f in enumerate(files):
+            if max_files is not None and i > max_files:
+                break
+
             with open(f, encoding='utf8') as json_file:
                 partition.append(json.load(json_file))
 
@@ -456,7 +461,8 @@ class CSQADataset:
 
         return inference_data
 
-    def _make_torchtext_dataset(self, data, fields):
+    @staticmethod
+    def _make_torchtext_dataset(data, fields):
         examples = [Example.fromlist(i, fields) for i in data]
         return Dataset(examples, fields)
 

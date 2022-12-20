@@ -1,17 +1,83 @@
-from sentence_transformers import SentenceTransformer, util
+import logging
+import random
+
+from sentence_transformers import SentenceTransformer
+from torch import cosine_similarity
+
+from dataset import CSQADataset
+from lab.qa2d import QA2DModel, get_model
+from constants import QA2DModelChoices
+
+logging.getLogger('sentence_transformers.SentenceTransformer').setLevel(logging.WARNING)
+
+
+def sample_random_simple_questions(max_files: int, num_samples: int) -> list[dict]:
+    """Load 'max_files' worth of dataset files and randomly sample 'num_samples' Simple Questions from them."""
+    inference_data = CSQADataset.get_inference_data(max_files)
+
+    simple_questions = []
+
+    for entry in inference_data:
+        if 'Simple Question' not in entry['question_type']:
+            continue
+
+        simple_questions.append(entry)
+        # print(entry['question'], entry['answer'])
+
+    return random.sample(simple_questions, num_samples)
+
+
+def qa2d(question_list: list[dict], qa2d_model: QA2DModel) -> list[dict]:
+    """Add new field 'statement', which is qa2d transformed statement."""
+
+    qa2d_list = []
+
+    for i, dict_qa in enumerate(question_list):
+        qa_string = qa2d_model.preprocess_and_combine(dict_qa['question'], dict_qa['answer'])
+        statement = qa2d_model.infer_one(qa_string)
+        qa2d_list.append({**dict_qa, 'qa_string': qa_string, 'statement': statement})
+
+    return qa2d_list
+
+
+def compare_qas_with_statements(qa2d_list: list[dict], sts_model: SentenceTransformer):
+
+    qa2d_sts_list = []
+
+    for i, dict_qa2d in enumerate(qa2d_list):
+        qa_emb = sts_model.encode(dict_qa2d['question']+dict_qa2d['answer'], convert_to_tensor=True)
+        stmt_emb = sts_model.encode(dict_qa2d['statement'], convert_to_tensor=True)
+
+        qa2d_sts_list.append({**dict_qa2d, 'cos_similarity': cosine_similarity(qa_emb, stmt_emb, dim=0).detach().cpu().numpy()})
+
+    return qa2d_sts_list
 
 
 if __name__ == "__main__":
-    sentences = ["I'm happy", "I'm full of happiness"]
+    # randomly sample Simple Questions from the test part of dataset
+    random.seed(42)
+    max_files = 500
+    num_question_samples = 1000
+    random_simple_question_list = sample_random_simple_questions(max_files, num_question_samples)
 
-    model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+    # run QA2D on simple_question_list
+    qa2d_choices = QA2DModelChoices
+    cos_similarity_means = {}
+    for choice in qa2d_choices:
+        qa2d_model = get_model(choice)
+        random_qa2d_list = qa2d(random_simple_question_list, qa2d_model)
+        # print(random_qa2d_list)
 
-    #Compute embedding for both lists
-    embedding_1= model.encode(sentences[0], convert_to_tensor=True)
-    embedding_2 = model.encode(sentences[1], convert_to_tensor=True)
+        # compare sentences
+        sts_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+        random_qa2d_sts_list = compare_qas_with_statements(random_qa2d_list, sts_model)
 
-    print(embedding_1)
-    print(embedding_2)
+        cos_sum = 0.
+        for entry in random_qa2d_sts_list:
+            cos_sum += entry['cos_similarity']
+            # print(f"cos: {entry['cos_similarity']:.3f} | qa: {entry['qa_string']} | stat: {entry['statement']}")
 
-    util.pytorch_cos_sim(embedding_1, embedding_2)
-    ## tensor([[0.6003]])
+        cos_similarity_means[choice.name] = cos_sum/len(random_qa2d_sts_list)
+        print(f"{choice.name}:\t {cos_similarity_means[choice.name]:.3f}")
+
+    print(cos_similarity_means)
