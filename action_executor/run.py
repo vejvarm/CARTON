@@ -5,6 +5,7 @@ import time
 import json
 import argparse
 from knowledge_graph.KnowledgeGraphs import KGLoader
+from helpers import connect_to_elasticsearch
 from executor import ActionExecutor
 from meters import AccuracyMeter, F1scoreMeter
 from helpers import enforce_question_type
@@ -20,7 +21,7 @@ parser.add_argument('--max_results', default=1000, help='maximum number of resul
 # args = parser.parse_args()
 
 # load action executor
-source = KGLoader.load_kg()
+source = connect_to_elasticsearch()  # KGLoader.load_kg()
 action_executor = ActionExecutor(source)
 
 # define question type meters
