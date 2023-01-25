@@ -48,7 +48,11 @@ for folder in tqdm(csqa_data.keys()):
 
         conversation_simple = []
         for i in range(0, len(conversation), 2):
-            if "Simple Question" in conversation[i]["question-type"]:
+            q_type = conversation[i]["question-type"]
+            q_utterance = conversation[i]["utterance"]
+            if "Simple Question (Coreferenced)" in q_type and q_utterance.startswith(("Yes", "No, ")):
+                continue  # NOTE: IGNORE "Yes"/"No, I meant" types of questions
+            if "Simple Question" in q_type:
                 conversation_simple.extend(conversation[i:i+2])
 
         # create path
