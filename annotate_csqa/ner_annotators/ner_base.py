@@ -24,7 +24,7 @@ class NERBase:
         context = self.tokenizer(utterance)
         ent_data = {}
         for entity in entities:
-            ent_label = self.operator.get_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
+            ent_label = self.operator.get_entity_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
             tok_ent = self.tokenizer(unidecode(ent_label.lower()))
             try:
                 ent_in_utter = self.find_entity_in_utterance(tok_ent, context)
@@ -284,7 +284,7 @@ class NERBase:
             idx_counter = 0
             for j, entity in enumerate(system['entities_in_utterance']):
                 ent_type = self.get_type(entity)
-                label = self.operator.get_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
+                label = self.operator.get_entity_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
                 for i, word in enumerate(self.tokenizer(label.lower())):
                     if i == 0:
                         ner_tags.append([idx_counter + i, word, entity, ent_type, 'B'])

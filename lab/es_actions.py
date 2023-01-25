@@ -43,7 +43,7 @@ if __name__ == '__main__':
     res = CLIENT.get(index=index_ent, id=eid)
     print(f"_id: {res['_id']} | _source: {res['_source']}")
 
-    label = aop.get_label(eid)
+    label = aop.get_entity_label(eid)
     print(label)
 
     # TEST IF INDEX LOOKS OK

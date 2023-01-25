@@ -250,14 +250,25 @@ class ESActionOperator(ActionOperator):
         return self.client.get(index=index, id=_id)['_source']
 
     @uppercase
-    def get_label(self, eid: str):
-        """Get entity label for given entity (eid) if it exists"""
-        index = self.index_ent
-        if not self.client.exists(index=index, id=eid):
-            LOGGER.info(f"get_label in ESActionOperator: entity with {eid} doesn't exist in {index}.")
+    def _get_label(self, gid: str, index: str):
+        """Generic get label for given gid in given index if it exists"""
+        if not self.client.exists(index=index, id=gid):
+            LOGGER.info(f"get_label in ESActionOperator: entity with {gid} doesn't exist in {index}.")
             return 'NA'
 
-        return self.client.get(index=index, id=eid)['_source']['label']
+        return self.client.get(index=index, id=gid)['_source']['label']
+
+    @uppercase
+    def get_entity_label(self, eid: str):
+        """Get entity label for given entity (eid) if it exists"""
+        index = self.index_ent
+        return self._get_label(eid, index)
+
+    @uppercase
+    def get_relation_label(self, rid: str):
+        """Get relation label for given relation (rid) if it exists"""
+        index = self.index_rel
+        return self._get_label(rid, index)
 
     @uppercase
     def get_types(self, eid: str):

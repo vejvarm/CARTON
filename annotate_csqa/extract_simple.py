@@ -15,8 +15,6 @@ parser.add_argument('--read_folder', default='data/final_w_turn_pos/csqa', help=
 parser.add_argument('--write_folder', default='data/final_simple/csqa', help='folder to write the reduced dataset')
 args = parser.parse_args()
 
-# TODO: add "turn_position" parameter to indicate original position of the conv. turn in QA_*.json file
-
 # read data and create csqa data dict
 # dict: partition -> folder -> file -> conversation
 read_folder = ROOT_PATH.joinpath(args.read_folder).joinpath(args.partition)  # D:\data\final\csqa\train
