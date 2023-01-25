@@ -44,8 +44,8 @@ class ActiveSetTransformer:
 
         return active_set
 
-
-    def build_table(self, active_set: list[str]):
+    @staticmethod
+    def build_table(active_set: list[str]):
         tab_dict = {}
         for entry in active_set:
             s, r, o = entry[2:-1].split(",")
@@ -59,9 +59,9 @@ class ActiveSetTransformer:
     def tab_dict_to_jsonl(self, tab_dict: dict[tuple[str]: list[str]]):
         line = []
         for (subj, rel), objs in tab_dict.items():
-            obs = [op.get_entity_label(o).split(" ") for o in objs]
-            line.extend([["name", op.get_entity_label(subj).split(" ")],
-                         [op.get_relation_label(rel), [o for ob in obs for o in ob]]])
+            obs = [self.op.get_entity_label(o).split(" ") for o in objs]
+            line.extend([["name", self.op.get_entity_label(subj).split(" ")],
+                         [self.op.get_relation_label(rel), [o for ob in obs for o in ob]]])
 
         LOGGER.debug(f"line: {line}")
         return line
