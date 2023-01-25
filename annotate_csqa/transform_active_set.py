@@ -13,6 +13,11 @@ args = parse_and_get_args()
 CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.WARNING)
 
+# NOTE:
+#   1. annotate_position.py
+#   2. extract_simple.py
+#   3. transform_active_set.py
+
 
 class ActiveSetTransformer:
 
@@ -104,5 +109,5 @@ if __name__ == "__main__":
     for partition in partitions:
         data_folder = ROOT_PATH.joinpath(read_folder).joinpath(partition)
 
-        LOGGER.info(f'Reading folders for partition {partition}')
+        print(f'Reading folders for partition {partition}')
         transform_active_set(data_folder)
