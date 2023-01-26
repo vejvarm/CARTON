@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from lab.label_replacement import LabelReplacer
-from lab.qa2d import get_model, QA2DModel
+from annotate_csqa.qa2d import get_model, QA2DModel
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
 from constants import ROOT_PATH, QA2DModelChoices, RepresentEntityLabelAs
@@ -112,7 +112,7 @@ def main(model_choice: QA2DModelChoices, labels_as: RepresentEntityLabelAs):
     # dict: partition -> folder -> file -> conversation
     data_folder = Path(f'{ROOT_PATH}{args.read_folder}/{args.partition}')
     # csqa_files = data_folder.glob('**/QA*.json')
-    csqa_files = data_folder.glob('**/d_dataset_like_example_file.json')
+    csqa_files = data_folder.glob('**/*.json')
     LOGGER.info(f'Reading folders for partition {args.partition}')
 
     op = ESActionOperator(CLIENT)
@@ -120,43 +120,49 @@ def main(model_choice: QA2DModelChoices, labels_as: RepresentEntityLabelAs):
     labeler = LabelReplacer(op)
     builder = CSQAInsertBuilder(op, transformer, labeler)
 
-    for pth in csqa_files:
+    # TODO: do this better
+    with data_folder.joinpath(f'hypothesis_{args.partition}.txt').open('a', encoding="utf8") as f_hypothesis:
+        for pth in csqa_files:
 
-        with open(pth, encoding='utf8') as json_file:
-            conversation = json.load(json_file)
+            with open(pth, encoding='utf8') as json_file:
+                conversation = json.load(json_file)
 
-        for i in range(len(conversation) // 2):
-            entry_user = conversation[2 * i]  # USER
-            entry_system = conversation[2 * i + 1]  # SYSTEM
+            for i in range(len(conversation) // 2):
+                entry_user = conversation[2 * i]  # USER
+                entry_system = conversation[2 * i + 1]  # SYSTEM
 
-            if 'Simple' not in entry_user['question-type']:
-                continue
+                if 'Simple' not in entry_user['question-type']:
+                    continue
 
-            LOGGER.info(
-                f"USER: {entry_user['description']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
-            LOGGER.info(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
-            LOGGER.info(f"active_set: {entry_system['active_set']}")
+                LOGGER.info(
+                    f"USER: {entry_user['description']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
+                LOGGER.info(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
+                LOGGER.info(f"active_set: {entry_system['active_set']}")
 
-            # 1) TRANSFORM active_set field
-            new_active_set = builder.build_active_set(entry_user, entry_system)
-            LOGGER.info(f'new_active_set: {new_active_set}')
+                # 1) TRANSFORM active_set field
+                new_active_set = builder.build_active_set(entry_user, entry_system)
+                LOGGER.info(f'new_active_set: {new_active_set}')
 
-            # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
-            statement = builder.transorm_utterances(entry_user, entry_system, labels_as=labels_as)
-            LOGGER.info(f'statement: {statement}')
-            LOGGER.info(f"".center(50, "-") + "\n\n")
+                # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
+                statement = builder.transorm_utterances(entry_user, entry_system, labels_as=labels_as)
+                LOGGER.info(f'statement: {statement}')
+                LOGGER.info(f"".center(50, "-") + "\n\n")
 
-            # 3) TRANSFORM all other fields in conversation turns TODO: implement
+                # 2.5) EVALUATION: # TODO: Continue here (build hypothesis.txt files) using this
+                f_hypothesis.write(statement)
+                f_hypothesis.write('\n')
 
-            # conversation types to tweak:
-            # and how?
+                # 3) TRANSFORM all other fields in conversation turns TODO: implement
+
+                # conversation types to tweak:
+                # and how?
 
 
 if __name__ == "__main__":
     # TODO: !!!Possible bug: implementing INDEX structure, we presumed that s-r-o automatically means o-r-s is also true.
     # options
-    args.read_folder = '/data'  # 'folder to read conversations'
-    args.partition = ''  # 'train', 'test', 'val', ''
+    args.read_folder = '/data/simple_direct'  # 'folder to read conversations'
+    args.partition = 'val'  # 'train', 'test', 'val', ''
 
     model_choice = QA2DModelChoices.T5_WHYN
     represent_entity_labels_as = RepresentEntityLabelAs.LABEL
