@@ -8,7 +8,7 @@ from torch import cosine_similarity
 
 from helpers import setup_logger
 from dataset import CSQADataset
-from lab.qa2d import QA2DModel, get_model
+from annotate_csqa.qa2d import QA2DModel, get_model
 from constants import QA2DModelChoices, ROOT_PATH
 from args import parse_and_get_args
 args = parse_and_get_args()

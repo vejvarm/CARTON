@@ -14,9 +14,9 @@ CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.WARNING)
 
 # NOTE:
-#   1. annotate_position.py
+#   1. simple_annotators.py
 #   2. extract_simple.py
-#   3. transform_active_set.py
+#   3. active_set_annotator.py
 
 
 class ActiveSetTransformer:
