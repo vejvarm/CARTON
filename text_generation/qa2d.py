@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
+import torch
 from unidecode import unidecode
 from typing import Protocol
 from abc import ABC, abstractmethod
@@ -19,6 +20,8 @@ args = parse_and_get_args()
 
 CLIENT = connect_to_elasticsearch()
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class Preprocessor(ABC):
@@ -70,7 +73,7 @@ class QA2DModel:
     @staticmethod
     def _get_tokenizer_and_model(model_type: QA2DModelChoices):
         tokenizer = AutoTokenizer.from_pretrained(model_type.value)
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_type.value)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_type.value).to(device)
 
         return tokenizer, model
 
@@ -90,7 +93,7 @@ class QA2DModel:
         return self.preprocessor.combine_qa(question, answer)
 
     def infer_one(self, qa_string: str) -> str:
-        input_ids = self.tokenizer(qa_string, return_tensors="pt").input_ids
+        input_ids = self.tokenizer(qa_string, return_tensors="pt").input_ids.to(device)
         LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
 
         outputs = self.model.generate(input_ids)
@@ -102,7 +105,7 @@ class QA2DModel:
 class GhasQA2DModel(QA2DModel):
 
     def infer_one(self, qa_string: str, max_length=150) -> str:
-        input_ids = self.tokenizer.encode(qa_string, return_tensors="pt", add_special_tokens=True)
+        input_ids = self.tokenizer.encode(qa_string, return_tensors="pt", add_special_tokens=True).to(device)
         LOGGER.debug(f"input_ids in infer_one: ({input_ids.shape}) {input_ids}")
 
         outputs = self.model.generate(input_ids=input_ids, num_beams=2, max_length=max_length, early_stopping=True)

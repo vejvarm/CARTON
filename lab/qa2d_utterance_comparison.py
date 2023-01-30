@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from lab.expand_csqa import CSQAInsertBuilder
-from annotate_csqa.qa2d import get_model
+from text_generation.qa2d import get_model
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
 from constants import ROOT_PATH, QA2DModelChoices, RepresentEntityLabelAs

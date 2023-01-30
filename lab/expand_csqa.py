@@ -3,8 +3,8 @@ import logging
 import re
 from pathlib import Path
 
-from lab.label_replacement import LabelReplacer
-from annotate_csqa.qa2d import get_model, QA2DModel
+from text_generation.label_replacement import LabelReplacer
+from text_generation.qa2d import get_model, QA2DModel
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
 from constants import ROOT_PATH, QA2DModelChoices, RepresentEntityLabelAs
