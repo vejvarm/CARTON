@@ -123,12 +123,17 @@ if __name__ == "__main__":
     read_folder = ROOT_PATH.joinpath('data/simple_direct/')  # 'folder to read conversations'
     write_folder = ROOT_PATH.joinpath('data/qa2d/')
     partitions = ('test', 'train', 'val')[:2]  # 'test', 'train', 'val', ''
+    model_choices = [QA2DModelChoices.T5_SMALL,
+                     QA2DModelChoices.T5_BASE,
+                     # QA2DModelChoices.T5_3B,  # TODO: run on CPU or RTX3080 later
+                     QA2DModelChoices.T5_WHYN]
+    # TODO: Run T5_SMALL, T5_BASE on train partition after the previous run finishes
 
     represent_entity_labels_as = RepresentEntityLabelAs.LABEL
     for partition in partitions:
         main_part = partial(main, read_folder=read_folder, write_folder=write_folder,
                             labels_as=represent_entity_labels_as, partition=partition)
-        for model_choice in QA2DModelChoices:
+        for model_choice in model_choices:
             LOGGER.info(f"model_choice: {model_choice}")
             main_part(model_choice)
         # with ThreadPoolExecutor(max_workers=5) as executor:

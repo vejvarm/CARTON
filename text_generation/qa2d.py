@@ -81,10 +81,10 @@ class QA2DModel:
     def _get_preprocessor(model_type: QA2DModelChoices):
         if model_type in (QA2DModelChoices.T5_SMALL, QA2DModelChoices.T5_BASE):
             return QA2DPreprocessor
-        elif model_type == QA2DModelChoices.T5_3B:
-            return B3Preprocessor
         elif model_type == QA2DModelChoices.T5_WHYN:
             return GhasPreprocessor
+        elif model_type == QA2DModelChoices.T5_3B:
+            return B3Preprocessor
         else:
             raise NotImplementedError(
                 f'Chosen model type ({model_type}) is not supported. Refer to QA2DModelChoices class.')

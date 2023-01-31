@@ -63,7 +63,7 @@ class Passwords(Enum):
 class QA2DModelChoices(Enum):
     T5_SMALL = 'domenicrosati/QA2D-t5-small'  # T5-Small model fine-tuned on the QA2D dataset
     T5_BASE = 'domenicrosati/QA2D-t5-base'    # T5-Base model fine-tuned on the QA2D dataset
-    # T5_3B = 'domenicrosati/question_converter-3b'  # T5-3B model fine-tuned on the QA2D dataset TODO: doesn't fit on GPU, so run with CPU or get RTX3080
+    T5_3B = 'domenicrosati/question_converter-3b'  # T5-3B model fine-tuned on the QA2D dataset TODO: doesn't fit on GPU, so run with CPU or get RTX3080
     T5_WHYN = 'Farnazgh/QA2D'  # T5-Large model fine-tuned on QA2D+YesNo type questions from SAMSum corpus
 
 
