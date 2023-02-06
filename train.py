@@ -150,9 +150,9 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         LOGGER.debug(f'ner_indices in train: ({len(ner_indices)}) {ner_indices}')
         # coref_indices = {k: tag for k, tag in enumerate(coref_str) if tag not in ['NA']}
         # create a ner dictionary with index as key and entity as value
-        # TODO: WE ACTUALLY DON'T NEED ANY OF THIS!
-        # TODO: THE NER MODULE IS NOT LEARING ANYTHING NEW ... we don't need a specific loss for that
-        # TODO: ONLY THING WE NEED IS TO ADD NEW ENTRIES TO THE CSQA Dataset!
+        # NOTE: WE ACTUALLY DON'T NEED ANY OF THIS!
+        #   THE NER MODULE IS NOT LEARING ANYTHING NEW ... we don't need a specific loss for that
+        #   ONLY THING WE NEED IS TO ADD NEW ENTRIES TO THE CSQA Dataset!
 
         # NER module in TRAIN
         # TODO: implement the ner module functionality, as in Inference,
