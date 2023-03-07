@@ -1,20 +1,12 @@
-import json
 import logging
-import re
-from pathlib import Path
 
-import pandas as pd
 import torch
-from unidecode import unidecode
-from typing import Protocol
 from abc import ABC, abstractmethod
 
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-from tqdm import tqdm
 
-from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
-from constants import ROOT_PATH, QA2DModelChoices, RepresentEntityLabelAs
+from constants import QA2DModelChoices
 from args import parse_and_get_args
 args = parse_and_get_args()
 
