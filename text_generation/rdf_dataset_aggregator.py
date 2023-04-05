@@ -108,7 +108,6 @@ if __name__ == '__main__':
         response = sid_agg_with_oid
         sid_buckets = response['aggregations']['group_by_sid']['buckets']
         after_key = response['aggregations']['group_by_sid'].get('after_key')
-        # print(after_key)
 
         # Append the buckets to the all_buckets list
         all_buckets.extend(sid_buckets)
@@ -158,6 +157,7 @@ if __name__ == '__main__':
 
             if len(all_buckets) >= BUCKET_SAVE_FREQUENCY:
                 # split buckets
+                shuffle(all_buckets)
                 num_buckets = len(all_buckets)
                 train_buckets = all_buckets[:int(num_buckets * SPLIT['train'])]
                 test_buckets = all_buckets[
