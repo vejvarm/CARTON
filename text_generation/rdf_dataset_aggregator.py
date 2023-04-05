@@ -56,11 +56,7 @@ if __name__ == '__main__':
     all_subjs = client.search(index=aop.index_rdf,
                               query={'match_all': {}},
                               size=10)
-    print(all_subjs)
-    # TODO: maybe use aggregations?
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-pipeline.html
 
-    # HOHOHOOOOO
     sid_agg_with_oid = client.search(
         index=aop.index_rdf,
         size=0,
@@ -201,25 +197,3 @@ if __name__ == '__main__':
             break
 
     print(dump_num)
-    # for subj in all_subjs:
-    #     res = client.search(index=aop.index_rdf,
-    #                              query={aop._match('sid', subj)})
-# then, for each subject entity (from index_ent), we extract all RDFs with the same subject entity and we concatenate
-# them into list
-# save it all into folder structure as follows:
-#   create split folders for
-#       train - 1triples, 2triples, 3triples ...
-#       test - 1triples, 2triples, 3triples ...
-#       dev  - 1triples, ...
-# each folder contains json file with this structure:
-#     {"data":
-#             [
-#                 ['subject1_label | relation_label | object_label',
-#                  'subject1_label | ... | ...',
-#                  'subject1_label | ... | ...'],
-#                 ['subject2_label | relation_label | object_label',
-#                  '...',
-#                  '...'],
-#                 ...
-#             ]
-#     }
