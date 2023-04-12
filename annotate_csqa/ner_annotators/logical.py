@@ -10,10 +10,10 @@ Logical Reasoning (All):
 - Logical|Intersection|Multiple_Relation - Done
 - Logical|Union|Single_Relation|Incomplete - Done
 """
-from ner_annotators.ner_base import NERBase
+from annotate_csqa.ner_annotators.ner_base import NERBase
 class Logical(NERBase):
-    def __init__(self, kg, preprocessed_data, tokenizer):
-        super().__init__(kg, preprocessed_data, tokenizer)
+    def __init__(self, client, preprocessed_data, tokenizer):
+        super().__init__(client, preprocessed_data, tokenizer)
 
     def __call__(self, user, system):
         # Logical Reasoning (All)

@@ -16,7 +16,7 @@ Quantitative Reasoning (Count) (All):
 - Quantitative|Count over Atleast/ Atmost/ Approx. the same/Equal|Single entity type - Done
 - Incomplete count-based ques - Done
 """
-from ner_annotators.ner_base import NERBase
+from annotate_csqa.ner_annotators.ner_base import NERBase
 class Quantitative(NERBase):
     def __init__(self, kg, preprocessed_data, tokenizer):
         super().__init__(kg, preprocessed_data, tokenizer)

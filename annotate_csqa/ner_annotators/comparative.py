@@ -15,10 +15,10 @@ Comparative Reasoning (Count) (All):
 - Comparative|Count over More/Less|Single entity type - Done
 - Comparative|Count over More/Less|Mult. entity type|Incomplete - Done
 """
-from ner_annotators.ner_base import NERBase
+from annotate_csqa.ner_annotators.ner_base import NERBase
 class Comparative(NERBase):
-    def __init__(self, kg, preprocessed_data, tokenizer):
-        super().__init__(kg, preprocessed_data, tokenizer)
+    def __init__(self, client, preprocessed_data, tokenizer):
+        super().__init__(client, preprocessed_data, tokenizer)
 
     def __call__(self, user, system, prev_user, prev_system):
         # Clarification questions, will be handled from clarification class

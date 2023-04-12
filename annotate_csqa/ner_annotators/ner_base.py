@@ -1,9 +1,11 @@
 from unidecode import unidecode
 
+from action_executor.actions import ESActionOperator
+
 
 class NERBase:
-    def __init__(self, kg, preprocessed_data, tokenizer):
-        self.kg = kg
+    def __init__(self, client, preprocessed_data, tokenizer):
+        self.operator = ESActionOperator(client)
         self.preprocessed_data = preprocessed_data
         self.tokenizer = tokenizer
 
@@ -22,7 +24,7 @@ class NERBase:
         context = self.tokenizer(utterance)
         ent_data = {}
         for entity in entities:
-            ent_label = self.kg.id_entity[entity]
+            ent_label = self.operator.get_entity_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
             tok_ent = self.tokenizer(unidecode(ent_label.lower()))
             try:
                 ent_in_utter = self.find_entity_in_utterance(tok_ent, context)
@@ -282,7 +284,7 @@ class NERBase:
             idx_counter = 0
             for j, entity in enumerate(system['entities_in_utterance']):
                 ent_type = self.get_type(entity)
-                label = self.kg.id_entity[entity]
+                label = self.operator.get_entity_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
                 for i, word in enumerate(self.tokenizer(label.lower())):
                     if i == 0:
                         ner_tags.append([idx_counter + i, word, entity, ent_type, 'B'])
@@ -306,11 +308,12 @@ class NERBase:
         return ner_tags
 
     def get_type(self, entity):
-        if entity not in self.kg.entity_type:
+        type_list = self.operator.get_types(entity)
+        if not type_list:
             self.log_error('No type', entity)
             return 'NA'
-        else:
-            return self.kg.entity_type[entity][0]
+
+        return type_list[0]
 
     def log_error(self, txt, context):
         unicoce_txt = open('TOFIX.txt', 'a')

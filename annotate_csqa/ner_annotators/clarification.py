@@ -8,10 +8,10 @@ Clarification:
 - Comparative|Count over More/Less|Mult. entity type|Indirect - Done
 - Comparative|More/Less|Mult. entity type|Indirect - Done
 """
-from ner_annotators.ner_base import NERBase
+from annotate_csqa.ner_annotators.ner_base import NERBase
 class Clarification(NERBase):
-    def __init__(self, kg, preprocessed_data, tokenizer, simple, comparative, quantitative):
-        super().__init__(kg, preprocessed_data, tokenizer)
+    def __init__(self, client, preprocessed_data, tokenizer, simple, comparative, quantitative):
+        super().__init__(client, preprocessed_data, tokenizer)
         self.simple = simple
         self.comparative = comparative
         self.quantitative = quantitative

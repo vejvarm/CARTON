@@ -7,6 +7,9 @@ from torch.autograd import Variable
 
 # import constants
 from constants import *
+from args import parse_and_get_args
+args = parse_and_get_args()
+
 
 class CARTON(nn.Module):
     def __init__(self, vocabs):
@@ -14,24 +17,97 @@ class CARTON(nn.Module):
         self.vocabs = vocabs
         self.encoder = Encoder(vocabs[INPUT], DEVICE)
         self.decoder = Decoder(vocabs[LOGICAL_FORM], DEVICE)
-        self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER], vocabs[ENTITY_POINTER])
+        self.ner = NerNet(len(vocabs[NER]))
+        self.coref = CorefNet(len(vocabs[COREF]))
+        self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER])
 
-    def forward(self, src_tokens, trg_tokens, batch_entities):
+    def forward(self, src_tokens, trg_tokens):
         encoder_out = self.encoder(src_tokens)
+        ner_out, ner_h = self.ner(encoder_out)  # ANCHOR: LASAGNE
+        coref_out = self.coref(torch.cat([encoder_out, ner_h], dim=-1))  # ANCHOR: LASAGNE
         decoder_out, decoder_h = self.decoder(src_tokens, trg_tokens, encoder_out)
         encoder_ctx = encoder_out[:, -1:, :]  # ANCHOR [batch_size, time, encoder_dim]
-        stacked_pointer_out = self.stptr_net(encoder_ctx, decoder_h, batch_entities)  # ANCHOR encoder context vector
+        stacked_pointer_out = self.stptr_net(encoder_ctx, decoder_h)  # ANCHOR encoder context vector
 
         return {
             LOGICAL_FORM: decoder_out,
             PREDICATE_POINTER: stacked_pointer_out[PREDICATE_POINTER],  # (bs, lf_actions*n_predicates)
             TYPE_POINTER: stacked_pointer_out[TYPE_POINTER],     # (bs, lf_actions*n_types)
-            ENTITY_POINTER: stacked_pointer_out[ENTITY_POINTER]  # (bs, lf_actions*n_ent)
+            NER: ner_out,
+            COREF: coref_out
         }
+
+    # ANCHOR: LASAGNE
+    def _predict_encoder(self, src_tensor):
+        with torch.no_grad():
+            encoder_out = self.encoder(src_tensor)
+            ner_out, ner_h = self.ner(encoder_out)
+            coref_out = self.coref(torch.cat([encoder_out, ner_h], dim=-1))
+
+        return {
+            ENCODER_OUT: encoder_out,
+            NER: ner_out,
+            COREF: coref_out
+        }
+
+    def _predict_decoder(self, src_tokens, trg_tokens, encoder_out):
+        with torch.no_grad():
+            decoder_out, decoder_h = self.decoder(src_tokens, trg_tokens, encoder_out)
+            encoder_ctx = encoder_out[:, -1:, :]
+
+            return {
+                DECODER_OUT: decoder_out,
+                DECODER_H: decoder_h,
+            }
+
+
+class LstmFlatten(nn.Module):
+    def forward(self, x):
+        return x[0].squeeze(1)
+
 
 class Flatten(nn.Module):
     def forward(self, x):
         return x.contiguous().view(-1, x.shape[-1])
+
+
+# ANCHOR: BIO entity labeling (annotator)
+#   Finding all entities in the input utterance (BIO & types)
+class NerNet(nn.Module):
+    def __init__(self, tags, dropout=args.dropout):
+        super(NerNet, self).__init__()
+        self.ner_lstm = nn.Sequential(
+            nn.LSTM(input_size=args.emb_dim, hidden_size=args.emb_dim, batch_first=True),
+            LstmFlatten(),
+            nn.LeakyReLU()
+        )
+
+        self.ner_linear = nn.Sequential(
+            Flatten(),
+            nn.Dropout(dropout),
+            nn.Linear(args.emb_dim, tags)
+        )
+
+    def forward(self, x):
+        h = self.ner_lstm(x)
+        return self.ner_linear(h), h
+
+
+# ANCHOR: This is interesting
+class CorefNet(nn.Module):
+    def __init__(self, tags, dropout=args.dropout):
+        super(CorefNet, self).__init__()
+        self.seq_net = nn.Sequential(
+            nn.Linear(args.emb_dim * 2, args.emb_dim),
+            nn.LeakyReLU(),
+            Flatten(),
+            nn.Dropout(dropout),
+            nn.Linear(args.emb_dim, tags)
+        )
+
+    def forward(self, x):
+        return self.seq_net(x)
+
 
 class PointerStack(nn.Module):
     def __init__(self, vocab):
@@ -41,7 +117,13 @@ class PointerStack(nn.Module):
         self.dropout = nn.Dropout(args.dropout)
         self.tahn = nn.Tanh()
         self.flatten = Flatten()
-        self.linear_out = nn.Linear(args.emb_dim, 1)
+        hidden = []
+        # create ptr_n_hidden Linear+ReLU layers with halving sizes of emb_dim
+        for i in range(args.ptr_n_hidden):
+            hidden.append(nn.Linear(args.emb_dim // (2 ** i), args.emb_dim // (2 ** (i + 1))))
+            hidden.append(nn.ReLU())
+        self.lin_hidden = nn.Sequential(*hidden)
+        self.linear_out = nn.Linear(args.emb_dim//(2**args.ptr_n_hidden), 1)
 
     def forward(self, x):  # ANCHOR Pointer network
         # x.shape: [25, n, 1, 300] ... inputed from ANCHOR@StackedPointerNetworks forward function
@@ -52,6 +134,7 @@ class PointerStack(nn.Module):
         x = x + embed.expand(x.shape[0], x.shape[1], embed.shape[1], embed.shape[-1])
         # print(f"forever_after: {x.shape}")  # torch.Size([25, 18, 1560, 300])
         x = self.tahn(x)
+        x = self.lin_hidden(x)
         x = self.linear_out(x)
         # print(f"after linear: {x.shape}")  # torch.Size([25, 18, 1560, 1])
         x = x.squeeze(-1)
@@ -62,46 +145,8 @@ class PointerStack(nn.Module):
         return x
 
 
-class EntityPointerStack(nn.Module):
-    def __init__(self, entity_vocab):
-        super(EntityPointerStack, self).__init__()
-        self.entity_embeddings = json.loads(open(f'{ROOT_PATH}{args.embedding_path}').read())
-        self.entity_vocab = entity_vocab.itos
-        self.linear_in = nn.Linear(args.bert_dim, args.emb_dim)
-        self.dropout = nn.Dropout(args.dropout)
-        self.tahn = nn.Tanh()
-        self.flatten = Flatten()
-        self.linear_out = nn.Linear(args.emb_dim, 1)
-
-    def _prepare_batch(self, batch_entities):
-        """
-        :param batch_entities: (bs, n) ... batch of entities picked for the current run of entitity pointer
-        """
-        batch_embed = []
-        for entities in batch_entities:
-            temp = []
-            for id in entities:
-                ent = self.entity_vocab[id]
-                temp.append(torch.tensor(self.entity_embeddings[ent]))
-            batch_embed.append(torch.stack(temp))
-
-        return torch.stack(batch_embed)
-
-    def forward(self, x, batch_entities):
-        batch_embedding = self._prepare_batch(batch_entities).to(DEVICE)  # (25, n_ent, 512)
-        embed = self.linear_in(batch_embedding).unsqueeze(1)  # (25, 1, n_ent, 300)
-        x = x.expand(x.shape[0], x.shape[1], embed.shape[1], x.shape[-1])  # (25, lf_actions, 1, 300)
-        x = x + embed.expand(x.shape[0], x.shape[1], embed.shape[2], embed.shape[-1])  # (25, lf_actions, n_ent, 300)
-        x = self.tahn(x)
-        x = self.linear_out(x)  # (25, lf_actions, n_ent, 1)
-        x = x.squeeze(-1)       # (25, lf_actions, n_ent)
-        x = self.flatten(x)     # (25*lf_actions, n_ent)
-
-        return x
-
-
 class StackedPointerNetworks(nn.Module):
-    def __init__(self, predicate_vocab, type_vocab, entity_vocab):
+    def __init__(self, predicate_vocab, type_vocab):
         super(StackedPointerNetworks, self).__init__()
 
         self.context_linear = nn.Linear(args.emb_dim*2, args.emb_dim)
@@ -109,10 +154,8 @@ class StackedPointerNetworks(nn.Module):
 
         self.predicate_pointer = PointerStack(predicate_vocab)
         self.type_pointer = PointerStack(type_vocab)
-        self.entity_pointer = EntityPointerStack(entity_vocab)
 
-
-    def forward(self, encoder_ctx, decoder_h, batch_entities):
+    def forward(self, encoder_ctx, decoder_h):
         x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)  # ANCHOR: this is gonna be problematic!
         # TODO: each entry in decoder_h is concatenated by encoder_h
         #  e.g. expand([25, 1, 300], dim=1, n) concat with [25, n, 300] => [25, n, 600]
@@ -122,31 +165,7 @@ class StackedPointerNetworks(nn.Module):
         return {
             PREDICATE_POINTER: self.predicate_pointer(x),
             TYPE_POINTER: self.type_pointer(x),
-            ENTITY_POINTER: self.entity_pointer(x, batch_entities)
         }
-
-class ClassifierNetworks(nn.Module):
-    def __init__(self, predicate_vocab, type_vocab):
-        super(ClassifierNetworks, self).__init__()
-        self.predicate_cls = nn.Sequential(
-            nn.Linear(args.emb_dim*2, args.emb_dim),
-            nn.LeakyReLU(),
-            Flatten(),
-            nn.Dropout(args.dropout),
-            nn.Linear(args.emb_dim, len(predicate_vocab))
-        )
-
-        self.type_cls = nn.Sequential(
-            nn.Linear(args.emb_dim*2, args.emb_dim),
-            nn.LeakyReLU(),
-            Flatten(),
-            nn.Dropout(args.dropout),
-            nn.Linear(args.emb_dim, len(type_vocab))
-        )
-
-    def forward(self, encoder_ctx, decoder_h):
-        x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)
-        return self.predicate_cls(x), self.type_cls(x)
 
 
 class Encoder(nn.Module):
@@ -184,6 +203,7 @@ class Encoder(nn.Module):
 
         return x
 
+
 class EncoderLayer(nn.Module):
     def __init__(self, embed_dim, heads, pf_dim, dropout, device):
         super().__init__()
@@ -198,6 +218,7 @@ class EncoderLayer(nn.Module):
         x = self.layer_norm(x + self.dropout(self.pos_ff(x)))
 
         return x
+
 
 class Decoder(nn.Module):
     def __init__(self, vocabulary, device, embed_dim=args.emb_dim, layers=args.layers,
@@ -242,6 +263,7 @@ class Decoder(nn.Module):
 
         return x, h
 
+
 class DecoderLayer(nn.Module):
     def __init__(self, embed_dim, heads, pf_dim, dropout, device):
         super().__init__()
@@ -257,6 +279,7 @@ class DecoderLayer(nn.Module):
         x = self.layer_norm(x + self.dropout(self.pos_ff(x)))
 
         return x
+
 
 class MultiHeadedAttention(nn.Module):
     def __init__(self, embed_dim, heads, dropout, device):
@@ -302,6 +325,7 @@ class MultiHeadedAttention(nn.Module):
 
         return x
 
+
 class PositionwiseFeedforward(nn.Module):
     def __init__(self, embed_dim, pf_dim, dropout):
         super().__init__()
@@ -314,6 +338,7 @@ class PositionwiseFeedforward(nn.Module):
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         return self.linear_2(x)
+
 
 class PositionalEmbedding(nn.Module):
     def __init__(self, d_model, dropout, max_len=5000):

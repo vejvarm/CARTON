@@ -1,23 +1,28 @@
+import os
+import time
 import random
 import logging
 import torch
 import numpy as np
+import torch.optim
+import torch.nn as nn
+from pathlib import Path
 from model import CARTON
 from dataset import CSQADataset
-from utils import Predictor, Inference
+from utils import SingleTaskLoss, MultiTaskLoss, AverageMeter, Scorer, Predictor, Inference
 
 # import constants
-from constants import *
+from constants import DEVICE, ROOT_PATH, ALL_QUESTION_TYPES
+from helpers import setup_logger
+from args import parse_and_get_args
+args = parse_and_get_args()
+
 
 # set logger
-logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%d/%m/%Y %I:%M:%S %p',
-                    level=logging.INFO,
-                    handlers=[
-                        logging.FileHandler(f'{args.path_results}/test_{args.question_type}.log', 'w'),
-                        logging.StreamHandler()
-                    ])
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__,
+                      loglevel=logging.INFO,
+                      handlers=[logging.FileHandler(f'{args.path_results}/test_{args.question_type}.log', 'w'),
+                                logging.StreamHandler()])
 
 # set a seed value
 random.seed(args.seed)
@@ -51,8 +56,16 @@ def main():
     logger.info(f"=> loaded checkpoint '{args.model_path}' (epoch {checkpoint['epoch']})")
 
     # construct actions
-    predictor = Predictor(model, vocabs)
-    Inference().construct_actions(inference_data, predictor)
+    inference = Inference()
+    if args.question_type == 'all':
+        for qtype in ALL_QUESTION_TYPES:
+            args.question_type = qtype
+            predictor = Predictor(model, vocabs)
+            inference.construct_actions(inference_data, predictor)
+        args.question_type = 'all'
+    else:
+        predictor = Predictor(model, vocabs)
+        inference.construct_actions(inference_data, predictor)
 
 
 if __name__ == '__main__':

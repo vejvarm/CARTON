@@ -1,13 +1,26 @@
 from collections import OrderedDict
-from actions import ActionOperator
+from typing import Union
+
+from elasticsearch import Elasticsearch
+from knowledge_graph.KnowledgeGraphs import KGJSON, KGZODB
+
+from actions import ActionOperator, ESActionOperator
 action_input_size_constrain = {'find': 2, 'find_reverse': 2, 'filter_type': 2,
                             'filter_multi_types': 3, 'find_tuple_counts': 3, 'find_reverse_tuple_counts': 3,
                             'greater': 2, 'less': 2, 'equal': 2, 'approx': 2, 'atmost': 2, 'atleast': 2, 'argmin': 1,
-                            'argmax': 1, 'is_in': 2, 'count': 1, 'union': 10, 'intersection': 2, 'difference': 2}
+                            'argmax': 1, 'is_in': 2, 'count': 1, 'union': 10, 'intersection': 2, 'difference': 2,
+                            'insert': 2}
+
 
 class ActionExecutor:
-    def __init__(self, kg):
-        self.operator = ActionOperator(kg)
+    def __init__(self, source: Union[KGJSON, KGZODB, Elasticsearch]):
+        if not isinstance(source, (KGJSON, KGZODB, Elasticsearch)):
+            raise NotImplementedError("init in ActionExecutor: Data source must be either KG or elasticsearch client!")
+
+        if isinstance(source, Elasticsearch):
+            self.operator = ESActionOperator(source)
+        else:
+            self.operator = ActionOperator(source)
 
     def _parse_actions(self, actions):
         actions_to_execute = OrderedDict()
@@ -77,7 +90,6 @@ class ActionExecutor:
                 raise NotImplementedError('Not implemented for more than 3 inputs!')
 
         return next(reversed(partial_results.values()))
-
 
     def __call__(self, actions, prev_results, question_type):
         if question_type in ['Logical Reasoning (All)', 'Quantitative Reasoning (All)', 'Comparative Reasoning (All)', 'Clarification', 'Quantitative Reasoning (Count) (All)', 'Comparative Reasoning (Count) (All)']:

@@ -1,17 +1,80 @@
 import os
 import torch
+from enum import Enum, auto
 from pathlib import Path
-from args import get_parser
 
 # set root path
 ROOT_PATH = Path(os.path.dirname(__file__))
 
-# read parser
-parser = get_parser()
-args = parser.parse_args()
-
 # model name
 MODEL_NAME = 'CARTON'
+
+# Elasticsearch
+INDEX_ROOT = 'csqa_wikidata'
+
+
+class ElasticIndices(Enum):
+    ENT = f'{INDEX_ROOT}_ent'
+    ENT_FULL = f'{INDEX_ROOT}_ent_full'
+    REL = f'{INDEX_ROOT}_rel'
+    RDF = f'{INDEX_ROOT}_rdf'
+    RDF_FULL = f'{INDEX_ROOT}_rdf_full'
+
+
+class KGType(Enum):
+    MEMORY = 'memory'
+    ZODB = 'zodb'
+    ELASTICSEARCH = 'elasticsearch'
+
+
+class Task(Enum):
+    MULTITASK = 'multitask'
+    LOGICAL_FORM = 'logical_form'
+    PREDICATE_POINTER = 'predicate_pointer'
+    TYPE_POINTER = 'type_pointer'
+    NER = 'ner'
+    COREF = 'coref'
+
+
+class QuestionTypes(Enum):
+    ALL = 'all'
+    SIMPLE_DIRECT = 'Simple Question (Direct)'
+    SIMPLE_COREFERENCED = 'Simple Question (Coreferenced)'
+    SIMPLE_ELLIPSIS = 'Simple Question (Ellipsis)'
+    COMPARATIVE = 'Comparative Reasoning (All)'
+    LOGICAL = 'Logical Reasoning (All)'
+    QUANTITATIVE = 'Quantitative Reasoning (All)'
+    VERIFICATION = 'Verification (Boolean) (All)'
+    QUANTITATIVE_COUNT = 'Quantitative Reasoning (Count) (All)'
+    COMPARATIVE_COUNT = 'Comparative Reasoning (Count) (All)'
+    CLARIFICATION = 'Clarification'
+
+
+class InferencePartition(Enum):
+    TEST = 'test'
+    VAL = 'val'
+
+
+class Passwords(Enum):
+    NOTEBOOK = 'hZiYNU+ye9izCApoff-v'
+    FREYA = '1jceIiR5k6JlmSyDpNwK'
+
+
+class QA2DModelChoices(Enum):
+    T5_SMALL = 'domenicrosati/QA2D-t5-small'  # T5-Small model fine-tuned on the QA2D dataset
+    T5_BASE = 'domenicrosati/QA2D-t5-base'    # T5-Base model fine-tuned on the QA2D dataset
+    T5_3B = 'domenicrosati/question_converter-3b'  # T5-3B model fine-tuned on the QA2D dataset TODO: doesn't fit on GPU, so run with CPU or get RTX3080
+    T5_WHYN = 'Farnazgh/QA2D'  # T5-Large model fine-tuned on QA2D+YesNo type questions from SAMSum corpus
+
+
+class RepresentEntityLabelAs(Enum):
+    LABEL = auto()
+    ENTITY_ID = auto()
+    PLACEHOLDER = auto()
+    PLACEHOLDER_NAMES = auto()
+    GROUP = auto()
+    # TYPE_ID = auto()  # TODO: Implement
+
 
 # define device
 CUDA = 'cuda'
@@ -25,6 +88,8 @@ LOGICAL_FORM = 'logical_form'
 PREDICATE_POINTER = 'predicate_pointer'
 TYPE_POINTER = 'type_pointer'
 ENTITY_POINTER = 'entity_pointer'
+NER = 'ner'
+COREF = 'coref'
 MULTITASK = 'multitask'
 
 # helper tokens
@@ -39,9 +104,15 @@ NA_TOKEN = 'NA'
 GOLD = 'gold'
 LABEL = 'label'
 
+# ner tag
+B = 'B'
+I = 'I'
+O = 'O'
+
 # model
 ENCODER_OUT = 'encoder_out'
 DECODER_OUT = 'decoder_out'
+DECODER_H = 'decoder_h'
 
 # training
 EPOCH = 'epoch'
@@ -53,16 +124,18 @@ CURR_VAL = 'curr_val'
 # question types
 TOTAL = 'total'
 OVERALL = 'Overall'
-CLARIFICATION = 'Clarification'
-COMPARATIVE = 'Comparative Reasoning (All)'
-LOGICAL = 'Logical Reasoning (All)'
-QUANTITATIVE = 'Quantitative Reasoning (All)'
-SIMPLE_COREFERENCED = 'Simple Question (Coreferenced)'
-SIMPLE_DIRECT = 'Simple Question (Direct)'
-SIMPLE_ELLIPSIS = 'Simple Question (Ellipsis)'
-VERIFICATION = 'Verification (Boolean) (All)'
-QUANTITATIVE_COUNT = 'Quantitative Reasoning (Count) (All)'
-COMPARATIVE_COUNT = 'Comparative Reasoning (Count) (All)'
+SIMPLE_DIRECT = QuestionTypes.SIMPLE_DIRECT.value
+SIMPLE_COREFERENCED = QuestionTypes.SIMPLE_COREFERENCED.value
+SIMPLE_ELLIPSIS = QuestionTypes.SIMPLE_ELLIPSIS.value
+COMPARATIVE = QuestionTypes.COMPARATIVE.value
+LOGICAL = QuestionTypes.LOGICAL.value
+QUANTITATIVE = QuestionTypes.QUANTITATIVE.value
+VERIFICATION = QuestionTypes.VERIFICATION.value
+QUANTITATIVE_COUNT = QuestionTypes.QUANTITATIVE_COUNT.value
+COMPARATIVE_COUNT = QuestionTypes.COMPARATIVE_COUNT.value
+CLARIFICATION = QuestionTypes.CLARIFICATION.value
+
+ALL_QUESTION_TYPES = tuple(qt.value for qt in QuestionTypes)
 
 # action related
 ENTITY = 'entity'

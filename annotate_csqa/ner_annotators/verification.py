@@ -7,10 +7,10 @@ Verification (Boolean) (All):
 - Verification|2 entities, both direct -
 - Verification|one entity, multiple entities (as object) referred indirectly -
 """
-from ner_annotators.ner_base import NERBase
+from annotate_csqa.ner_annotators.ner_base import NERBase
 class Verification(NERBase):
-    def __init__(self, kg, preprocessed_data, tokenizer):
-        super().__init__(kg, preprocessed_data, tokenizer)
+    def __init__(self, client, preprocessed_data, tokenizer):
+        super().__init__(client, preprocessed_data, tokenizer)
 
     def __call__(self, user, system, prev_system):
         # Verification (Boolean) (All)
