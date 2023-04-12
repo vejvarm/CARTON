@@ -228,8 +228,12 @@ class ESActionOperator(ActionOperator):
         for hit in res['docs']:
             _id = hit['_id']
             if hit['found']:
-                label = hit['_source']['label']
-                types = hit['_source']['types']
+                label = None
+                types = None
+                if 'label' in hit['_source'].keys():
+                    label = hit['_source']['label']
+                if 'types' in hit['_source'].keys():
+                    types = hit['_source']['types']
                 res_dict[_id] = (label, types)
             else:
                 LOGGER.info(f'in _get_by_ids: Entity with id "{_id}" was NOT found in label&type documents.')
