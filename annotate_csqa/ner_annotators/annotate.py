@@ -92,7 +92,7 @@ class NERAnnotator:
 
             if user['question-type'] in ['Simple Insert (Direct)', 'Simple Insert (Coreferenced)', 'Simple Insert (Ellipsis)']:
                 user, system = self.simple_insert_annotator(user, system)
-            if user['question-type'] == 'Simple Question (Direct)' or user['question-type'] == 'Simple Question (Coreferenced)' or user['question-type'] == 'Simple Question (Ellipsis)':
+            elif user['question-type'] == 'Simple Question (Direct)' or user['question-type'] == 'Simple Question (Coreferenced)' or user['question-type'] == 'Simple Question (Ellipsis)':
                 user, system = self.simple_annotator(user, system)
             elif user['question-type'] == 'Verification (Boolean) (All)':
                 user, system = self.verification_annotator(user, system, prev_system)

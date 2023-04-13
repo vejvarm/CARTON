@@ -1,3 +1,4 @@
+import cProfile
 import json
 import logging
 import re
@@ -113,9 +114,11 @@ class CSQAInsertBuilder:
 
         # Update the fields for the user and system turns
         user_new = user.copy()
-        user_new["question-type"] = user_new["question-type"].replace("Question", "Input")
+        user_new["question-type"] = user_new["question-type"].replace("Question", "Insert")
         if "description" in user_new.keys():
-            user_new["description"] = user_new["description"].replace("Question", "Input")
+            user_new["description"] = user_new["description"].replace("Question", "Insert")
+        else:
+            user_new["description"] = "Simple Insert"
         user_new["utterance"] = declarative_str
         user_new["entities_in_utterance"] = user_new["entities_in_utterance"] + system["entities_in_utterance"]
 
@@ -183,7 +186,6 @@ def main(model_choice: QA2DModelChoices, partition: str):
     labeler = LabelReplacer(op)
     builder = CSQAInsertBuilder(op, transformer, labeler)
 
-    # TODO: do this better
     with args.write_folder.joinpath(f'hypothesis_{partition}.txt').open('w', encoding="utf8") as f_hypothesis:
         for pth in tqdm(csqa_files):
             new_conversation = []

@@ -58,8 +58,8 @@ class SimpleInsert:
         entities = data['entity']
         relation = data['relation']
 
-        assert len(entities) == 2
-
+        assert len(entities) == 2  # TODO: (#fix) simple inserts may have much more entities!
+        # TODO: possible fix: take action_set into consideration when building gold actions!
         # Decide which entity is subject and which object
         e1, e2 = entities
         if self.operator.find(e1, relation) == e2:
@@ -69,7 +69,7 @@ class SimpleInsert:
         else:
             system['is_spurious'] = True
             entities_out = [e1, e2]
-            print(f"simple_insert_rdf in action_annotators: This RDF doesn't exist: {e1}:{relation}{e2}. Setting system['is_spurious'] to True")
+            print(f"simple_insert_rdf in action_annotators: This RDF doesn't exist: {e1}:{relation}:{e2}. Setting system['is_spurious'] to True")
 
         system['gold_actions'] = [
             ['action', insert_operator.__name__],
@@ -77,6 +77,8 @@ class SimpleInsert:
             ['relation', relation],
             ['entity', entities_out[1]],
         ]
+
+        print(user)
 
         return user, system
 

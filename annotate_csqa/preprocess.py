@@ -22,12 +22,18 @@ args = parser.parse_args()
 
 # read data and create csqa data dict
 # dict: partition -> folder -> file -> conversation
-csqa_files = glob(f'{ROOT_PATH}{args.read_folder}/{args.partition}/*/*.json')
+path_to_csqa_split = ROOT_PATH.joinpath(args.read_folder).joinpath(args.partition)
+print(path_to_csqa_split)
+# csqa_files = glob(f'{ROOT_PATH}{args.read_folder}/{args.partition}/*/*.json')
+csqa_files = list(path_to_csqa_split.glob("**/*.json"))
+
 csqa_data = {}
 print(f'Reading folders for partition {args.partition}')
 for path in csqa_files:
-    folder = path.rsplit('/', 1)[0].rsplit('/', 1)[-1]
-    file = path.rsplit('/', 1)[-1]
+    folder = path.parent
+    file = path.name
+    # folder = path.rsplit('/', 1)[0].rsplit('/', 1)[-1]
+    # file = path.rsplit('/', 1)[-1]
     if folder not in csqa_data:
         csqa_data[folder] = {}
 

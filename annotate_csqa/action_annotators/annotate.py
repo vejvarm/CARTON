@@ -42,10 +42,9 @@ class ActionAnnotator:
                 continue
             user = conversation[2*i]
             system = conversation[2*i + 1]
-
             if user['question-type'] in ['Simple Insert (Direct)', 'Simple Insert (Coreferenced)', 'Simple Insert (Ellipsis)']:
                 user, system = self.simple_insert_annotator(user, system)
-            if user['question-type'] in ['Simple Question (Direct)', 'Simple Question (Coreferenced)', 'Simple Question (Ellipsis)']:
+            elif user['question-type'] in ['Simple Question (Direct)', 'Simple Question (Coreferenced)', 'Simple Question (Ellipsis)']:
                 user, system = self.simple_annotator(user, system)
             elif user['question-type'] == 'Verification (Boolean) (All)':
                 user, system = self.verification_annotator(user, system, prev_system)
