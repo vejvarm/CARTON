@@ -253,16 +253,25 @@ def crop_json_file(path_to_json_file: str, num_entries=10000):
                indent=4, escape_forward_slashes=False)
 
 
-def setup_logger(name=__name__, loglevel=logging.WARNING, handlers=(logging.StreamHandler(),)):
-    logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                        datefmt='%d/%m/%Y %I:%M:%S %p',
-                        level=loglevel,
-                        handlers=handlers)
+def setup_logger(name=__name__, loglevel=logging.DEBUG, handlers=None):
+    if handlers is None:
+        handlers = [logging.StreamHandler()]
+
+    logger = logging.getLogger(name)
+    logger.setLevel(loglevel)
+
+    formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
+
+    for handler in handlers:
+        handler.setLevel(loglevel)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     # disable PUT INFO responses from ElasticSearch search command
     logging.getLogger('elastic_transport.transport').setLevel(logging.WARNING)
 
-    return logging.getLogger(name)
+    return logger
+
 
 
 def connect_to_elasticsearch(user=args.elastic_user, password=args.elastic_password):

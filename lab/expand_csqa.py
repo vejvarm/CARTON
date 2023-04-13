@@ -74,9 +74,10 @@ class CSQAInsertBuilder:
             if rdf:
                 active_set.append(f"i({rdf['sid']},{rdf['rid']},{rdf['oid']})")
 
+        LOGGER.debug(f"active_set@build_active_set: {active_set}")
         return active_set
 
-    def transorm_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str], labels_as: RepresentEntityLabelAs) -> str:
+    def transform_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str], labels_as: RepresentEntityLabelAs) -> str:
         """ Transform user utterance (Question) and system utterance (Answer) to declarative statements.
 
         :param user: conversation turn of the user from the CSQA dataset
@@ -89,31 +90,92 @@ class CSQAInsertBuilder:
         system_utterance = system['utterance']
         system_ents = system['entities_in_utterance']
 
-        LOGGER.info(f'utterances in transform_utterances: U: {user_utterance} S: {system_utterance}')
+        LOGGER.debug(f'utterances in transform_utterances: U: {user_utterance} S: {system_utterance}')
         qa_string = self.qa2d_model.preprocess_and_combine(user_utterance, system_utterance)
-        LOGGER.info(f"qa_string in infer_one before replace: {qa_string}")
+        LOGGER.debug(f"qa_string in infer_one before replace: {qa_string}")
         qa_entities = [*user_ents, *system_ents]
         qa_string, inverse_map = self.lbl_repl.labs2subs(qa_string, qa_entities, labels_as)
-        LOGGER.info(f"qa_string in infer_one after replace: {qa_string}")
+        LOGGER.debug(f"qa_string in infer_one after replace: {qa_string}")
         declarative_str = self.qa2d_model.infer_one(qa_string)
-        LOGGER.info(f'declarative_str in transform_utterances: {declarative_str}')
+        LOGGER.debug(f'declarative_str in transform_utterances: {declarative_str}')
 
         # replace entity ids back with labels
         declarative_str = self.lbl_repl.subs2labs(declarative_str, inverse_map)
 
+        LOGGER.debug(f'declarative_str@transform_utterances: {declarative_str}')
         return declarative_str
 
-    def transform_fields(self):
-        pass
+    def transform_fields(self, user: dict[list[str] or str], system: dict[list[str] or str]) -> tuple[dict[list[str] or str], dict[list[str] or str]]:
+        # Transform user and system utterances into declarative statements
+        declarative_str = self.transform_utterances(user, system, labels_as=RepresentEntityLabelAs.LABEL)
+        active_set = self.build_active_set(user, system)
+
+        # Update the fields for the user and system turns
+        user_new = user.copy()
+        user_new["question-type"] = user_new["question-type"].replace("Question", "Input")
+        if "description" in user_new.keys():
+            user_new["description"] = user_new["description"].replace("Question", "Input")
+        user_new["utterance"] = declarative_str
+        user_new["entities_in_utterance"] = user_new["entities_in_utterance"] + system["entities_in_utterance"]
+
+        system_new = system.copy()
+        system_new["all_entities"] = user["entities_in_utterance"] + system["entities_in_utterance"]
+        system_new["entities_in_utterance"] = user_new["entities_in_utterance"] + system["entities_in_utterance"]
+        system_new["utterance"] = self.create_label_sequence_from_active_set(active_set)
+        system_new["active_set"] = active_set
+        system_new["table_format"] = self.update_table_format(active_set)
+
+        return user_new, system_new
+
+    def create_label_sequence_from_active_set(self, active_set):
+        labels = []
+        for entry in active_set:
+            # Extract subject, predicate, and object IDs
+            match = re.match(r'i\((Q\d+),(P\d+),(Q\d+)\)', entry)
+            if match:
+                sid, pid, oid = match.groups()
+
+                # Get labels for subject, predicate, and object
+                s_label = self.op.get_entity_label(sid)
+                p_label = self.op.get_relation_label(pid)
+                o_label = self.op.get_entity_label(oid)
+
+                # Concatenate labels
+                labels.extend([s_label, p_label, o_label])
+
+        return " | ".join(labels)
+
+    def update_table_format(self, active_set):
+        # Create a new table format based on user and system turns following v1 of table format
+        table_format = []
+
+        for entry in active_set:
+            # Extract subject, predicate, and object IDs
+            match = re.match(r'i\((Q\d+),(P\d+),(Q\d+)\)', entry)
+            if match:
+                sid, pid, oid = match.groups()
+
+                # Get labels for subject, predicate, and object
+                s_label = self.op.get_entity_label(sid)
+                p_label = self.op.get_relation_label(pid)
+                o_label = self.op.get_entity_label(oid)
+
+                table_format.extend([["name", s_label.split(" ")], [p_label, o_label.split(" ")]])
+
+        LOGGER.debug(f"table_format@update_table_format: {table_format}")
+        return table_format
 
 
-def main(model_choice: QA2DModelChoices, labels_as: RepresentEntityLabelAs):
+def main(model_choice: QA2DModelChoices, partition: str):
     # read data and create csqa data dict
     # dict: partition -> folder -> file -> conversation
-    data_folder = Path(f'{ROOT_PATH}{args.read_folder}/{args.partition}')
-    # csqa_files = data_folder.glob('**/QA*.json')
-    csqa_files = data_folder.glob('**/*.json')
-    LOGGER.info(f'Reading folders for partition {args.partition}')
+    read_split_folder = args.read_folder.joinpath(partition)
+    csqa_files = read_split_folder.glob('**/QA_*.json')
+    LOGGER.info(f'Reading folders for partition {partition}')
+
+    write_split_folder = args.write_folder.joinpath(partition)
+    write_split_folder.mkdir(parents=True, exist_ok=True)
+    LOGGER.info(f'Making write folder for partition {partition} at {write_split_folder}')
 
     op = ESActionOperator(CLIENT)
     transformer = get_model(model_choice)
@@ -121,9 +183,9 @@ def main(model_choice: QA2DModelChoices, labels_as: RepresentEntityLabelAs):
     builder = CSQAInsertBuilder(op, transformer, labeler)
 
     # TODO: do this better
-    with data_folder.joinpath(f'hypothesis_{args.partition}.txt').open('a', encoding="utf8") as f_hypothesis:
+    with args.write_folder.joinpath(f'hypothesis_{partition}.txt').open('w', encoding="utf8") as f_hypothesis:
         for pth in csqa_files:
-
+            new_conversation = []
             with open(pth, encoding='utf8') as json_file:
                 conversation = json.load(json_file)
 
@@ -131,39 +193,41 @@ def main(model_choice: QA2DModelChoices, labels_as: RepresentEntityLabelAs):
                 entry_user = conversation[2 * i]  # USER
                 entry_system = conversation[2 * i + 1]  # SYSTEM
 
-                if 'Simple' not in entry_user['question-type']:
+                if 'Simple Question (Direct)' not in entry_user['question-type']:
                     continue
 
-                LOGGER.info(
-                    f"USER: {entry_user['description']}, {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
-                LOGGER.info(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
-                LOGGER.info(f"active_set: {entry_system['active_set']}")
+                LOGGER.debug(f" OLD ({pth.parent.name}/{pth.name})".center(50, "-"))
+                LOGGER.debug(
+                    f"USER: {entry_user['entities_in_utterance']}, {entry_user['relations']}, {entry_user['utterance']}")
+                LOGGER.debug(f"SYSTEM: {entry_system['entities_in_utterance']} {entry_system['utterance']}")
 
-                # 1) TRANSFORM active_set field
-                new_active_set = builder.build_active_set(entry_user, entry_system)
-                LOGGER.info(f'new_active_set: {new_active_set}')
+                # do the transformation
+                new_user, new_system = builder.transform_fields(entry_user, entry_system)
 
-                # 2) TRANSFORM utterances to statements  # TODO: still needs a lot of tweaking
-                statement = builder.transorm_utterances(entry_user, entry_system, labels_as=labels_as)
-                LOGGER.info(f'statement: {statement}')
-                LOGGER.info(f"".center(50, "-") + "\n\n")
+                LOGGER.debug(f" NEW ".center(50, "-"))
+                LOGGER.debug(
+                    f"USER: {new_user['entities_in_utterance']}, {new_user['relations']}, {new_user['utterance']}")
+                LOGGER.debug(f"SYSTEM: {new_system['entities_in_utterance']} {new_system['utterance']}")
 
-                # 2.5) EVALUATION: # TODO: Continue here (build hypothesis.txt files) using this
-                f_hypothesis.write(statement)
-                f_hypothesis.write('\n')
+                # save declarative statement to sepparate hypothesis_[partition].txt file
+                f_hypothesis.write(new_user['utterance']+'\n')
 
-                # 3) TRANSFORM all other fields in conversation turns TODO: implement
+                new_conversation.extend([new_user, new_system])
 
-                # conversation types to tweak:
-                # and how?
+            # save new conversation json file into the write_split_folder
+            relative_path = pth.relative_to(read_split_folder)
+            out_file_path = write_split_folder.joinpath(relative_path)
+            out_file_path.parent.mkdir(parents=True, exist_ok=True)
+            json.dump(new_conversation, out_file_path.open("w"), indent=4)
 
 
 if __name__ == "__main__":
-    # TODO: !!!Possible bug: implementing INDEX structure, we presumed that s-r-o automatically means o-r-s is also true.
     # options
-    args.read_folder = '/data/simple_direct'  # 'folder to read conversations'
-    args.partition = 'val'  # 'train', 'test', 'val', ''
+    args.read_folder = ROOT_PATH.joinpath('data/original_w_turn_pos_test')  # 'folder to read conversations'
+    args.write_folder = ROOT_PATH.joinpath('data/original_simple_direct')  # folder to write new conversations
+    args.partition = 'test'  # 'train', 'test', 'val', ''
 
     model_choice = QA2DModelChoices.T5_WHYN
-    represent_entity_labels_as = RepresentEntityLabelAs.LABEL
-    main(model_choice, represent_entity_labels_as)
+    # represent_entity_labels_as = RepresentEntityLabelAs.LABEL
+    main(model_choice, args.partition)
+

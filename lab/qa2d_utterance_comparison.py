@@ -58,7 +58,7 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
 
                 # 2) TRANSFORM utterances to statements
                 for labels_as in labels_as_list:
-                    statement = builder.transorm_utterances(entry_user, entry_system, labels_as=labels_as)
+                    statement = builder.transform_utterances(entry_user, entry_system, labels_as=labels_as)
                     LOGGER.info(f'statement: {statement}')
                     LOGGER.info(f"".center(50, "-") + "\n\n")
 

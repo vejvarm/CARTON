@@ -1,5 +1,8 @@
 # This file is for generating a dataset of RDF entries, aggregated by having the same subject entity
 # for the purpose of D2T generation from the extracted RDF files
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import pathlib
 from random import shuffle
@@ -11,10 +14,11 @@ from wikidata.entity import EntityId
 from helpers import connect_to_elasticsearch, setup_logger
 from constants import ROOT_PATH, ElasticIndices
 from action_executor.actions import ESActionOperator
+from tqdm import tqdm
 
 BUCKET_SAVE_FREQUENCY = 100000  # subjects/bucket
 TEMPLATES_ROOT = ROOT_PATH.joinpath("text_generation/templates")
-DATA_DUMP_ROOT = pathlib.Path("/media/freya/kubuntu-data/datasets/text_generation_with_labels")
+DATA_DUMP_ROOT = pathlib.Path("/media/freya/kubuntu-data/datasets/full_text_generation_with_labels")
 # DATA_DUMP_ROOT = ROOT_PATH.joinpath("text_generation").joinpath("aggregation_outputs")
 LOGFILE_PATH = DATA_DUMP_ROOT.joinpath("aggregation-results.log")
 DUMP_PATH = {"buckets": DATA_DUMP_ROOT.joinpath("buckets"),
@@ -80,7 +84,7 @@ def process_and_save_buckets(buckets, dataset_name: str, esclient: elasticsearch
     return data
 
 
-def rdf_query(client, aop, included_pids, buckets_per_query, after_key: dict):
+def rdf_query(client, aop, included_pids, buckets_per_query, max_agg_per_subject, after_key: dict):
     return client.search(
         index=aop.index_rdf,
         size=0,
@@ -124,7 +128,7 @@ def rdf_query(client, aop, included_pids, buckets_per_query, after_key: dict):
                 "aggs": {
                     "hits": {
                         "top_hits": {
-                            "size": 3
+                            "size": max_agg_per_subject
                         }
                     }
                 }
@@ -133,20 +137,26 @@ def rdf_query(client, aop, included_pids, buckets_per_query, after_key: dict):
     )
 
 
+def infinite_gen():
+    while True:
+        yield
+
+
 # Plan:
 # first, we connect to elasticsearch
 if __name__ == '__main__':
     buckets_per_query = 1000
+    max_agg_per_subject = 7
+    repl_with_labels = True
     rel_dict = json.load(TEMPLATES_ROOT.joinpath("index_rel_dict.json").open("r"))  # {rid: rlabel, ...}
     included_pids = list(rel_dict.keys())
-    repl_with_labels = True
     client = connect_to_elasticsearch()
     aop = ESActionOperator(client)
-    response = rdf_query(client, aop, included_pids, buckets_per_query, after_key={'sid': ""})
+    response = rdf_query(client, aop, included_pids, buckets_per_query, max_agg_per_subject, after_key={'sid': ""})
 
     all_buckets = []
     dump_num = 0
-    while True:
+    for _ in tqdm(infinite_gen()):
         sid_buckets = response['aggregations']['group_by_sid']['buckets']
         after_key = response['aggregations']['group_by_sid'].get('after_key')
 
@@ -157,7 +167,7 @@ if __name__ == '__main__':
         # ...
 
         if after_key:
-            response = rdf_query(client, aop, included_pids, buckets_per_query, after_key=after_key)
+            response = rdf_query(client, aop, included_pids, buckets_per_query, max_agg_per_subject, after_key=after_key)
 
             if len(all_buckets) >= BUCKET_SAVE_FREQUENCY:
                 # split buckets

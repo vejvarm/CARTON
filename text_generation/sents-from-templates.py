@@ -7,6 +7,7 @@ from pathlib import Path
 from constants import ROOT_PATH, ElasticIndices
 from helpers import connect_to_elasticsearch
 from action_executor.actions import ESActionOperator
+from text_generation.datasetclasses import WikiData
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.WARNING)
@@ -57,7 +58,6 @@ def create_json_files(templates: Dict, triples: Dict, out_folder: str or Path) -
 
 
 if __name__ == "__main__":
-    from text_generation.dataclasses import WikiData
     wk = WikiData()
 
     splits = ["dev"]
