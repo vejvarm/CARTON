@@ -9,6 +9,7 @@ from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
 from constants import ROOT_PATH, QA2DModelChoices, RepresentEntityLabelAs
 from args import parse_and_get_args
+from tqdm import tqdm
 args = parse_and_get_args()
 
 # TODOlist
@@ -184,7 +185,7 @@ def main(model_choice: QA2DModelChoices, partition: str):
 
     # TODO: do this better
     with args.write_folder.joinpath(f'hypothesis_{partition}.txt').open('w', encoding="utf8") as f_hypothesis:
-        for pth in csqa_files:
+        for pth in tqdm(csqa_files):
             new_conversation = []
             with open(pth, encoding='utf8') as json_file:
                 conversation = json.load(json_file)
