@@ -1,8 +1,8 @@
 # This file is for generating a dataset of RDF entries, aggregated by having the same subject entity
 # for the purpose of D2T generation from the extracted RDF files
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from path_utils import add_project_root_to_path
+add_project_root_to_path()
+
 import json
 import pathlib
 from random import shuffle
@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 BUCKET_SAVE_FREQUENCY = 100000  # subjects/bucket
 TEMPLATES_ROOT = ROOT_PATH.joinpath("text_generation/templates")
-DATA_DUMP_ROOT = pathlib.Path("/media/freya/kubuntu-data/datasets/full_text_generation_with_labels")
+DATA_DUMP_ROOT = pathlib.Path("/media/freya/kubuntu-data/datasets/d2t/full_csqa_d2t_with_ids/raw")
 # DATA_DUMP_ROOT = ROOT_PATH.joinpath("text_generation").joinpath("aggregation_outputs")
 LOGFILE_PATH = DATA_DUMP_ROOT.joinpath("aggregation-results.log")
 DUMP_PATH = {"buckets": DATA_DUMP_ROOT.joinpath("buckets"),
@@ -33,6 +33,22 @@ LOGGER = setup_logger(__name__, handlers=[logging.FileHandler(LOGFILE_PATH, 'w')
 SPLIT = {"train": 0.8,
           "test": 0.1,
           "dev": 0.1}
+
+NOT_SEPARATOR_FLAG = "<&NOT>"
+RDF_SEPARATOR = '<&SEP>'  # NOTE: legacy '|' has problems as it is present in some entity labels
+
+
+def _clean_up_label(label: str):
+    """ replaces any occurrence of | in given string by (pp) if RDF_SEPPARATOR is set to '|'
+        or replaces any occurrence of RDF_SEPPARATOR in label by {NOT_SEPARATOR_FLAG_RDF}_{SEPPARATOR}
+    """
+    if RDF_SEPARATOR == "|":
+        # NOTE: for legacy reasons
+        return label.replace("|", "(pp)")
+    elif RDF_SEPARATOR in label:
+        return label.replace(RDF_SEPARATOR, f"{NOT_SEPARATOR_FLAG}_{RDF_SEPARATOR}")
+    else:
+        return label
 
 
 def get_label(erid: str, index: ElasticIndices, esclient: elasticsearch.Elasticsearch) -> str:
@@ -62,12 +78,12 @@ def process_and_save_buckets(buckets, dataset_name: str, esclient: elasticsearch
         for hit in bucket["hits"]["hits"]["hits"]:
             source = hit["_source"]
             if replace_with_labels:
-                sid = get_label(source['sid'], ElasticIndices.ENT_FULL, esclient)
-                rid = get_label(source['rid'], ElasticIndices.REL, esclient)
-                oid = get_label(source['oid'], ElasticIndices.ENT_FULL, esclient)
+                sid = _clean_up_label(get_label(source['sid'], ElasticIndices.ENT_FULL, esclient))
+                rid = _clean_up_label(get_label(source['rid'], ElasticIndices.REL, esclient))
+                oid = _clean_up_label(get_label(source['oid'], ElasticIndices.ENT_FULL, esclient))
             else:
                 sid, rid, oid = source['sid'], source['rid'], source['oid']
-            triple = f"{sid} | {rid} | {oid}"
+            triple = f"{sid} {RDF_SEPARATOR} {rid} {RDF_SEPARATOR} {oid}"
 
             triples.append(triple)
 
@@ -142,12 +158,7 @@ def infinite_gen():
         yield
 
 
-# Plan:
-# first, we connect to elasticsearch
-if __name__ == '__main__':
-    buckets_per_query = 1000
-    max_agg_per_subject = 7
-    repl_with_labels = True
+def build_from_scratch(buckets_per_query=1000, max_agg_per_subject=7, repl_with_labels=False):
     rel_dict = json.load(TEMPLATES_ROOT.joinpath("index_rel_dict.json").open("r"))  # {rid: rlabel, ...}
     included_pids = list(rel_dict.keys())
     client = connect_to_elasticsearch()
@@ -162,9 +173,6 @@ if __name__ == '__main__':
 
         # Append the buckets to the all_buckets list
         all_buckets.extend(sid_buckets)
-
-        # Process sid_buckets or do something with them
-        # ...
 
         if after_key:
             response = rdf_query(client, aop, included_pids, buckets_per_query, max_agg_per_subject, after_key=after_key)
@@ -215,3 +223,34 @@ if __name__ == '__main__':
             break
 
     print(dump_num)
+
+
+def build_from_existing_buckets(path_to_bucket_folder: pathlib.Path, repl_with_labels=False):
+    bucket_paths = list(path_to_bucket_folder.glob("*buckets-*.json"))
+    n_buckets = len(bucket_paths)
+    LOGGER.info(f"Loaded {n_buckets} buckets for processing.")
+
+    client = connect_to_elasticsearch()
+
+    for bckt_pth in tqdm(bucket_paths):
+        bucket_list = json.load(bckt_pth.open("r"))
+
+        # split buckets
+        shuffle(bucket_list)
+        num_buckets = len(bucket_list)
+        train_buckets = bucket_list[:int(num_buckets * SPLIT['train'])]
+        test_buckets = bucket_list[
+                       int(num_buckets * SPLIT['train']): int(num_buckets * (SPLIT['train'] + SPLIT['test']))]
+        dev_buckets = bucket_list[int(num_buckets * (SPLIT['train'] + SPLIT['test'])):]
+
+        # dump splits
+        _ = process_and_save_buckets(train_buckets, 'train', client, repl_with_labels)
+        _ = process_and_save_buckets(test_buckets, 'test', client, repl_with_labels)
+        _ = process_and_save_buckets(dev_buckets, 'dev', client, repl_with_labels)
+
+
+if __name__ == '__main__':
+    replace_with_labels = False
+    build_from_scratch(repl_with_labels=replace_with_labels)
+    # buckets_folder = pathlib.Path("/media/freya/kubuntu-data/datasets/d2t/full_text_generation_with_labels/buckets/")
+    # build_from_existing_buckets(buckets_folder, repl_with_labels=replace_with_labels)

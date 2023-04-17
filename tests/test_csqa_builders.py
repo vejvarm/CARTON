@@ -1,15 +1,12 @@
 import unittest
-import json
 import logging
-import re
-from pathlib import Path
 
 from text_generation.label_replacement import LabelReplacer
 from text_generation.qa2d import get_model
-from lab.expand_csqa import CSQAInsertBuilder
+from text_generation.build_simple_insert_dataset import CSQAInsertBuilder
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
-from constants import ROOT_PATH, QA2DModelChoices, RepresentEntityLabelAs
+from constants import QA2DModelChoices
 from args import parse_and_get_args
 args = parse_and_get_args()
 

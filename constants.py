@@ -6,6 +6,9 @@ from pathlib import Path
 # set root path
 ROOT_PATH = Path(os.path.dirname(__file__))
 
+LOGS_PATH = ROOT_PATH.joinpath("logs")  # default path for logfiles
+LOGS_PATH.mkdir(parents=True, exist_ok=True)
+
 # model name
 MODEL_NAME = 'CARTON'
 

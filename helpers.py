@@ -2,6 +2,7 @@ import logging
 import json
 import ujson
 import os.path
+import pathlib
 import sqlite3
 import numpy as np
 from typing import Sequence, Union
@@ -253,14 +254,18 @@ def crop_json_file(path_to_json_file: str, num_entries=10000):
                indent=4, escape_forward_slashes=False)
 
 
-def setup_logger(name=__name__, loglevel=logging.DEBUG, handlers=None):
+def setup_logger(name=__name__, loglevel=logging.DEBUG, handlers=None, output_log_file: pathlib.Path or str = None):
     if handlers is None:
         handlers = [logging.StreamHandler()]
+    if output_log_file:
+        file_handler = logging.FileHandler(output_log_file, mode="w", encoding="utf-8")
+        handlers.append(file_handler)
 
     logger = logging.getLogger(name)
     logger.setLevel(loglevel)
 
-    formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
+    formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                                   datefmt='%d/%m/%Y %I:%M:%S %p')
 
     for handler in handlers:
         handler.setLevel(loglevel)

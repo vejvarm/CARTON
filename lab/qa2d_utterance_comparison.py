@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-from lab.expand_csqa import CSQAInsertBuilder
+from text_generation.build_simple_insert_dataset import CSQAInsertBuilder
 from text_generation.qa2d import get_model
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger

@@ -1,4 +1,6 @@
-import cProfile
+from path_utils import add_project_root_to_path
+add_project_root_to_path()
+
 import json
 import logging
 import re
@@ -8,10 +10,18 @@ from text_generation.label_replacement import LabelReplacer
 from text_generation.qa2d import get_model, QA2DModel
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
-from constants import ROOT_PATH, QA2DModelChoices, RepresentEntityLabelAs
-from args import parse_and_get_args
+from constants import QA2DModelChoices, RepresentEntityLabelAs
+from args import parse_and_get_args, get_parser
 from tqdm import tqdm
+from ordered_set import OrderedSet
 args = parse_and_get_args()
+
+parser = get_parser()
+
+parser.add_argument('--partition', default='val', choices=['val', 'test', 'train'], type=str, help='partition to preprocess')
+parser.add_argument('--read_folder', default='data/original_w_turn_pos', help='folder to read source csqa json files')
+parser.add_argument('--write_folder', default='data/original_simple_direct_csqa', help='folder to write the transformed conversations')
+args = parser.parse_args()
 
 # TODOlist
 # Question Answer processing during QA2D transformation:
@@ -53,6 +63,14 @@ class CSQAInsertBuilder:
         self.qa2d_model = qa2d_model
         self.lbl_repl = label_replacer
 
+    @staticmethod
+    def _parse_to_active_set(sid: str, rid: str, oid: str, insert_flag=False) -> str:
+        """ parse given triple to active_set entry string format"""
+        active_set = f"({sid},{rid},{oid})"
+        if insert_flag:
+            active_set = "i" + active_set
+        return active_set
+
     def build_active_set(self, user: dict[list[str] or str], system: dict[list[str] or str]):
         user_ents = user['entities_in_utterance']
         system_ents = system['entities_in_utterance']
@@ -60,24 +78,25 @@ class CSQAInsertBuilder:
 
         # in case of Ellipsis question
         if not rels:
-            rels = set()
+            rels = OrderedSet()
             rels.update(*[re.findall(r'P\d+', entry) for entry in system['active_set']])
             rels = list(rels)
 
-        active_set = []
-        _all_possible_ids = []
+        active_set = OrderedSet()
+        _all_possible_ids = OrderedSet()
         for ue in user_ents:
             for se in system_ents:
                 for r in rels:
-                    _all_possible_ids.extend([f'{ue}{r}{se}', f'{se}{r}{ue}'])
+                    _all_possible_ids.update([f'{ue}{r}{se}', f'{se}{r}{ue}'])
 
         for _id in _all_possible_ids:
             rdf = self.op.get_rdf(_id)
             if rdf:
-                active_set.append(f"i({rdf['sid']},{rdf['rid']},{rdf['oid']})")
+                act_set_entry = self._parse_to_active_set(rdf['sid'], rdf['rid'], rdf['oid'], insert_flag=True)
+                active_set.add(act_set_entry)
 
         LOGGER.debug(f"active_set@build_active_set: {active_set}")
-        return active_set
+        return list(active_set)
 
     def transform_utterances(self, user: dict[list[str] or str], system: dict[list[str] or str], labels_as: RepresentEntityLabelAs) -> str:
         """ Transform user utterance (Question) and system utterance (Answer) to declarative statements.
@@ -111,6 +130,7 @@ class CSQAInsertBuilder:
         # Transform user and system utterances into declarative statements
         declarative_str = self.transform_utterances(user, system, labels_as=RepresentEntityLabelAs.LABEL)
         active_set = self.build_active_set(user, system)
+        LOGGER.debug(f"active_set@transform_fields: {active_set}")
 
         # Update the fields for the user and system turns
         user_new = user.copy()
@@ -120,11 +140,11 @@ class CSQAInsertBuilder:
         else:
             user_new["description"] = "Simple Insert"
         user_new["utterance"] = declarative_str
-        user_new["entities_in_utterance"] = user_new["entities_in_utterance"] + system["entities_in_utterance"]
+        user_new["entities_in_utterance"] = list(OrderedSet(user_new["entities_in_utterance"] + system["entities_in_utterance"]))
 
         system_new = system.copy()
-        system_new["all_entities"] = user["entities_in_utterance"] + system["entities_in_utterance"]
-        system_new["entities_in_utterance"] = user_new["entities_in_utterance"] + system["entities_in_utterance"]
+        system_new["all_entities"] = user_new["entities_in_utterance"]
+        system_new["entities_in_utterance"] = user_new["entities_in_utterance"]
         system_new["utterance"] = self.create_label_sequence_from_active_set(active_set)
         system_new["active_set"] = active_set
         system_new["table_format"] = self.update_table_format(active_set)
@@ -173,11 +193,17 @@ class CSQAInsertBuilder:
 def main(model_choice: QA2DModelChoices, partition: str):
     # read data and create csqa data dict
     # dict: partition -> folder -> file -> conversation
-    read_split_folder = args.read_folder.joinpath(partition)
-    csqa_files = read_split_folder.glob('**/QA_*.json')
+    read_folder = Path(args.read_folder)
+    read_split_folder = read_folder.joinpath(partition)
+    if not read_folder.exists():
+        raise FileNotFoundError(f"The specified folder at path '{read_folder}' doesn't exist. Check --read_folder arg.")
+    if not read_split_folder.exists():
+        raise FileNotFoundError(f"The specified partition '{partition}' doesn't exist in '{read_folder}'. Check --partition arg.")
+    csqa_files = list(read_split_folder.glob('**/QA_*.json'))
     LOGGER.info(f'Reading folders for partition {partition}')
 
-    write_split_folder = args.write_folder.joinpath(partition)
+    write_folder = Path(args.write_folder)
+    write_split_folder = write_folder.joinpath(partition)
     write_split_folder.mkdir(parents=True, exist_ok=True)
     LOGGER.info(f'Making write folder for partition {partition} at {write_split_folder}')
 
@@ -186,7 +212,7 @@ def main(model_choice: QA2DModelChoices, partition: str):
     labeler = LabelReplacer(op)
     builder = CSQAInsertBuilder(op, transformer, labeler)
 
-    with args.write_folder.joinpath(f'hypothesis_{partition}.txt').open('w', encoding="utf8") as f_hypothesis:
+    with write_folder.joinpath(f'hypothesis_{partition}.txt').open('w', encoding="utf8") as f_hypothesis:
         for pth in tqdm(csqa_files):
             new_conversation = []
             with open(pth, encoding='utf8') as json_file:
@@ -225,11 +251,6 @@ def main(model_choice: QA2DModelChoices, partition: str):
 
 
 if __name__ == "__main__":
-    # options
-    args.read_folder = ROOT_PATH.joinpath('data/original_w_turn_pos_test')  # 'folder to read conversations'
-    args.write_folder = ROOT_PATH.joinpath('data/original_simple_direct')  # folder to write new conversations
-    args.partition = 'test'  # 'train', 'test', 'val', ''
-
     model_choice = QA2DModelChoices.T5_WHYN
     # represent_entity_labels_as = RepresentEntityLabelAs.LABEL
     main(model_choice, args.partition)

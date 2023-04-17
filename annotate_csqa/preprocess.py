@@ -30,7 +30,7 @@ csqa_files = list(path_to_csqa_split.glob("**/*.json"))
 csqa_data = {}
 print(f'Reading folders for partition {args.partition}')
 for path in csqa_files:
-    folder = path.parent
+    folder = path.parent.name
     file = path.name
     # folder = path.rsplit('/', 1)[0].rsplit('/', 1)[-1]
     # file = path.rsplit('/', 1)[-1]
@@ -76,11 +76,17 @@ for folder in csqa_data.keys():
             conversation = ner_annotator(conversation)
 
         # create path
-        conv_path = f'{str(ROOT_PATH)}{args.write_folder}/{args.partition}/{folder}'
-        Path(conv_path).mkdir(parents=True, exist_ok=True)
+        write_folder = Path(args.write_folder)
+        if write_folder.is_relative_to(ROOT_PATH):
+            rel_write_folder = Path(args.write_folder).relative_to(ROOT_PATH)
+            conv_path = ROOT_PATH.joinpath(rel_write_folder).joinpath(args.partition).joinpath(folder)
+        else:
+            conv_path = write_folder.joinpath(args.partition).joinpath(folder)
+        # conv_path = f'{str(ROOT_PATH)}{args.write_folder}/{args.partition}/{folder}'
+        conv_path.mkdir(parents=True, exist_ok=True)
 
         # write conversation
-        with open(f'{conv_path}/{file}', 'w') as json_file:
+        with conv_path.joinpath(file).open('w') as json_file:
             json.dump(conversation, json_file, ensure_ascii=False, indent=4)
 
         conv_counter += 1
