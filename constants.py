@@ -9,6 +9,8 @@ ROOT_PATH = Path(os.path.dirname(__file__))
 LOGS_PATH = ROOT_PATH.joinpath("logs")  # default path for logfiles
 LOGS_PATH.mkdir(parents=True, exist_ok=True)
 
+ENTITY_SEPARATOR_FOR_NEW_DATASETS = "<&SEP>"  # legacy " | "
+
 # model name
 MODEL_NAME = 'CARTON'
 

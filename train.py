@@ -4,11 +4,14 @@ import logging
 
 import numpy as np
 import torch.optim
+from nltk import pad_sequence
+
 
 from model import CARTON
 from dataset import CSQADataset
 from torchtext.data import BucketIterator
-# from torch.utils.data.dataloader import DataLoader  # TODO: implement BucketIterator with this
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import DataLoader, SequentialSampler, BatchSampler
 from utils import (NoamOpt, AverageMeter,
                     SingleTaskLoss, MultiTaskLoss,
                     save_checkpoint, init_weights)
@@ -32,6 +35,17 @@ if torch.cuda.is_available():
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+
+
+def collate_fn(batch):
+    # sort the list of examples by the length of the input in descending order
+    # print(batch)
+    batch.sort(key=lambda x: len(x.input), reverse=True)
+    # separate the inputs and targets, and pad the sequences
+    # inputs, targets = zip(*batch)
+    inputs = pad_sequence(batch, padding_value=PAD_TOKEN)
+    # targets = pad_sequence(targets, padding_value=PAD_TOKEN)
+    return inputs
 
 
 def main():
@@ -80,13 +94,22 @@ def main():
         best_val = float('inf')
 
     # prepare training and validation loader
-    train_loader, val_loader = BucketIterator.splits((train_data, val_data),
-                                                    batch_size=args.batch_size,
-                                                    sort_within_batch=False,
-                                                    sort_key=lambda x: len(x.input),
-                                                    device=DEVICE)
+    train_loader = torch.utils.data.DataLoader(train_data,
+                                               batch_size=args.batch_size,
+                                               shuffle=True,
+                                               collate_fn=collate_fn)
+    val_loader = torch.utils.data.DataLoader(val_data,
+                                             batch_size=args.batch_size,
+                                             shuffle=False,
+                                             collate_fn=collate_fn)
+    # train_loader, val_loader = BucketIterator.splits((train_data, val_data),
+    #                                                 batch_size=args.batch_size,
+    #                                                 sort_within_batch=False,
+    #                                                 sort_key=lambda x: len(x.input),
+    #                                                 device=DEVICE)
 
     # ANCHOR: BucketIterator use deprecated ... use torch.utils.data.dataloader.DataLoader / DataLoader2
+
 
     LOGGER.info('Loaders prepared.')
     LOGGER.info(f"Training data: {len(train_data.examples)}")
@@ -257,6 +280,7 @@ def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss
                 f"PRED: {losses_pred.avg} | TYPE: {losses_type.avg}")
 
     return losses.avg
+
 
 if __name__ == '__main__':
     main()

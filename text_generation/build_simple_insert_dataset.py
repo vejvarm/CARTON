@@ -10,7 +10,7 @@ from text_generation.label_replacement import LabelReplacer
 from text_generation.qa2d import get_model, QA2DModel
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
-from constants import QA2DModelChoices, RepresentEntityLabelAs
+from constants import QA2DModelChoices, RepresentEntityLabelAs, ENTITY_SEPARATOR_FOR_NEW_DATASETS
 from args import parse_and_get_args, get_parser
 from tqdm import tqdm
 from ordered_set import OrderedSet
@@ -167,7 +167,7 @@ class CSQAInsertBuilder:
                 # Concatenate labels
                 labels.extend([s_label, p_label, o_label])
 
-        return " | ".join(labels)
+        return f" {ENTITY_SEPARATOR_FOR_NEW_DATASETS} ".join(labels)
 
     def update_table_format(self, active_set):
         # Create a new table format based on user and system turns following v1 of table format

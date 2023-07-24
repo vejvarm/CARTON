@@ -2,8 +2,12 @@ import json
 from glob import glob
 from transformers import BertTokenizer
 from torchtext.data import Field, Example, Dataset
+import torch
 
-from constants import *
+from constants import (LOGICAL_FORM, ROOT_PATH, QUESTION_TYPE, ENTITY, GOLD, LABEL, NA_TOKEN, SEP_TOKEN, O,
+                       GOLD_ACTIONS, PAD_TOKEN, ACTION, RELATION, TYPE, PREV_ANSWER, VALUE, QUESTION,
+                       CONTEXT_QUESTION, CONTEXT_ENTITIES, ANSWER, RESULTS, PREV_RESULTS, START_TOKEN, CTX_TOKEN,
+                       UNK_TOKEN, END_TOKEN, INPUT, ID, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, B, I, )
 from args import parse_and_get_args
 args = parse_and_get_args()
 
@@ -16,6 +20,11 @@ class CSQADataset:
     def __init__(self):
         self.id = 0
         self.load_data_and_fields()
+
+    def __getitem__(self, idx):
+        data = torch.tensor(self.data_list[idx], dtype=torch.float32)
+        target = torch.tensor(self.target_list[idx], dtype=torch.long)
+        return data, target
 
     def _prepare_data(self, data):
         input_data = []

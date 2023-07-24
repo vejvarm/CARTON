@@ -16,8 +16,11 @@ Simple Insert (Ellipsis)
 import logging
 from helpers import setup_logger
 from constants import LOGS_PATH
+from uuid import uuid4
 
-LOGGER = setup_logger(__name__, logging.WARNING, output_log_file=LOGS_PATH.joinpath("simple_insert.log"))
+LOGGER = setup_logger(__name__, logging.WARNING, handlers=[],
+                      output_log_file=LOGS_PATH.joinpath(f"simple_insert_{uuid4().hex}.log"))
+
 
 class SimpleInsert:
     def __init__(self, operator):
