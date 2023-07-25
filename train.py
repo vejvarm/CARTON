@@ -129,7 +129,7 @@ def collate_fn(batch, vocabs: dict, device: str):
 # train_dataloader = DataLoader(list(train_iter), batch_size=8, shuffle=True,
 #                               collate_fn=collate_batch)
 
-def batch_sampler(split_list: list, batch_size: int, pool_size=100):
+def batch_sampler(split_list: list, batch_size: int, pool_size=10000):
     indices = [(i, len(s[1])) for i, s in enumerate(split_list)]
     random.shuffle(indices)
     pooled_indices = []
@@ -193,6 +193,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_data,
                                                collate_fn=partial(collate_fn, vocabs=vocabs, device=DEVICE),
                                                batch_sampler=batch_sampler(train_data, args.batch_size, args.pool_size))
+
     val_loader = torch.utils.data.DataLoader(val_data,
                                              batch_size=args.batch_size,
                                              shuffle=False,
@@ -239,7 +240,7 @@ def main():
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
     batch_time = AverageMeter()
     losses = AverageMeter()
-    total_batches = len(train_loader.dataset)
+    total_batches = len(train_loader.dataset)//args.batch_size
     # switch to train mode
     model.train()
 
@@ -310,10 +311,10 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         batch_time.update(time.time() - end)
         end = time.time()
 
-        # batch_progress = int(((i+1)/total_batches)*100)  # percentage
-        # if batch_progress > batch_progress_old:
-        #     LOGGER.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:02d}% - Time: {batch_time.sum:0.2f}s')
-        # batch_progress_old = batch_progress
+        batch_progress = int(((i+1)/total_batches)*100)  # percentage
+        if batch_progress > batch_progress_old:
+            LOGGER.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:02d}% - Time: {batch_time.sum:0.2f}s')
+        batch_progress_old = batch_progress
 
 
 def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss):

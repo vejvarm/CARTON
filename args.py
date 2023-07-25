@@ -48,7 +48,7 @@ def get_parser():
     parser.add_argument('--valfreq', default=1, type=int)
     parser.add_argument('--resume', default='', type=str)
     parser.add_argument('--clip', default=5, type=int)
-    parser.add_argument('--batch_size', default=10, type=int)  # NOTE: changed from 25
+    parser.add_argument('--batch_size', default=25, type=int)  # NOTE: changed from 25
     parser.add_argument('--pool_size', default=100, type=int)
 
     # test and inference
