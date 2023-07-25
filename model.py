@@ -310,10 +310,10 @@ class MultiHeadedAttention(nn.Module):
         K = K.view(batch_size, -1, self.heads, self.attn_dim).permute(0, 2, 1, 3) # (batch, heads, sent_len, attn_dim)
         V = V.view(batch_size, -1, self.heads, self.attn_dim).permute(0, 2, 1, 3) # (batch, heads, sent_len, attn_dim)
 
-        energy = torch.matmul(Q, K.permute(0, 1, 3, 2)) / self.scale # (batch, heads, sent_len, sent_len)
+        energy = torch.matmul(Q, K.permute(0, 1, 3, 2)) / self.scale  # (batch, heads, sent_len, sent_len)
 
         if mask is not None:
-            energy = energy.masked_fill(mask == 0, -1e10)
+            energy = energy.masked_fill(mask == 0, -1e10)  # TODO RuntimeError: The size of tensor a (10) must match the size of tensor b (20) at non-singleton dimension 3
 
         attention = F.softmax(energy, dim=-1) # (batch, heads, sent_len, sent_len)
         attention = F.dropout(attention, p=self.dropout, training=self.training)

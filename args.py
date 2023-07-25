@@ -12,7 +12,7 @@ def get_parser():
     parser.add_argument('--cuda_device', default=0, type=int)
 
     # data
-    parser.add_argument('--data_path', default='/data/final/csqa')
+    parser.add_argument('--data_path', default='data/final/csqa')
     parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
     parser.add_argument('--kg_type', default=KGType.ELASTICSEARCH.value, choices=[tp.value for tp in KGType])
 
@@ -49,6 +49,7 @@ def get_parser():
     parser.add_argument('--resume', default='', type=str)
     parser.add_argument('--clip', default=5, type=int)
     parser.add_argument('--batch_size', default=10, type=int)  # NOTE: changed from 25
+    parser.add_argument('--pool_size', default=100, type=int)
 
     # test and inference
     parser.add_argument('--model_path', default='experiments/models/CARTONwNERwLinPtr_e42_v0.0145_multitask.pth.tar',

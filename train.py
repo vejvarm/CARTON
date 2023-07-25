@@ -1,11 +1,12 @@
 import time
 import random
 import logging
+from dataclasses import dataclass
+from functools import partial
 
 import numpy as np
 import torch.optim
-from nltk import pad_sequence
-
+from tqdm import tqdm
 
 from model import CARTON
 from dataset import CSQADataset
@@ -37,23 +38,118 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(args.seed)
 
 
-def collate_fn(batch):
-    # sort the list of examples by the length of the input in descending order
-    # print(batch)
-    batch.sort(key=lambda x: len(x.input), reverse=True)
-    # separate the inputs and targets, and pad the sequences
-    # inputs, targets = zip(*batch)
-    inputs = pad_sequence(batch, padding_value=PAD_TOKEN)
-    # targets = pad_sequence(targets, padding_value=PAD_TOKEN)
-    return inputs
+# def collate_fn(batch):
+#     # sort the list of examples by the length of the input in descending order
+#     # print(batch)
+#     batch.sort(key=lambda x: len(x.input), reverse=True)
+#     # separate the inputs and targets, and pad the sequences
+#     # inputs, targets = zip(*batch)
+#     inputs = pad_sequence(batch, padding_value=PAD_TOKEN)
+#     # targets = pad_sequence(targets, padding_value=PAD_TOKEN)
+#     return inputs
+
+text_transform = lambda x: [vocab['<BOS>']] + [vocab[token] for token in tokenizer(x)] + [vocab['<EOS>']]
+label_transform = lambda x: 1 if x == 'pos' else 0
+
+
+@dataclass
+class DataBatch:
+    """
+        data[split]
+        [0] ... ID
+        [1] ... INPUT
+        [2] ... LOGICAL_FORM
+        [3] ... NER
+        [4] ... COREF
+        [5] ... PREDICATE_POINTER
+        [6] ... TYPE_POINTER
+        [7] ... ENTITY
+    """
+    id: torch.Tensor  # str
+    input: torch.Tensor  # str
+    logical_form: torch.Tensor  # list[str]
+    ner: torch.Tensor  # list[str]
+    coref: torch.Tensor  # list[str]
+    predicate_pointer: torch.Tensor  # list[int]
+    type_pointer = torch.Tensor  # list[int]
+    entity_pointer = torch.Tensor  # list[int]
+
+    def __init__(self, batch: list[list[any]], vocabs: dict, device: str):
+        id = []
+        inp = []
+        lf = []
+        ner = []
+        coref = []
+        predicate_pointer = []
+        type_pointer = []
+        entity_pointer = []
+        for sample in batch:
+            id.append(int(sample[0]))
+            inp.append(self._tensor([vocabs[INPUT].stoi[s] for s in sample[1]]))
+            lf.append(self._tensor([vocabs[LOGICAL_FORM].stoi[s] for s in sample[2]]))
+            ner.append(self._tensor([vocabs[NER].stoi[s] for s in sample[3]]))
+            coref.append(self._tensor([vocabs[COREF].stoi[s] for s in sample[4]]))
+            predicate_pointer.append(self._tensor([vocabs[PREDICATE_POINTER].stoi[s] for s in sample[5]]))
+            type_pointer.append(self._tensor([vocabs[TYPE_POINTER].stoi[s] for s in sample[6]]))
+            entity_pointer.append(self._tensor([vocabs[ENTITY].stoi[s] for s in sample[7]]))
+
+        self.id = self._tensor(id).to(device)
+        self.input = pad_sequence(inp,
+                                  padding_value=vocabs[INPUT].stoi[PAD_TOKEN],
+                                  batch_first=True).to(device)
+        self.logical_form = pad_sequence(lf,
+                                         padding_value=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN],
+                                         batch_first=True).to(device)  # ANCHOR this is not gonna work as we assume all LFs have same length, which is not true
+        self.ner = pad_sequence(ner,
+                                padding_value=vocabs[NER].stoi[PAD_TOKEN],
+                                batch_first=True).to(device)
+        self.coref = pad_sequence(coref,
+                                  padding_value=vocabs[COREF].stoi[PAD_TOKEN],
+                                  batch_first=True).to(device)
+        self.predicate_pointer = pad_sequence(predicate_pointer,
+                                              padding_value=vocabs[PREDICATE_POINTER].stoi[PAD_TOKEN],
+                                              batch_first=True).to(device)
+        self.type_pointer = pad_sequence(type_pointer,
+                                         padding_value=vocabs[TYPE_POINTER].stoi[PAD_TOKEN],
+                                         batch_first=True).to(device)
+        self.entity_pointer = pad_sequence(entity_pointer,
+                                           padding_value=vocabs[ENTITY].stoi[PAD_TOKEN],
+                                           batch_first=True).to(device)
+
+    @staticmethod
+    def _tensor(data):
+        return torch.tensor(data)
+
+
+def collate_fn(batch, vocabs: dict, device: str):
+    return DataBatch(batch, vocabs, device)
+
+
+# train_iter = IMDB(split='train')
+# train_dataloader = DataLoader(list(train_iter), batch_size=8, shuffle=True,
+#                               collate_fn=collate_batch)
+
+def batch_sampler(split_list: list, batch_size: int, pool_size=100):
+    indices = [(i, len(s[1])) for i, s in enumerate(split_list)]
+    random.shuffle(indices)
+    pooled_indices = []
+    # create pool of indices with similar lengths
+    for i in range(0, len(indices), batch_size * pool_size):
+        pooled_indices.extend(sorted(indices[i:i + batch_size * pool_size], key=lambda x: x[1]))
+
+    pooled_indices = [x[0] for x in pooled_indices]
+
+    # yield indices for current batch
+    for i in range(0, len(pooled_indices), batch_size):
+        yield pooled_indices[i:i + batch_size]
 
 
 def main():
     # load data
     dataset = CSQADataset()
     vocabs = dataset.get_vocabs()
-    train_data, val_data, _ = dataset.get_data()
-    train_helper, val_helper, _ = dataset.get_data_helper()
+    train_data, val_data, _ = dataset.get_data()  # TODO
+    train_helper, val_helper, _ = dataset.get_data_helper()  # TODO
 
     # load model
     model = CARTON(vocabs).to(DEVICE)
@@ -95,13 +191,12 @@ def main():
 
     # prepare training and validation loader
     train_loader = torch.utils.data.DataLoader(train_data,
-                                               batch_size=args.batch_size,
-                                               shuffle=True,
-                                               collate_fn=collate_fn)
+                                               collate_fn=partial(collate_fn, vocabs=vocabs, device=DEVICE),
+                                               batch_sampler=batch_sampler(train_data, args.batch_size, args.pool_size))
     val_loader = torch.utils.data.DataLoader(val_data,
                                              batch_size=args.batch_size,
                                              shuffle=False,
-                                             collate_fn=collate_fn)
+                                             collate_fn=partial(collate_fn, vocabs=vocabs, device=DEVICE))
     # train_loader, val_loader = BucketIterator.splits((train_data, val_data),
     #                                                 batch_size=args.batch_size,
     #                                                 sort_within_batch=False,
@@ -112,10 +207,10 @@ def main():
 
 
     LOGGER.info('Loaders prepared.')
-    LOGGER.info(f"Training data: {len(train_data.examples)}")
-    LOGGER.info(f"Validation data: {len(val_data.examples)}")
-    LOGGER.info(f'Question example: {train_data.examples[0].input}')
-    LOGGER.info(f'Logical form example: {train_data.examples[0].logical_form}')
+    LOGGER.info(f"Training data: {len(train_data)}")
+    LOGGER.info(f"Validation data: {len(val_data)}")
+    # LOGGER.info(f'Question example: {train_data}')
+    # LOGGER.info(f'Logical form example: {train_data.examples[0].logical_form}')
     LOGGER.info(f"Unique tokens in input vocabulary: {len(vocabs[INPUT])}")
     LOGGER.info(f"Unique tokens in logical form vocabulary: {len(vocabs[LOGICAL_FORM])}")
     LOGGER.info(f"Unique tokens in ner vocabulary: {len(vocabs[NER])}")
@@ -144,13 +239,13 @@ def main():
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
     batch_time = AverageMeter()
     losses = AverageMeter()
-
+    total_batches = len(train_loader.dataset)
     # switch to train mode
     model.train()
 
     end = time.time()
     batch_progress_old = -1
-    for i, batch in enumerate(train_loader):
+    for i, batch in tqdm(enumerate(train_loader), total=total_batches, desc=f"Epoch {epoch}:"):
         # get inputs
         input = batch.input
         logical_form = batch.logical_form
@@ -215,10 +310,10 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         batch_time.update(time.time() - end)
         end = time.time()
 
-        batch_progress = int(((i+1)/len(train_loader))*100)  # percentage
-        if batch_progress > batch_progress_old:
-            LOGGER.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:02d}% - Time: {batch_time.sum:0.2f}s')
-        batch_progress_old = batch_progress
+        # batch_progress = int(((i+1)/total_batches)*100)  # percentage
+        # if batch_progress > batch_progress_old:
+        #     LOGGER.info(f'Epoch: {epoch+1} - Train loss: {losses.val:.4f} ({losses.avg:.4f}) - Batch: {batch_progress:02d}% - Time: {batch_time.sum:0.2f}s')
+        # batch_progress_old = batch_progress
 
 
 def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss):

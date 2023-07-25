@@ -1,30 +1,118 @@
 import json
+import pathlib
+import pickle
+from collections import Counter
 from glob import glob
+from itertools import chain
+
+from torchtext.vocab import Vocab
 from transformers import BertTokenizer
 from torchtext.data import Field, Example, Dataset
 import torch
 
-from constants import (LOGICAL_FORM, ROOT_PATH, QUESTION_TYPE, ENTITY, GOLD, LABEL, NA_TOKEN, SEP_TOKEN, O,
+from constants import (LOGICAL_FORM, ROOT_PATH, QUESTION_TYPE, ENTITY, GOLD, LABEL, NA_TOKEN, SEP_TOKEN,
                        GOLD_ACTIONS, PAD_TOKEN, ACTION, RELATION, TYPE, PREV_ANSWER, VALUE, QUESTION,
                        CONTEXT_QUESTION, CONTEXT_ENTITIES, ANSWER, RESULTS, PREV_RESULTS, START_TOKEN, CTX_TOKEN,
-                       UNK_TOKEN, END_TOKEN, INPUT, ID, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, B, I, )
+                       UNK_TOKEN, END_TOKEN, INPUT, ID, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, B, I, O)
 from args import parse_and_get_args
 args = parse_and_get_args()
 
 
 class CSQADataset:
-    train_path = str(ROOT_PATH) + args.data_path + '/train/*'
-    val_path = str(ROOT_PATH) + args.data_path + '/val/*'
-    test_path = str(ROOT_PATH) + args.data_path + '/test/*'
+    train_path = ROOT_PATH.joinpath(args.data_path).joinpath("train")   # str(ROOT_PATH) + args.data_path + '/train/*'
+    val_path = ROOT_PATH.joinpath(args.data_path).joinpath("val")       # str(ROOT_PATH) + args.data_path + '/val/*'
+    test_path = ROOT_PATH.joinpath(args.data_path).joinpath("test")     # str(ROOT_PATH) + args.data_path + '/test/*'
 
-    def __init__(self):
+    #
+    def __init__(self, cache_path="./.cache/"):
         self.id = 0
-        self.load_data_and_fields()
+        self.cache_path = pathlib.Path(cache_path)
+        self.cache_path.mkdir(parents=True, exist_ok=True)
+        self.data, self.helpers = self.preprocess_data()
+        # self.load_data_and_fields(data, helpers)
+        self.vocabs = self.build_vocabs(self.data)
+        # print(self.vocabs[ID].itos[0])
+        # print(f"{self.vocabs[INPUT].itos[10]}: {self.vocabs[INPUT].vectors[10]}")
+        # print(f"{self.vocabs[COREF].itos[10]}: {self.vocabs[COREF].freqs}")
+        print("done")
+        # exit()
 
-    def __getitem__(self, idx):
-        data = torch.tensor(self.data_list[idx], dtype=torch.float32)
-        target = torch.tensor(self.target_list[idx], dtype=torch.long)
-        return data, target
+    def build_vocabs(self, data: dict[str: list], cache_subfolder="vocabs"):
+        # data[split]
+        # [0] ... ID
+        # [1] ... INPUT
+        # [2] ... LOGICAL_FORM
+        # [3] ... NER
+        # [4] ... COREF
+        # [5] ... PREDICATE_POINTER
+        # [6] ... TYPE_POINTER
+        # [7] ... ENTITY
+
+        cache_sub_path = self.cache_path.joinpath(cache_subfolder)
+        cache_sub_path.mkdir(exist_ok=True, parents=True)
+
+        # Build vocabularies for each field
+        vocabs = dict()
+        data_aggregate = []
+        for split in data.values():
+            data_aggregate.extend(split)
+        print("Building vocabularies...")
+        vocabs[ID] = self._build_vocab([item[0] for item in data_aggregate],
+                                       specials=[],
+                                       vocab_cache=cache_sub_path.joinpath("id_vocab.pkl"))
+        vocabs[INPUT] = self._build_vocab([item[1] for item in data_aggregate],
+                                          specials=[NA_TOKEN, SEP_TOKEN, START_TOKEN, CTX_TOKEN, PAD_TOKEN, UNK_TOKEN],
+                                          lower=True,
+                                          vectors='glove.840B.300d',
+                                          vocab_cache=cache_sub_path.joinpath("input_vocab.pkl"))
+        vocabs[LOGICAL_FORM] = self._build_vocab([item[2] for item in data_aggregate],
+                                                 specials=[START_TOKEN, END_TOKEN, PAD_TOKEN, UNK_TOKEN],
+                                                 lower=True,
+                                                 vocab_cache=cache_sub_path.joinpath("lf_vocab.pkl"))
+        vocabs[NER] = self._build_vocab([item[3] for item in data_aggregate],
+                                        specials=[O, PAD_TOKEN],
+                                        vocab_cache=cache_sub_path.joinpath("ner_vocab.pkl"))
+        vocabs[COREF] = self._build_vocab([item[4] for item in data_aggregate],
+                                          specials=['0', PAD_TOKEN],
+                                          vocab_cache=cache_sub_path.joinpath("coref_vocab.pkl"))
+        vocabs[PREDICATE_POINTER] = self._build_vocab([item[5] for item in data_aggregate],
+                                                      specials=[NA_TOKEN, PAD_TOKEN],
+                                                      vocab_cache=cache_sub_path.joinpath("pred_vocab.pkl"))
+        vocabs[TYPE_POINTER] = self._build_vocab([item[6] for item in data_aggregate],
+                                                 specials=[NA_TOKEN, PAD_TOKEN],
+                                                 vocab_cache=cache_sub_path.joinpath("type_vocab.pkl"))
+        vocabs[ENTITY] = self._build_vocab([item[7] for item in data_aggregate],
+                                           specials=[PAD_TOKEN, NA_TOKEN],
+                                           vocab_cache=cache_sub_path.joinpath("ent_vocab.pkl"))
+
+        return vocabs
+
+    def preprocess_data(self, splits=('train', 'val', 'test')):
+        source_paths = {'train': self.train_path,
+                        'val': self.val_path,
+                        'test': self.test_path}
+        data = dict()
+        helpers = dict()
+        for split in splits:
+            data_cache_file = self.cache_path.joinpath(split).with_suffix(".pkl")
+            helper_cache_file = self.cache_path.joinpath(f"{split}_helper").with_suffix(".pkl")
+            if data_cache_file.exists() and helper_cache_file.exists():
+                print(f"Loading {split} from cache...")
+                data[split] = pickle.load(data_cache_file.open("rb"), encoding='utf8')
+                helpers[split] = pickle.load(helper_cache_file.open("rb"), encoding='utf8')
+            else:
+                print(f"Building {split} from raw data...")
+                raw_data = []
+                split_files = source_paths[split].glob("*/*.json")
+                for f in split_files:
+                    with open(f, encoding='utf8') as json_file:
+                        raw_data.append(json.load(json_file))
+
+                data[split], helpers[split] = self._prepare_data(raw_data)
+                pickle.dump(data[split], data_cache_file.open("wb"))
+                pickle.dump(helpers[split], helper_cache_file.open("wb"))
+
+        return data, helpers
 
     def _prepare_data(self, data):
         input_data = []
@@ -475,117 +563,119 @@ class CSQADataset:
         examples = [Example.fromlist(i, fields) for i in data]
         return Dataset(examples, fields)
 
-    def load_data_and_fields(self):
-        train, val, test = [], [], []
-        # read data
-        train_files = glob(self.train_path + '/*.json')
-        for f in train_files:
-            with open(f, encoding='utf8') as json_file:
-                train.append(json.load(json_file))
+    @staticmethod
+    def _build_vocab(tokens, specials: list[str], lower=False, min_freq=0, vectors=None, vocab_cache: pathlib.Path = None):
+        if vocab_cache is not None and vocab_cache.exists():
+            return pickle.load(vocab_cache.open("rb"), encoding="utf8")
 
-        val_files = glob(self.val_path + '/*.json')
-        for f in val_files:
-            with open(f, encoding='utf8') as json_file:
-                val.append(json.load(json_file))
+        # TODO: batch first
+        if lower:
+            tokens = list(token.lower() for token in chain(*tokens))
+        else:
+            tokens = list(chain(*tokens))
+        # Count unique tokens
+        counts = Counter(tokens)
+        # Build a vocabulary by assigning a unique ID to each token
+        vocab = Vocab(counts, specials=specials, min_freq=min_freq, vectors=vectors)
 
-        test_files = glob(self.test_path + '/*.json')
-        for f in test_files:
-            with open(f, encoding='utf8') as json_file:  # TODO: WTF is this encoding
-                test.append(json.load(json_file))
+        if vocab_cache is not None:
+            pickle.dump(vocab, vocab_cache.open("wb"))
+        return vocab
 
-        # prepare data
-        train, self.train_helper = self._prepare_data(train)
-        val, self.val_helper = self._prepare_data(val)
-        test, self.test_helper = self._prepare_data(test)
-
-        # create fields
-        self.id_field = Field(batch_first=True)
-
-        self.input_field = Field(init_token=START_TOKEN,
-                                eos_token=CTX_TOKEN,
-                                pad_token=PAD_TOKEN,
-                                unk_token=UNK_TOKEN,
-                                lower=True,
-                                batch_first=True)
-
-        self.lf_field = Field(init_token=START_TOKEN,
-                                eos_token=END_TOKEN,
-                                pad_token=PAD_TOKEN,
-                                unk_token=UNK_TOKEN,
-                                lower=True,
-                                batch_first=True)
-
-        self.ner_field = Field(init_token=O,
-                                eos_token=O,
-                                pad_token=PAD_TOKEN,
-                                unk_token=O,
-                                batch_first=True)
-
-        self.coref_field = Field(init_token='0',
-                                eos_token='0',
-                                pad_token=PAD_TOKEN,
-                                unk_token='0',
-                                batch_first=True)
-
-        self.predicate_field = Field(init_token=NA_TOKEN,
-                                eos_token=NA_TOKEN,
-                                pad_token=PAD_TOKEN,
-                                unk_token=NA_TOKEN,
-                                batch_first=True)
-
-        self.type_field = Field(init_token=NA_TOKEN,
-                                eos_token=NA_TOKEN,
-                                pad_token=PAD_TOKEN,
-                                unk_token=NA_TOKEN,
-                                batch_first=True)
-
-        self.entity_field = Field(pad_token=PAD_TOKEN,
-                                unk_token=NA_TOKEN,
-                                batch_first=True)
-
-        # ANCHOR: vocab fiels
-        fields_tuple = [(ID, self.id_field), (INPUT, self.input_field), (LOGICAL_FORM, self.lf_field),
-                        (NER, self.ner_field), (COREF, self.coref_field),
-                        (PREDICATE_POINTER, self.predicate_field), (TYPE_POINTER, self.type_field)]
-
-        # create toechtext datasets
-        self.train_data = self._make_torchtext_dataset(train, fields_tuple)
-        self.val_data = self._make_torchtext_dataset(val, fields_tuple)
-        self.test_data = self._make_torchtext_dataset(test, fields_tuple)
-
-        # build vocabularies
-        self.id_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
-        self.input_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0, vectors='glove.840B.300d')
-        self.lf_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
-        self.ner_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
-        self.coref_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
-        self.predicate_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
-        self.type_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
+    # def load_data_and_fields(self, data: dict[str: list], helpers: dict[str: list]):
+    #     train, self.train_helper = data['train'], helpers['train']
+    #     val, self.val_helper = data['val'], helpers['val']
+    #     test, self.test_helper = data['test'], helpers['test']
+    #
+    #     # create fields
+    #     self.id_field = Field(batch_first=True)
+    #
+    #     self.input_field = Field(init_token=START_TOKEN,
+    #                             eos_token=CTX_TOKEN,
+    #                             pad_token=PAD_TOKEN,
+    #                             unk_token=UNK_TOKEN,
+    #                             lower=True,
+    #                             batch_first=True)
+    #
+    #     self.lf_field = Field(init_token=START_TOKEN,
+    #                             eos_token=END_TOKEN,
+    #                             pad_token=PAD_TOKEN,
+    #                             unk_token=UNK_TOKEN,
+    #                             lower=True,
+    #                             batch_first=True)
+    #
+    #     self.ner_field = Field(init_token=O,
+    #                             eos_token=O,
+    #                             pad_token=PAD_TOKEN,
+    #                             unk_token=O,
+    #                             batch_first=True)
+    #
+    #     self.coref_field = Field(init_token='0',
+    #                             eos_token='0',
+    #                             pad_token=PAD_TOKEN,
+    #                             unk_token='0',
+    #                             batch_first=True)
+    #
+    #     self.predicate_field = Field(init_token=NA_TOKEN,
+    #                             eos_token=NA_TOKEN,
+    #                             pad_token=PAD_TOKEN,
+    #                             unk_token=NA_TOKEN,
+    #                             batch_first=True)
+    #
+    #     self.type_field = Field(init_token=NA_TOKEN,
+    #                             eos_token=NA_TOKEN,
+    #                             pad_token=PAD_TOKEN,
+    #                             unk_token=NA_TOKEN,
+    #                             batch_first=True)
+    #
+    #     self.entity_field = Field(pad_token=PAD_TOKEN,
+    #                             unk_token=NA_TOKEN,
+    #                             batch_first=True)
+    #
+    #     # ANCHOR: vocab fiels
+    #     fields_tuple = [(ID, self.id_field), (INPUT, self.input_field), (LOGICAL_FORM, self.lf_field),
+    #                     (NER, self.ner_field), (COREF, self.coref_field),
+    #                     (PREDICATE_POINTER, self.predicate_field), (TYPE_POINTER, self.type_field)]
+    #
+    #     # create toechtext datasets
+    #     self.train_data = self._make_torchtext_dataset(train, fields_tuple)
+    #     self.val_data = self._make_torchtext_dataset(val, fields_tuple)
+    #     self.test_data = self._make_torchtext_dataset(test, fields_tuple)
+    #
+    #     # build vocabularies
+    #     self.id_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
+    #     self.input_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0, vectors='glove.840B.300d')
+    #     self.lf_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
+    #     self.ner_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
+    #     self.coref_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
+    #     self.predicate_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
+    #     self.type_field.build_vocab(self.train_data, self.val_data, self.test_data, min_freq=0)
 
     def get_data(self):
-        return self.train_data, self.val_data, self.test_data
+        return self.data['train'], self.data['val'], self.data['test']
 
     def get_data_helper(self):
-        return self.train_helper, self.val_helper, self.test_helper
+        return self.helpers['train'], self.helpers['val'], self.helpers['test']
 
-    def get_fields(self):
-        return {
-            ID: self.id_field,
-            INPUT: self.input_field,
-            LOGICAL_FORM: self.lf_field,
-            NER: self.ner_field,
-            COREF: self.coref_field,
-            PREDICATE_POINTER: self.predicate_field,
-            TYPE_POINTER: self.type_field,
-        }
+    # def get_fields(self):
+    #     return {
+    #         ID: self.id_field,
+    #         INPUT: self.input_field,
+    #         LOGICAL_FORM: self.lf_field,
+    #         NER: self.ner_field,
+    #         COREF: self.coref_field,
+    #         PREDICATE_POINTER: self.predicate_field,
+    #         TYPE_POINTER: self.type_field,
+    #     }
 
     def get_vocabs(self):
         return {
-            ID: self.id_field.vocab,
-            INPUT: self.input_field.vocab,
-            LOGICAL_FORM: self.lf_field.vocab,
-            NER: self.ner_field.vocab,
-            COREF: self.coref_field.vocab,
-            PREDICATE_POINTER: self.predicate_field.vocab,
-            TYPE_POINTER: self.type_field.vocab,
+            ID: self.vocabs[ID],
+            INPUT: self.vocabs[INPUT],
+            LOGICAL_FORM: self.vocabs[LOGICAL_FORM],
+            NER: self.vocabs[NER],
+            COREF: self.vocabs[COREF],
+            PREDICATE_POINTER: self.vocabs[PREDICATE_POINTER],
+            TYPE_POINTER: self.vocabs[TYPE_POINTER],
+            ENTITY: self.vocabs[ENTITY],
         }
