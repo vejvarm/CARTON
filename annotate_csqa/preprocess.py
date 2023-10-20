@@ -28,21 +28,20 @@ print(path_to_csqa_split)
 # csqa_files = glob(f'{ROOT_PATH}{args.read_folder}/{args.partition}/*/*.json')
 csqa_files = list(path_to_csqa_split.glob("**/QA_*.json"))
 
-csqa_data = {}
-for path in csqa_files:
-    folder = path.parent.name
-    file = path.name
-    # folder = path.rsplit('/', 1)[0].rsplit('/', 1)[-1]
-    # file = path.rsplit('/', 1)[-1]
-    if folder not in csqa_data:
-        csqa_data[folder] = {}
-
-    with open(path) as json_file:
-        csqa_data[folder][file] = json.load(json_file)
-print(f'Done, {len(csqa_data)} folders loaded!')
+# csqa_data = {}
+# for path in csqa_files:
+#     folder = path.parent.name
+#     file = path.name
+#     # folder = path.rsplit('/', 1)[0].rsplit('/', 1)[-1]
+#     # file = path.rsplit('/', 1)[-1]
+#     if folder not in csqa_data:
+#         csqa_data[folder] = {}
+#
+#     with open(path) as json_file:
+#         csqa_data[folder][file] = json.load(json_file)
+# print(f'Done, {len(csqa_data)} folders loaded!')
 
 # load kg
-# TODO: make more universal for other types of data source (ZODBKG vs JSONKG vs Elasticsearch client)
 client = connect_to_elasticsearch()
 
 # create ner and action annotator

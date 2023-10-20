@@ -59,7 +59,10 @@ class SimpleInsert:
 
     def simple_insert_rdf(self, user, system):
         # parse input
-        data = self.parse_simple_insert_multi_entities(user, system)
+        try:
+            data = self.parse_simple_insert_multi_entities(user, system)
+        except AssertionError:
+            data = self.parse_simple_insert_multi_ent_rel_tp(user, system)
 
         system['objects_missing'] = False
         system['is_spurious'] = False
@@ -183,7 +186,7 @@ class SimpleInsert:
         #
         # system['is_spurious'] = False if gold == result else True
 
-        return user, system
+        # return user, system
 
     def simple_insert_ellipsis(self, user, system):
         # parse input
@@ -224,6 +227,22 @@ class SimpleInsert:
         assert len(user['entities_in_utterance']) >= 1
         assert len(user['relations']) == 1
         assert len(user['type_list']) == 1
+
+        return {
+            'logical_operator': self.operator.union,
+            'filter_operator': self.operator.filter_type,
+            'insert_operator': self.operator.insert,
+            'entity': user['entities_in_utterance'],
+            'relations': user['relations'],
+            'type': user['type_list'],
+            'active_set': system['active_set'],
+            'gold': set(system['all_entities'])
+        }
+
+    def parse_simple_insert_multi_ent_rel_tp(self, user, system):
+        assert len(user['entities_in_utterance']) >= 1
+        assert len(user['relations']) >= 1
+        assert len(user['type_list']) >= 1
 
         return {
             'logical_operator': self.operator.union,

@@ -1,11 +1,17 @@
 from __future__ import division
+
+import json
 import logging
+import pathlib
 
 import elasticsearch
 from elasticsearch import Elasticsearch
 from ordered_set import OrderedSet
 from unidecode import unidecode
 from random import randint
+from wikidata.client import Client as WDClient
+from wikidata.entity import EntityId
+from urllib.error import HTTPError
 
 from helpers import uppercase
 
@@ -184,12 +190,28 @@ class ESActionOperator(ActionOperator):
     def __init__(self, client: Elasticsearch,
                  index_ent=args.elastic_index_ent_full,
                  index_rel=args.elastic_index_rel,
-                 index_rdf=args.elastic_index_rdf_full):
+                 index_rdf=args.elastic_index_rdf_full,
+                 ent_dict_path: str or pathlib.Path = args.ent_dict_path,
+                 rel_dict_path: str or pathlib.Path = args.rel_dict_path,
+                 wd_client: WDClient = WDClient()):
         super().__init__(None)
         self.client = client
         self.index_ent = index_ent
         self.index_rel = index_rel
         self.index_rdf = index_rdf
+        self.wd_client = wd_client
+
+        self.ent_dict_path = pathlib.Path(ent_dict_path)
+        if self.ent_dict_path.exists():
+            self.ent_dict = json.load(self.ent_dict_path.open())
+        else:
+            self.ent_dict = None
+
+        self.rel_dict_path = pathlib.Path(rel_dict_path)
+        if self.rel_dict_path.exists():
+            self.rel_dict = json.load(self.rel_dict_path.open())
+        else:
+            self.rel_dict = None
 
     @staticmethod
     def _match(field: str, term: str):
@@ -253,26 +275,82 @@ class ESActionOperator(ActionOperator):
 
         return self.client.get(index=index, id=_id)['_source']
 
-    @uppercase
-    def _get_label(self, gid: str, index: str):
-        """Generic get label for given gid in given index if it exists"""
-        if not self.client.exists(index=index, id=gid):
-            LOGGER.info(f"get_label in ESActionOperator: entity with {gid} doesn't exist in {index}.")
-            return 'NA'
+    def update_ent_json(self):
+        f"""
+        Should call this if you want to OVERWRITE the {self.ent_dict_path} with the current state of self.ent_dict
+        """
+        LOGGER.info(f"updating ent_dict file at `{self.ent_dict_path}`")
+        json.dump(self.ent_dict, self.ent_dict_path.open("w", encoding='utf8'), indent=4)
 
-        return self.client.get(index=index, id=gid)['_source']['label']
+    def update_rel_json(self):
+        """
+        Should call this if you want to OVERWRITE the self.rel_dict_path with the current state of self.rel_dict
+        """
+        LOGGER.info(f"updating rel_dict file at `{self.rel_dict_path}`")
+        json.dump(self.rel_dict, self.rel_dict_path.open("w", encoding='utf8'), indent=4)
+
+    @uppercase
+    def _get_english_label_from_wikidata(self, gid: str or EntityId, wd_client: WDClient, logger: logging.Logger) -> str:
+        if not str(gid).startswith(("P", "Q")):
+            raise NameError("id must start with 'P' (for predicate/relation) or 'Q' (entity)")
+
+        try:
+            # try fetching the entity from WD database
+            entity = wd_client.get(EntityId(gid), load=True)
+        except HTTPError as err:
+            logger.warning(f"{err} (returning original id: {gid})")
+            return gid
+
+        # get the entity/predicate label in english
+        label = entity.label['en']
+
+        # update the dictionaries
+        if str(gid).startswith("P"):
+            self.rel_dict.update({gid: label})
+        if str(gid).startswith("Q"):
+            self.ent_dict.update({gid: label})
+
+        return label
+
+    @uppercase
+    def _get_label(self, gid: str, id2label_dict: dict, index: str):
+        """Generic get label for given gid in given index if it exists"""
+        if id2label_dict is not None:
+            try:
+                return id2label_dict[gid]
+            except KeyError:
+                print("d", end="")
+                pass
+
+        if self.client is not None and self.client.exists(index=index, id=gid):
+            return self.client.get(index=index, id=gid)['_source']['label']
+
+        print("e", end="")
+        return self._get_english_label_from_wikidata(gid, self.wd_client, LOGGER)
+
+    # @uppercase
+    # def get_entity_label(self, eid: str):
+    #     """Get entity label for given entity (eid) if it exists"""
+    #     index = self.index_ent
+    #     return self._get_label(eid, index)
 
     @uppercase
     def get_entity_label(self, eid: str):
         """Get entity label for given entity (eid) if it exists"""
+        if not str(eid).startswith("Q"):
+            raise NameError("id of entity must start with 'Q'")
         index = self.index_ent
-        return self._get_label(eid, index)
+        ent_dict = self.ent_dict
+        return self._get_label(eid, ent_dict, index)
 
     @uppercase
     def get_relation_label(self, rid: str):
         """Get relation label for given relation (rid) if it exists"""
+        if not str(rid).startswith("P"):
+            raise NameError("id of predicate (relation) must start with 'P'")
         index = self.index_rel
-        return self._get_label(rid, index)
+        rel_dict = self.rel_dict
+        return self._get_label(rid, rel_dict, index)
 
     @uppercase
     def get_types(self, eid: str):

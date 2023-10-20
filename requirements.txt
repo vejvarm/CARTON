@@ -70,3 +70,5 @@ pandas~=1.5.1
 transaction~=3.0.1
 zodb~=5.7.0
 btrees~=4.10.1
+typing~=3.7.4.3
+wikidata~=0.7.0

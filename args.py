@@ -14,6 +14,8 @@ def get_parser():
     # data
     parser.add_argument('--data_path', default='data/final/csqa')
     parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
+    parser.add_argument('--ent_dict_path', default="knowledge_graph/items_wikidata_n.json")
+    parser.add_argument('--rel_dict_path', default="knowledge_graph/index_rel_dict.json")
     parser.add_argument('--kg_type', default=KGType.ELASTICSEARCH.value, choices=[tp.value for tp in KGType])
 
     # experiments
@@ -43,7 +45,7 @@ def get_parser():
     parser.add_argument('--warmup', default=4000, type=float)
     parser.add_argument('--factor', default=1, type=float)
     parser.add_argument('--weight_decay', default=0, type=float)
-    parser.add_argument('--epochs', default=100, type=int)
+    parser.add_argument('--epochs', default=10, type=int)
     parser.add_argument('--start_epoch', default=0, type=int)
     parser.add_argument('--valfreq', default=1, type=int)
     parser.add_argument('--resume', default='', type=str)

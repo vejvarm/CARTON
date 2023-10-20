@@ -13,8 +13,9 @@ Simple Insert (Ellipsis)
 - Incomplete|object parent is changed, subject and predicate remain same - TODO
 """
 from annotate_csqa.ner_annotators.ner_base import NERBase
+
+
 class SimpleInsert(NERBase):
-    # TODO
     def __init__(self, client, preprocessed_data, tokenizer):
         super().__init__(client, preprocessed_data, tokenizer)
 
@@ -33,10 +34,11 @@ class SimpleInsert(NERBase):
         if user['description'] == 'Simple Insert|Mult. Entity|Indirect':
             return self.new_direct_question(user, system)  # NOTE : probably no changes needed
 
-        # Simple Insert (Coreferenced)
         if user['description'] == 'Simple Insert|Mult. Entity':
-            return self.indirect_question(user, system)   # NOTE: no need to change
+            return self.new_direct_question(user, system)
+            # return self.indirect_question(user, system)   # NOTE: no need to change
 
+        # Indirect
         if user['description'] == 'Simple Insert|Single Entity|Indirect':
             return self.indirect_question(user, system)   # NOTE: no need to change
 
