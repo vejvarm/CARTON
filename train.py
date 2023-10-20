@@ -1,6 +1,8 @@
 import time
 import random
 import logging
+from typing import Iterator, List
+from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 
@@ -12,7 +14,7 @@ from model import CARTON
 from dataset import CSQADataset
 from torchtext.data import BucketIterator
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import DataLoader, SequentialSampler, BatchSampler
+from torch.utils.data import DataLoader, SequentialSampler, BatchSampler, RandomSampler
 from utils import (NoamOpt, AverageMeter,
                     SingleTaskLoss, MultiTaskLoss,
                     save_checkpoint, init_weights)
@@ -129,19 +131,63 @@ def collate_fn(batch, vocabs: dict, device: str):
 # train_dataloader = DataLoader(list(train_iter), batch_size=8, shuffle=True,
 #                               collate_fn=collate_batch)
 
-def batch_sampler(split_list: list, batch_size: int, pool_size=10000):
-    indices = [(i, len(s[1])) for i, s in enumerate(split_list)]
-    random.shuffle(indices)
-    pooled_indices = []
-    # create pool of indices with similar lengths
-    for i in range(0, len(indices), batch_size * pool_size):
-        pooled_indices.extend(sorted(indices[i:i + batch_size * pool_size], key=lambda x: x[1]))
-
-    pooled_indices = [x[0] for x in pooled_indices]
-
-    # yield indices for current batch
-    for i in range(0, len(pooled_indices), batch_size):
-        yield pooled_indices[i:i + batch_size]
+# class CustomBatchSampler:
+#
+#     def __init__(self, split_dataset: list):
+#
+#
+#     def __init__(self, sampler: Union[Sampler[int], Iterable[int]], batch_size: int, drop_last: bool) -> None:
+#         # Since collections.abc.Iterable does not check for `__getitem__`, which
+#         # is one way for an object to be an iterable, we don't do an `isinstance`
+#         # check here.
+#         if not isinstance(batch_size, int) or isinstance(batch_size, bool) or \
+#                 batch_size <= 0:
+#             raise ValueError("batch_size should be a positive integer value, "
+#                              "but got batch_size={}".format(batch_size))
+#         if not isinstance(drop_last, bool):
+#             raise ValueError("drop_last should be a boolean value, but got "
+#                              "drop_last={}".format(drop_last))
+#         self.sampler = sampler
+#         self.batch_size = batch_size
+#         self.drop_last = drop_last
+#
+#
+#     def __iter__(self) -> Iterator[List[int]]:
+#         # Implemented based on the benchmarking in https://github.com/pytorch/pytorch/pull/76951
+#         if self.drop_last:
+#             sampler_iter = iter(self.sampler)
+#             while True:
+#                 try:
+#                     batch = [next(sampler_iter) for _ in range(self.batch_size)]
+#                     yield batch
+#                 except StopIteration:
+#                     break
+#         else:
+#             batch = [0] * self.batch_size
+#             idx_in_batch = 0
+#             for idx in self.sampler:
+#                 batch[idx_in_batch] = idx
+#                 idx_in_batch += 1
+#                 if idx_in_batch == self.batch_size:
+#                     yield batch
+#                     idx_in_batch = 0
+#                     batch = [0] * self.batch_size
+#             if idx_in_batch > 0:
+#                 yield batch[:idx_in_batch]
+#
+#     def batch_sampler(self, split_list: list, batch_size: int, pool_size=10000):
+#         indices = [(i, len(s[1])) for i, s in enumerate(split_list)]
+#         random.shuffle(indices)
+#         pooled_indices = []
+#         # create pool of indices with similar lengths
+#         for i in range(0, len(indices), batch_size * pool_size):
+#             pooled_indices.extend(sorted(indices[i:i + batch_size * pool_size], key=lambda x: x[1]))
+#
+#         pooled_indices = [x[0] for x in pooled_indices]
+#
+#         # yield indices for current batch
+#         for i in range(0, len(pooled_indices), batch_size):
+#             yield pooled_indices[i:i + batch_size]
 
 
 def main():
@@ -189,10 +235,17 @@ def main():
     else:
         best_val = float('inf')
 
+    # bs = CustomBatchSampler(train_data)
     # prepare training and validation loader
     train_loader = torch.utils.data.DataLoader(train_data,
+                                               # batch_size=args.batch_size,
+                                               # shuffle=True,
+                                               pin_memory=True,
                                                collate_fn=partial(collate_fn, vocabs=vocabs, device=DEVICE),
-                                               batch_sampler=batch_sampler(train_data, args.batch_size, args.pool_size))
+                                               batch_sampler=BatchSampler(RandomSampler(train_data),
+                                                                          batch_size=args.batch_size,
+                                                                          drop_last=False),
+                                               )
 
     val_loader = torch.utils.data.DataLoader(val_data,
                                              batch_size=args.batch_size,
@@ -240,13 +293,14 @@ def main():
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
     batch_time = AverageMeter()
     losses = AverageMeter()
-    total_batches = len(train_loader.dataset)//args.batch_size
+    # total_batches = len(train_loader.dataset)//args.batch_size
+    total_batches = (len(train_loader.dataset) + args.batch_size - 1) // args.batch_size
     # switch to train mode
     model.train()
 
     end = time.time()
     batch_progress_old = -1
-    for i, batch in tqdm(enumerate(train_loader), total=total_batches, desc=f"Epoch {epoch}:"):
+    for i, batch in tqdm(enumerate(train_loader), total=total_batches, desc=f"Epoch {epoch}"):
         # get inputs
         input = batch.input
         logical_form = batch.logical_form
@@ -313,7 +367,7 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
 
         batch_progress = int(((i+1)/total_batches)*100)  # percentage
         if batch_progress > batch_progress_old:
-            LOGGER.info(f'Batch {batch_progress:02d}% - Train loss {losses.val:.4f} ({losses.avg:.4f})')
+            LOGGER.info(f'{epoch}: Batch {batch_progress:02d}% - Train loss {losses.val:.4f} ({losses.avg:.4f})')
         batch_progress_old = batch_progress
 
 
@@ -331,7 +385,7 @@ def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss
     model.eval()
 
     with torch.no_grad():
-        for _, batch in enumerate(val_loader):
+        for _, batch in tqdm(enumerate(val_loader), desc="\tvalidation"):
             # get inputs
             input = batch.input
             logical_form = batch.logical_form
