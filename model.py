@@ -74,7 +74,7 @@ class Flatten(nn.Module):
 # ANCHOR: BIO entity labeling (annotator)
 #   Finding all entities in the input utterance (BIO & types)
 class NerNet(nn.Module):
-    def __init__(self, tags, dropout=args.dropout):
+    def __init__(self, tags: int, dropout: float = args.dropout):
         super(NerNet, self).__init__()
         self.ner_lstm = nn.Sequential(
             nn.LSTM(input_size=args.emb_dim, hidden_size=args.emb_dim, batch_first=True),
@@ -315,12 +315,12 @@ class MultiHeadedAttention(nn.Module):
         if mask is not None:
             energy = energy.masked_fill(mask == 0, -1e10)  # TODO RuntimeError: The size of tensor a (10) must match the size of tensor b (20) at non-singleton dimension 3
 
-        attention = F.softmax(energy, dim=-1) # (batch, heads, sent_len, sent_len)
+        attention = F.softmax(energy, dim=-1)  # (batch, heads, sent_len, sent_len)
         attention = F.dropout(attention, p=self.dropout, training=self.training)
 
-        x = torch.matmul(attention, V) # (batch, heads, sent_len, attn_dim)
-        x = x.permute(0, 2, 1, 3).contiguous() # (batch, sent_len, heads, attn_dim)
-        x = x.view(batch_size, -1, self.heads * (self.attn_dim)) # (batch, sent_len, embed_dim)
+        x = torch.matmul(attention, V)  # (batch, heads, sent_len, attn_dim)
+        x = x.permute(0, 2, 1, 3).contiguous()  # (batch, sent_len, heads, attn_dim)
+        x = x.view(batch_size, -1, self.heads * (self.attn_dim))  # (batch, sent_len, embed_dim)
         x = self.linear_out(x)
 
         return x

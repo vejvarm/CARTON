@@ -12,8 +12,8 @@ def get_parser():
     parser.add_argument('--cuda_device', default=0, type=int)
 
     # data
-    parser.add_argument('--data_path', default='data/final/csqa')
-    parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
+    parser.add_argument('--data-path', default='data/final/csqa')
+    # parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
     parser.add_argument('--ent_dict_path', default="knowledge_graph/items_wikidata_n.json")
     parser.add_argument('--rel_dict_path', default="knowledge_graph/index_rel_dict.json")
     parser.add_argument('--kg_type', default=KGType.ELASTICSEARCH.value, choices=[tp.value for tp in KGType])

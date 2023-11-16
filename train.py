@@ -50,8 +50,8 @@ if torch.cuda.is_available():
 #     # targets = pad_sequence(targets, padding_value=PAD_TOKEN)
 #     return inputs
 
-text_transform = lambda x: [vocab['<BOS>']] + [vocab[token] for token in tokenizer(x)] + [vocab['<EOS>']]
-label_transform = lambda x: 1 if x == 'pos' else 0
+# text_transform = lambda x: [vocab['<BOS>']] + [vocab[token] for token in tokenizer(x)] + [vocab['<EOS>']]
+# label_transform = lambda x: 1 if x == 'pos' else 0
 
 
 @dataclass
