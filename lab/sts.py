@@ -23,7 +23,7 @@ LOGGER = setup_logger(__name__,
 
 def sample_random_simple_questions(max_files: int | None, num_samples: int | None) -> list[dict]:
     """Load 'max_files' worth of dataset files and randomly sample 'num_samples' Simple Questions from them."""
-    inference_data = CSQADataset.get_inference_data(max_files)
+    inference_data = CSQADataset(args).get_inference_data(max_files)
 
     simple_questions = []
 

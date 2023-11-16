@@ -14,19 +14,19 @@ from constants import (LOGICAL_FORM, ROOT_PATH, QUESTION_TYPE, ENTITY, GOLD, LAB
                        GOLD_ACTIONS, PAD_TOKEN, ACTION, RELATION, TYPE, PREV_ANSWER, VALUE, QUESTION,
                        CONTEXT_QUESTION, CONTEXT_ENTITIES, ANSWER, RESULTS, PREV_RESULTS, START_TOKEN, CTX_TOKEN,
                        UNK_TOKEN, END_TOKEN, INPUT, ID, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, B, I, O)
-from args import parse_and_get_args
-args = parse_and_get_args()
 
 
 class CSQADataset:
-    train_path = ROOT_PATH.joinpath(args.data_path).joinpath("train")   # str(ROOT_PATH) + args.data_path + '/train/*'
-    val_path = ROOT_PATH.joinpath(args.data_path).joinpath("val")       # str(ROOT_PATH) + args.data_path + '/val/*'
-    test_path = ROOT_PATH.joinpath(args.data_path).joinpath("test")     # str(ROOT_PATH) + args.data_path + '/test/*'
 
-    #
-    def __init__(self, cache_path="./.cache/"):
+    def __init__(self, args):
+        data_path_rel = args.data_path
+        self.train_path = ROOT_PATH.joinpath(data_path_rel).joinpath("train")
+        self.val_path = ROOT_PATH.joinpath(data_path_rel).joinpath("val")
+        self.test_path = ROOT_PATH.joinpath(data_path_rel).joinpath("test")
+
         self.id = 0
-        self.cache_path = pathlib.Path(cache_path)
+        self.no_cache = args.no_cache
+        self.cache_path = pathlib.Path(args.cache_path)
         self.cache_path.mkdir(parents=True, exist_ok=True)
         self.data, self.helpers = self.preprocess_data()
         # self.load_data_and_fields(data, helpers)
@@ -96,14 +96,14 @@ class CSQADataset:
         for split in splits:
             data_cache_file = self.cache_path.joinpath(split).with_suffix(".pkl")
             helper_cache_file = self.cache_path.joinpath(f"{split}_helper").with_suffix(".pkl")
-            if data_cache_file.exists() and helper_cache_file.exists():
+            if data_cache_file.exists() and helper_cache_file.exists() and not self.no_cache:
                 print(f"Loading {split} from cache...")
                 data[split] = pickle.load(data_cache_file.open("rb"), encoding='utf8')
                 helpers[split] = pickle.load(helper_cache_file.open("rb"), encoding='utf8')
             else:
                 print(f"Building {split} from raw data...")
                 raw_data = []
-                split_files = source_paths[split].glob("*/*.json")
+                split_files = source_paths[split].glob("*/QA_*.json")
                 for f in split_files:
                     with open(f, encoding='utf8') as json_file:
                         raw_data.append(json.load(json_file))
@@ -142,7 +142,37 @@ class CSQADataset:
                 user = conversation[2*i]
                 system = conversation[2*i + 1]
 
-                if user['question-type'] == 'Clarification':
+                if user['question-type'] == 'Simple Insert (Direct)':
+                    # No Context
+                    # NA + [SEP] + NA + [SEP] + current_question
+                    input.extend([NA_TOKEN, SEP_TOKEN, NA_TOKEN, SEP_TOKEN])
+
+                    # ner_tag
+                    ner_tag.extend([O, O, O, O])
+                    for context in user['context']:
+                        input.append(context[1])
+                        ner_tag.append(f'{context[-1]}-{context[-2]}' if context[-1] in [B, I] else context[-1])
+
+                    # coref entities - prepare coref values
+                    action_entities = [action[1] for action in system[GOLD_ACTIONS] if action[0] == ENTITY]
+                    for context in reversed(user['context']):
+                        if context[2] in action_entities and context[4] == B and str(action_entities.index(context[2])) not in coref and user['description'] not in ['Simple Question|Mult. Entity', 'Verification|one entity, multiple entities (as object) referred indirectly']:
+                            coref.append(str(action_entities.index(context[2])))
+                        else:
+                            coref.append(NA_TOKEN)
+                    coref.extend([NA_TOKEN, NA_TOKEN, NA_TOKEN, NA_TOKEN])
+
+                    # entity pointer # TODO: this is a hack and we do not need it
+                    if 'entities' in user: entity_pointer.update(user['entities'])
+                    if 'entities_in_utterance' in user: entity_pointer.update(user['entities_in_utterance'])
+
+                    # get gold actions
+                    gold_actions = system[GOLD_ACTIONS]
+
+                    # track context history
+                    prev_user_conv = user.copy()
+                    prev_system_conv = system.copy()
+                elif user['question-type'] == 'Clarification':
                     # get next context
                     is_clarification = True
                     next_user = conversation[2*(i+1)]
@@ -257,11 +287,11 @@ class CSQADataset:
                             is_history_ner_spurious = True
 
                         continue
-                    if user['is_ner_spurious'] or system['is_ner_spurious']: # skip if ner is spurious
+                    if user['is_ner_spurious'] or system['is_ner_spurious']:  # skip if ner is spurious
                         is_history_ner_spurious = True
                         continue
 
-                    if GOLD_ACTIONS not in system or system['is_spurious']: # skip if logical form is spurious
+                    if GOLD_ACTIONS not in system or system['is_spurious']:  # skip if logical form is spurious
                         prev_user_conv = user.copy()
                         prev_system_conv = system.copy()
                         continue

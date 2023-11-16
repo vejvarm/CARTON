@@ -14,8 +14,10 @@ from utils import SingleTaskLoss, MultiTaskLoss, AverageMeter, Scorer, Predictor
 # import constants
 from constants import DEVICE, ROOT_PATH, ALL_QUESTION_TYPES
 from helpers import setup_logger
-from args import parse_and_get_args
-args = parse_and_get_args()
+from args import get_parser
+
+parser = get_parser()
+args = parser.parse_args()
 
 
 # set logger
@@ -35,7 +37,7 @@ if torch.cuda.is_available():
 
 def main():
     # load data
-    dataset = CSQADataset()
+    dataset = CSQADataset(args)
     vocabs = dataset.get_vocabs()
     inference_data = dataset.get_inference_data()
 
