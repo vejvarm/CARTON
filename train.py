@@ -203,7 +203,7 @@ def main():
     train_helper, val_helper, _ = dataset.get_data_helper()  # TODO
 
     # load model
-    model = CARTON(vocabs).to(DEVICE)
+    model = CARTON(vocabs, DEVICE).to(DEVICE)
 
     # initialize model weights
     init_weights(model)
