@@ -463,7 +463,7 @@ def save_checkpoint(state):
 
 class SingleTaskLoss(nn.Module):
     '''Single Task Loss'''
-    def __init__(self, ignore_index):
+    def __init__(self, ignore_index, device=None):
         super().__init__()
         self.criterion = nn.CrossEntropyLoss(ignore_index=ignore_index)
 
@@ -473,8 +473,9 @@ class SingleTaskLoss(nn.Module):
 
 class MultiTaskLoss(nn.Module):
     '''Multi Task Learning Loss'''
-    def __init__(self, ignore_index):
+    def __init__(self, ignore_index, device=DEVICE):
         super().__init__()
+        self.device = device
         self.lf_loss = SingleTaskLoss(ignore_index)
         self.ner_loss = SingleTaskLoss(ignore_index)
         self.coref_loss = SingleTaskLoss(ignore_index)
@@ -495,8 +496,8 @@ class MultiTaskLoss(nn.Module):
         ))
 
         dtype = task_losses.dtype
-        stds = (torch.exp(self.log_vars)**(1/2)).to(dtype)
-        weights = 1 / ((self.mml_emp.to(dtype)+1)*(stds**2))
+        stds = (torch.exp(self.log_vars)**(1/2)).to(self.device).to(dtype)
+        weights = 1 / ((self.mml_emp.to(self.device).to(dtype)+1)*(stds**2))
 
         losses = weights * task_losses + torch.log(stds)
 
