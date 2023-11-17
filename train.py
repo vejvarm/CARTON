@@ -218,7 +218,7 @@ def main():
         PREDICATE_POINTER: SingleTaskLoss,
         TYPE_POINTER: SingleTaskLoss,
         MULTITASK: MultiTaskLoss
-    }[args.task](ignore_index=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN])
+    }[args.task](ignore_index=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN], device=DEVICE)
 
     single_task_loss = SingleTaskLoss(ignore_index=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN])
 
