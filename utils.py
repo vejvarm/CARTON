@@ -495,8 +495,8 @@ class MultiTaskLoss(nn.Module):
         ))
 
         dtype = task_losses.dtype
-        stds = (torch.exp(self.log_vars)**(1/2)).to(DEVICE).to(dtype)
-        weights = 1 / ((self.mml_emp.to(DEVICE).to(dtype)+1)*(stds**2))
+        stds = (torch.exp(self.log_vars)**(1/2)).to(dtype)
+        weights = 1 / ((self.mml_emp.to(dtype)+1)*(stds**2))
 
         losses = weights * task_losses + torch.log(stds)
 
