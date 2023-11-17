@@ -12,7 +12,7 @@ LOGS_PATH.mkdir(parents=True, exist_ok=True)
 ENTITY_SEPARATOR_FOR_NEW_DATASETS = "<&SEP>"  # legacy " | "
 
 # model name
-MODEL_NAME = 'CARTON'
+MODEL_NAME = 'CARTONNER'
 
 # Elasticsearch
 INDEX_ROOT = 'csqa_wikidata'

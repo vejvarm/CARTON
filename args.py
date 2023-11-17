@@ -8,12 +8,13 @@ def get_parser():
 
     # general
     parser.add_argument('--seed', default=1234, type=int)
-    # parser.add_argument('--no_cuda', action='store_true')
-    # parser.add_argument('--cuda_device', default=0, type=int)
+    parser.add_argument('--no-cuda', action='store_true')
+    parser.add_argument('--cuda-device', default=0, type=int)
 
     # data
     parser.add_argument('--data-path', default='data/final/csqa')
-    parser.add_argument('--no-cache', action='store_true')
+    parser.add_argument('--no-data-cache', action='store_true')
+    parser.add_argument('--no-vocab-cache', action='store_true')
     parser.add_argument('--cache-path', default='.cache', type=str)
     # parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
     parser.add_argument('--ent_dict_path', default="knowledge_graph/items_wikidata_n.json")

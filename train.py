@@ -35,10 +35,14 @@ LOGGER = setup_logger(__name__,
 # set a seed value
 random.seed(args.seed)
 np.random.seed(args.seed)
-if torch.cuda.is_available():
+if torch.cuda.is_available() and not args.no_cuda:
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+
+    DEVICE = f"{DEVICE}:{args.cuda_device}"
+else:
+    DEVICE = "cpu"
 
 
 # def collate_fn(batch):
