@@ -12,14 +12,15 @@ args = parse_and_get_args()
 
 
 class CARTON(nn.Module):
-    def __init__(self, vocabs):
+    def __init__(self, vocabs, device=DEVICE):
         super(CARTON, self).__init__()
         self.vocabs = vocabs
-        self.encoder = Encoder(vocabs[INPUT], DEVICE)
-        self.decoder = Decoder(vocabs[LOGICAL_FORM], DEVICE)
+        self.device = device
+        self.encoder = Encoder(vocabs[INPUT], self.device)
+        self.decoder = Decoder(vocabs[LOGICAL_FORM], self.device)
         self.ner = NerNet(len(vocabs[NER]))
         self.coref = CorefNet(len(vocabs[COREF]))
-        self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER])
+        self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER], self.device)
 
     def forward(self, src_tokens, trg_tokens):
         encoder_out = self.encoder(src_tokens)
@@ -110,9 +111,10 @@ class CorefNet(nn.Module):
 
 
 class PointerStack(nn.Module):
-    def __init__(self, vocab):
+    def __init__(self, vocab, device: str):
         super(PointerStack, self).__init__()
-        self.kg_items = torch.tensor(list(vocab.stoi.values())).to(DEVICE)
+        self.device = device
+        self.kg_items = torch.tensor(list(vocab.stoi.values())).to(self.device)
         self.embeddings = nn.Embedding(len(vocab), args.emb_dim)
         self.dropout = nn.Dropout(args.dropout)
         self.tahn = nn.Tanh()
@@ -146,14 +148,14 @@ class PointerStack(nn.Module):
 
 
 class StackedPointerNetworks(nn.Module):
-    def __init__(self, predicate_vocab, type_vocab):
+    def __init__(self, predicate_vocab, type_vocab, device: str):
         super(StackedPointerNetworks, self).__init__()
-
+        self.device = device
         self.context_linear = nn.Linear(args.emb_dim*2, args.emb_dim)
         self.dropout = nn.Dropout(args.dropout)
 
-        self.predicate_pointer = PointerStack(predicate_vocab)
-        self.type_pointer = PointerStack(type_vocab)
+        self.predicate_pointer = PointerStack(predicate_vocab, self.device)
+        self.type_pointer = PointerStack(type_vocab, self.device)
 
     def forward(self, encoder_ctx, decoder_h):
         x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)  # ANCHOR: this is gonna be problematic!

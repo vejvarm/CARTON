@@ -256,13 +256,6 @@ def main():
                                              batch_size=args.batch_size,
                                              shuffle=False,
                                              collate_fn=partial(collate_fn, vocabs=vocabs, device=DEVICE))
-    # train_loader, val_loader = BucketIterator.splits((train_data, val_data),
-    #                                                 batch_size=args.batch_size,
-    #                                                 sort_within_batch=False,
-    #                                                 sort_key=lambda x: len(x.input),
-    #                                                 device=DEVICE)
-
-    # ANCHOR: BucketIterator use deprecated ... use torch.utils.data.dataloader.DataLoader / DataLoader2
 
 
     LOGGER.info('Loaders prepared.')
