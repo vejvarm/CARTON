@@ -27,7 +27,7 @@ args = parser.parse_args()
 # set LOGGER
 LOGGER = setup_logger(__name__,
                       loglevel=logging.INFO,
-                      handlers=[logging.FileHandler(f'{args.path_results}/train_{args.task}.log', 'w'),
+                      handlers=[logging.FileHandler(f'{args.path_results}/{MODEL_NAME}_{args.name}_train_{args.task}.log', 'w'),
                               logging.StreamHandler()])
 
 # set a seed value
