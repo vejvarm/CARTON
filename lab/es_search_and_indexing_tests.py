@@ -22,6 +22,9 @@ args = parse_and_get_args()
 
 CLIENT = connect_to_elasticsearch()
 
+print(CLIENT.indices.get_alias(index="*"))
+exit()
+
 # CLIENT.indices.put_mapping(index='')
 
 LOGGER = setup_logger(__name__, loglevel=logging.INFO)

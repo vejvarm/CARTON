@@ -429,16 +429,15 @@ class CSQADataset:
 
         return input_data, helper_data
 
-    @classmethod
-    def get_inference_data(cls, max_files: int = None):
-        files = glob(cls.test_path + '/*.json')
+    def get_inference_data(self, max_files: int = None):
+        files = self.test_path.glob('*/QA_*.json')
 
         partition = []
         for i, f in enumerate(files):
             if max_files is not None and i > max_files:
                 break
 
-            with open(f, encoding='utf8') as json_file:
+            with f.open(encoding='utf8') as json_file:
                 partition.append(json.load(json_file))
 
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased').tokenize

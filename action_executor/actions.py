@@ -19,7 +19,7 @@ from args import parse_and_get_args
 args = parse_and_get_args()
 
 LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.WARNING)
+LOGGER.setLevel(logging.INFO)
 
 
 class ActionOperator:
@@ -193,13 +193,15 @@ class ESActionOperator(ActionOperator):
                  index_rdf=args.elastic_index_rdf_full,
                  ent_dict_path: str or pathlib.Path = args.ent_dict_path,
                  rel_dict_path: str or pathlib.Path = args.rel_dict_path,
-                 wd_client: WDClient = WDClient()):
+                 wd_client: WDClient = WDClient(),
+                 logger=LOGGER):
         super().__init__(None)
         self.client = client
         self.index_ent = index_ent
         self.index_rel = index_rel
         self.index_rdf = index_rdf
         self.wd_client = wd_client
+        self.logger = logger
 
         self.ent_dict_path = pathlib.Path(ent_dict_path)
         if self.ent_dict_path.exists():
@@ -217,10 +219,9 @@ class ESActionOperator(ActionOperator):
     def _match(field: str, term: str):
         return {'match': {field: term}}
 
-    @staticmethod
-    def _terms(field: str, terms: list[str]):
+    def _terms(self, field: str, terms: list[str]):
         if isinstance(terms, str):
-            LOGGER.warning(f"in self._terms: 'terms' argument should be a list, instead we got {type(terms)}.")
+            self.logger.warning(f"in self._terms: 'terms' argument should be a list, instead we got {type(terms)}.")
             terms = [terms]
 
         return {'terms': {field: [t.lower() for t in terms]}}
@@ -239,13 +240,13 @@ class ESActionOperator(ActionOperator):
         """
         res_dict = dict()
         if not obj_set or '' in obj_set:
-            LOGGER.info(f"in self._get_by_ids: obj_set is {obj_set}, returning empty dictionary")
+            self.logger.info(f"in self._get_by_ids: obj_set is {obj_set}, returning empty dictionary")
             return res_dict
 
         res = self.client.mget(index=es_index,
                                ids=list(obj_set))
 
-        LOGGER.debug(f"res in self._get_by_ids: {res}")
+        self.logger.debug(f"res in self._get_by_ids: {res}")
 
         for hit in res['docs']:
             _id = hit['_id']
@@ -258,10 +259,10 @@ class ESActionOperator(ActionOperator):
                     types = hit['_source']['types']
                 res_dict[_id] = (label, types)
             else:
-                LOGGER.info(f'in _get_by_ids: Entity with id "{_id}" was NOT found in label&type documents.')
+                self.logger.info(f'in _get_by_ids: Entity with id "{_id}" was NOT found in label&type documents.')
                 res_dict[_id] = (None, None)
 
-        LOGGER.debug(f"res_dict in self._get_by_ids: {res_dict}")
+        self.logger.debug(f"res_dict in self._get_by_ids: {res_dict}")
 
         return res_dict
 
@@ -270,7 +271,7 @@ class ESActionOperator(ActionOperator):
         """Get RDF with given _id, which follows {sid}{rid}{oid} structure, if it exists"""
         index = self.index_rdf
         if not self.client.exists(index=index, id=_id):
-            LOGGER.info(f"get_rdf in ESActionOperator: rdf with _id {_id} doesn't exist in {index}.")
+            self.logger.info(f"get_rdf in ESActionOperator: rdf with _id {_id} doesn't exist in {index}.")
             return {}
 
         return self.client.get(index=index, id=_id)['_source']
@@ -279,14 +280,14 @@ class ESActionOperator(ActionOperator):
         f"""
         Should call this if you want to OVERWRITE the {self.ent_dict_path} with the current state of self.ent_dict
         """
-        LOGGER.info(f"updating ent_dict file at `{self.ent_dict_path}`")
+        self.logger.info(f"updating ent_dict file at `{self.ent_dict_path}`")
         json.dump(self.ent_dict, self.ent_dict_path.open("w", encoding='utf8'), indent=4)
 
     def update_rel_json(self):
         """
         Should call this if you want to OVERWRITE the self.rel_dict_path with the current state of self.rel_dict
         """
-        LOGGER.info(f"updating rel_dict file at `{self.rel_dict_path}`")
+        self.logger.info(f"updating rel_dict file at `{self.rel_dict_path}`")
         json.dump(self.rel_dict, self.rel_dict_path.open("w", encoding='utf8'), indent=4)
 
     @uppercase
@@ -326,7 +327,7 @@ class ESActionOperator(ActionOperator):
             return self.client.get(index=index, id=gid)['_source']['label']
 
         print("e", end="")
-        return self._get_english_label_from_wikidata(gid, self.wd_client, LOGGER)
+        return self._get_english_label_from_wikidata(gid, self.wd_client, self.logger)
 
     # @uppercase
     # def get_entity_label(self, eid: str):
@@ -357,7 +358,7 @@ class ESActionOperator(ActionOperator):
         """Get list of types for given entity (eid) if it exists."""
         index = self.index_ent
         if not self.client.exists(index=index, id=eid):
-            LOGGER.info(f"get_types in ESActionOperator: entity with {eid} doesn't exist in {index}.")
+            self.logger.info(f"get_types in ESActionOperator: entity with {eid} doesn't exist in {index}.")
             return []
 
         return self.client.get(index=index, id=eid)['_source']['types']
@@ -383,7 +384,7 @@ class ESActionOperator(ActionOperator):
                                      }
                                  })
 
-        LOGGER.debug(f"res in self.find: {res}")
+        self.logger.debug(f"res in self.find: {res}")
 
         if res['hits']['total']['value'] <= 0:
             return OrderedSet()
@@ -415,7 +416,7 @@ class ESActionOperator(ActionOperator):
                                      }
                                  })
 
-        LOGGER.debug(f"res in self.find_reverse: {res}")
+        self.logger.debug(f"res in self.find_reverse: {res}")
 
         if res['hits']['total']['value'] <= 0:
             return OrderedSet()
@@ -430,15 +431,15 @@ class ESActionOperator(ActionOperator):
     def filter_type(self, ent_set: OrderedSet, typ: str):
         result = OrderedSet()
         if not ent_set:
-            LOGGER.info(f"in filter_type: ent_set is empty, returning empty set")
+            self.logger.info(f"in filter_type: ent_set is empty, returning empty set")
             return result
 
         if type(ent_set) is not OrderedSet:
-            LOGGER.warning(
+            self.logger.warning(
                 f"in filter_type: ent_set ({ent_set}) was type {type(ent_set)}, this might result in ordering problems.")
 
         if typ is None:
-            LOGGER.info(f"in filter_type: typ is None, returning original set")
+            self.logger.info(f"in filter_type: typ is None, returning original set")
             return ent_set
 
         lab_tp_dict = self._get_by_ids(ent_set, self.index_ent)
@@ -451,7 +452,7 @@ class ESActionOperator(ActionOperator):
                 continue  # TODO: maybe implement list of missing entities?
 
             if typ == '' and lab_tp_dict[oid][-1] == []:
-                LOGGER.debug(f"in filter_type: typ is '', filtering entity with type==[]")
+                self.logger.debug(f"in filter_type: typ is '', filtering entity with type==[]")
                 result.add(oid)
             elif typ in lab_tp_dict[oid][-1]:
                 result.add(oid)
@@ -471,7 +472,7 @@ class ESActionOperator(ActionOperator):
         """
         typ_set = OrderedSet([t1, t2])
         if type(ent_set) is not OrderedSet:
-            LOGGER.warning(
+            self.logger.warning(
                 f"in filter_multi_types: ent_set ({ent_set}) was type {type(ent_set)}, this might result in ordering problems.")
             ent_set = OrderedSet(ent_set)
 
@@ -502,7 +503,7 @@ class ESActionOperator(ActionOperator):
             return None
 
         res = self.client.search(index=self.index_rdf, query=self._match('rid', r), size=args.max_results)
-        LOGGER.debug(f'res in fild_tuple_counts: {res}')
+        self.logger.debug(f'res in fild_tuple_counts: {res}')
 
         tuple_count = dict()
         subjects = OrderedSet()
@@ -510,9 +511,9 @@ class ESActionOperator(ActionOperator):
         for hit in res['hits']['hits']:
             subjects.append(hit['_source']['sid'])
 
-        LOGGER.debug(f'subjects in fild_tuple_counts: {subjects}')
+        self.logger.debug(f'subjects in fild_tuple_counts: {subjects}')
         subject_subset = self.filter_type(subjects, t1)
-        LOGGER.debug(f'subject_subset in fild_tuple_counts: {subject_subset}')
+        self.logger.debug(f'subject_subset in fild_tuple_counts: {subject_subset}')
 
         for sub in subject_subset:
             obj_filtered = self.filter_type(self.find(sub, r), t2)
@@ -533,7 +534,7 @@ class ESActionOperator(ActionOperator):
             return None
 
         res = self.client.search(index=self.index_rdf, query=self._match('rid', r), size=args.max_results)
-        LOGGER.debug(f'res in fild_reverse_tuple_counts: {res}')
+        self.logger.debug(f'res in fild_reverse_tuple_counts: {res}')
 
         tuple_count = dict()
         objects = OrderedSet()
@@ -541,9 +542,9 @@ class ESActionOperator(ActionOperator):
         for hit in res['hits']['hits']:
             objects.append(hit['_source']['oid'])
 
-        LOGGER.debug(f'objects in fild_tuple_counts: {objects}')
+        self.logger.debug(f'objects in fild_tuple_counts: {objects}')
         object_subset = self.filter_type(objects, t1)
-        LOGGER.debug(f'object_subset in fild_tuple_counts: {object_subset}')
+        self.logger.debug(f'object_subset in fild_tuple_counts: {object_subset}')
 
         for obj in object_subset:
             sub_filtered = self.filter_type(self.find_reverse(obj, r), t2)
@@ -564,15 +565,15 @@ class ESActionOperator(ActionOperator):
         """
         _id = f'{sid}{rid}{oid}'.upper()
         if self.client.exists(index=self.index_rdf, id=_id):
-            LOGGER.info(f'insert in actions: entry with id {_id} already exists in {self.index_rdf}')
+            self.logger.info(f'insert in actions: entry with id {_id} already exists in {self.index_rdf}')
             return None
 
         if not self.client.exists(index=self.index_ent, id=sid):
-            LOGGER.warning(f"insert in actions: entry with id {sid} doesn't exists in {self.index_ent}! (Problem in NER module?)")
+            self.logger.warning(f"insert in actions: entry with id {sid} doesn't exists in {self.index_ent}! (Problem in NER module?)")
             # NOTE: This shouldn't be possile to happen, as we create new entities in NER module
 
         self.client.index(index=self.index_rdf, id=_id, document={'sid': sid, 'rid': rid, 'oid': oid})
-        LOGGER.info(f'insert in actions: entry with id {_id} was added to {self.index_rdf}')
+        self.logger.info(f'insert in actions: entry with id {_id} was added to {self.index_rdf}')
 
         return OrderedSet([sid, oid])
 
@@ -595,14 +596,14 @@ class ESActionOperator(ActionOperator):
         for eid, labl in zip(ent_set, label_list):
             try:
                 cur_label = self.client.get(index=self.index_ent, id=eid)['_source']['label']
-                LOGGER.debug(f'cur_label in update_labels: {cur_label}')
+                self.logger.debug(f'cur_label in update_labels: {cur_label}')
                 if not cur_label or overwrite:
                     res = self.client.update(index=self.index_ent, id=eid, doc={'label': labl})
                     op_results.append(res['result'])
                 else:
-                    LOGGER.info(f'in update_labels: entity {eid} already has label {cur_label} and overwrite==False. Skipping')
+                    self.logger.info(f'in update_labels: entity {eid} already has label {cur_label} and overwrite==False. Skipping')
             except elasticsearch.NotFoundError:
-                LOGGER.info(f'set_labels in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
+                self.logger.info(f'set_labels in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
                 op_results.append('noop')
 
         return op_results
@@ -632,7 +633,7 @@ class ESActionOperator(ActionOperator):
                     op_results.append(res['result'])
                     # TODO: Alternatively use append pipeline processor?
             except elasticsearch.NotFoundError:
-                LOGGER.info(f'update_types in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
+                self.logger.info(f'update_types in actions: entity with id {eid} not found in {self.index_ent}. Skipping.')
                 op_results.append('noop')
 
         return op_results
@@ -649,16 +650,16 @@ class ESActionOperator(ActionOperator):
         """
         _id = f'{sid}{rid}{oid}'.upper()
         if not self.client.exists(index=self.index_rdf, id=_id):
-            LOGGER.info(f"delete_rdf in actions: entry with id {_id} doesn't exist in {self.index_rdf}. No action")
+            self.logger.info(f"delete_rdf in actions: entry with id {_id} doesn't exist in {self.index_rdf}. No action")
             return None
 
         self.client.delete(index=self.index_rdf, id=_id)
-        LOGGER.info(f'delete_rdf in actions: entry with id {_id} was removed from {self.index_rdf}')
+        self.logger.info(f'delete_rdf in actions: entry with id {_id} was removed from {self.index_rdf}')
 
         return OrderedSet([sid, oid])
 
 
-def search_by_label(client: Elasticsearch, query: str, filter_type: str, res_size=50, index=args.elastic_index_ent):
+def search_by_label(client: Elasticsearch, query: str, filter_type: str, res_size=1, index=args.elastic_index_ent_full):
     """ ElasticSearch implementation of inverse index Fuzzy search. Essentially searching for a document with specific label
     utilizing a bit of fuzziness to account for misspellings and typos.
 
@@ -675,8 +676,20 @@ def search_by_label(client: Elasticsearch, query: str, filter_type: str, res_siz
     return [res[0] for res in filtered_results] if filtered_results else [res[0] for res in results]
 
 
-def create_entity(client: Elasticsearch, eid: str=None, label: str=None, types: list[str] = tuple(), production=False, eid_range=(1000000, 9999999)):
-    """ create new entity in args.elastic_index_ent
+def _gen_unique_id(client: Elasticsearch, eid_range: tuple[int, int]):
+    # generate new id randomly until we generate unique id
+    while True:
+        eid = f'Q{randint(eid_range[0], eid_range[1])}'
+
+        if not client.exists(index=args.elastic_index_ent_full, id=eid):
+            break
+
+    return eid
+
+
+def create_entity(client: Elasticsearch, eid: str=None, label: str=None, types: list[str] = tuple(), production=False,
+                  eid_range=(1000000, 9999999), logger=LOGGER):
+    """ create new entity in args.elastic_index_ent_full
 
     :param client: Elasticsearch client object
     :param eid: (str) entity id, if eid is None, generate random unique eid
@@ -684,6 +697,7 @@ def create_entity(client: Elasticsearch, eid: str=None, label: str=None, types: 
     :param types: (list[str]) list of types of the newly create entity
     :param production: (bool) if production==True, eids are generated by random generator, else it is taken from dataset
     :param eid_range: (tuple[int]) minimum and maximum value for random eid generator
+    :param logger: logging.Logger from parent
     :return eid: (str) newly generated entity id OR passthrough of eid from input (if eid is not None)
     """
 
@@ -696,17 +710,17 @@ def create_entity(client: Elasticsearch, eid: str=None, label: str=None, types: 
     if eid is None:
         if production:
             # generate new id randomly until we generate unique id
-            while True:
-                eid = f'Q{randint(eid_range[0], eid_range[1])}'
-
-                if not client.exists(index=args.elastic_index_ent, id=eid):
-                    break
+            eid = _gen_unique_id(client, eid_range)
         else:
             # 'generate' new id corresponding to index_ent_full
             # NOTE: for traning purposes, this randomness is artificially made to reflect training set entity ids
-            eid = search_by_label(client, label, '', res_size=1, index=args.elastic_index_ent_full)[0]
+            try:
+                eid = search_by_label(client, label, '', res_size=1, index=args.elastic_index_ent_full)[0]
+            except IndexError:
+                logger.info(f"`{label}` not in KG, generating random eid: {eid}")
+                eid = _gen_unique_id(client, eid_range)
 
-    client.index(index=args.elastic_index_ent, id=eid, document={'label': label, 'types': types})
-    LOGGER.info(f'create_entity in actions: added new entry to {args.elastic_index_ent} with id: {eid} label: {label}, types: {types}')
+    client.index(index=args.elastic_index_ent_full, id=eid, document={'label': label, 'types': types})
+    logger.info(f'create_entity in actions: added new entry to {args.elastic_index_ent_full} with id: {eid} label: {label}, types: {types}')
 
     return eid

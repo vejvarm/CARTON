@@ -4,6 +4,7 @@ import time
 import json
 import logging
 import torch.nn as nn
+from tqdm import tqdm
 
 import helpers
 from action_executor.actions import search_by_label, create_entity
@@ -250,20 +251,21 @@ class Scorer(object):
 
 
 class Inference(object):
-    def __init__(self):
+    def __init__(self, logger=LOGGER):
         self.tokenizer = BertTokenizer.from_pretrained(BERT_BASE_UNCASED)
         self.inference_actions = []
         self.es = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
                                 basic_auth=(args.elastic_user, args.elastic_password),
                                 retry_on_timeout=True)  # for inverse index search
+        self.logger = logger
 
     def construct_actions(self, inference_data, predictor):
-        LOGGER.info(f'Constructing actions for: {args.question_type}')
+        self.logger.info(f'Constructing actions for: {args.question_type}')
         self.inference_actions = []  # clear inference actions from previous run
         tic = time.perf_counter()
         # based on model outpus create a final logical form to execute
         question_type_inference_data = [data for data in inference_data if args.question_type in data[QUESTION_TYPE]]
-        for i, sample in enumerate(question_type_inference_data):
+        for i, sample in tqdm(enumerate(question_type_inference_data)):
             predictions = predictor.predict(sample[CONTEXT_QUESTION])  # NOTE: detokenized predictions!
             actions = []
             logical_form_prediction = predictions[LOGICAL_FORM]
@@ -379,11 +381,15 @@ class Inference(object):
                 ent_tokens = [context_question[idx] for idx, _ in ent_idx]
                 # get string from tokens using tokenizer
                 ent_label = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')  # NOTE: this is label of one entity
+                ent_label = ent_label.replace("[SEP]", "").replace("NA", "").strip()
+                if ent_label == "":
+                    break
                 # get elastic search results
-                es_results = search_by_label(self.es, ent_label, ent_idx[0][1])  # use type from B tag only (rest is redundant)
+                es_results = search_by_label(self.es, ent_label, ent_idx[0][1], index=args.elastic_index_ent_full)  # use type from B tag only (rest is redundant)
                 if not es_results:
                     # if no entity was found, generate new entity!
-                    es_results = [create_entity(self.es, label=ent_label, types=[ent_idx[0][1]])]
+                    type_list = list(set([ent_idx[i][1] for i in range(len(ent_idx))]))
+                    es_results = [create_entity(self.es, label=ent_label, types=type_list, production=args.production, logger=self.logger)]
                 # add indices to dict
                 for idx, _ in ent_idx:
                     ner_idx_ent[idx] = es_results
@@ -395,10 +401,11 @@ class Inference(object):
             # get string from tokens using tokenizer
             ent_label = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')  # NOTE: this is label of one entity
             # get elastic search results
-            es_results = search_by_label(self.es, ent_label, ent_idx[0][1])  # use type from B tag only (rest is redundant)
+            es_results = search_by_label(self.es, ent_label, ent_idx[0][1], index=args.elastic_index_ent_full)  # use type from B tag only (rest is redundant)
             if not es_results:
                 # if no entity was found, generate new entity!
-                es_results = [create_entity(self.es, label=ent_label, types=[ent_idx[0][1]])]
+                type_list = list(set([ent_idx[i][1] for i in range(len(ent_idx))]))
+                es_results = [create_entity(self.es, label=ent_label, types=type_list, production=args.production, logger=self.logger)]
             # add indices to dict
             for idx, _ in ent_idx:
                 ner_idx_ent[idx] = es_results

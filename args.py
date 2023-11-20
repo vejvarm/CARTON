@@ -58,12 +58,12 @@ def get_parser():
     parser.add_argument('--pool_size', default=100, type=int)
 
     # test and inference
-    parser.add_argument('--model_path', default='experiments/models/CARTONwNERwLinPtr_e42_v0.0145_multitask.pth.tar',
+    parser.add_argument('--model-path', default='experiments/models/CARTONNER_csqa_e10_v0.0102_multitask.pth.tar',
                         type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--inference_partition', default=InferencePartition.TEST.value,
                         choices=[ip.value for ip in InferencePartition], type=str)
-    parser.add_argument('--question_type', default=QuestionTypes.SIMPLE_DIRECT.value,
+    parser.add_argument('--question-type', default=QuestionTypes.SIMPLE_DIRECT.value,
                         choices=[qt.value for qt in QuestionTypes], type=str)
     parser.add_argument('--max_results', default=1000, help='maximum number of results', type=int)
     parser.add_argument('--ner_max_distance', default=[0, 0, 1, 1, 1, 2])
@@ -78,6 +78,9 @@ def get_parser():
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')
     parser.add_argument('--elastic_password', default=Passwords.FREYA.value, choices=[pw.value for pw in Passwords])
+
+    # production related
+    parser.add_argument('--production', action='store_true', help='production with unknown KG.')
 
     return parser
 

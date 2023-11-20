@@ -43,20 +43,6 @@ else:
     DEVICE = "cpu"
 
 
-# def collate_fn(batch):
-#     # sort the list of examples by the length of the input in descending order
-#     # print(batch)
-#     batch.sort(key=lambda x: len(x.input), reverse=True)
-#     # separate the inputs and targets, and pad the sequences
-#     # inputs, targets = zip(*batch)
-#     inputs = pad_sequence(batch, padding_value=PAD_TOKEN)
-#     # targets = pad_sequence(targets, padding_value=PAD_TOKEN)
-#     return inputs
-
-# text_transform = lambda x: [vocab['<BOS>']] + [vocab[token] for token in tokenizer(x)] + [vocab['<EOS>']]
-# label_transform = lambda x: 1 if x == 'pos' else 0
-
-
 @dataclass
 class DataBatch:
     """
@@ -270,15 +256,12 @@ def main():
 
     # run epochs
     for epoch in range(args.start_epoch, args.epochs):
-        # train for one epoch
-        train(train_loader, model, vocabs, train_helper, criterion, optimizer, epoch)
-
         # evaluate on validation set
-        if (epoch+1) % args.valfreq == 0:
+        if epoch % args.valfreq == 0:
             val_loss = validate(val_loader, model, vocabs, val_helper, criterion, single_task_loss)
             best_val = min(val_loss, best_val)  # log every validation step
             save_checkpoint({
-                    EPOCH: epoch + 1,
+                    EPOCH: epoch,
                     STATE_DICT: model.state_dict(),
                     BEST_VAL: best_val,
                     OPTIMIZER: optimizer.optimizer.state_dict(),
@@ -288,6 +271,22 @@ def main():
             )
             LOGGER.info(f'* Val loss: {val_loss:.4f}')
 
+        # train for one epoch
+        train(train_loader, model, vocabs, train_helper, criterion, optimizer, epoch)
+
+    # Validate and save the final epoch
+    val_loss = validate(val_loader, model, vocabs, val_helper, criterion, single_task_loss)
+    best_val = min(val_loss, best_val)  # log every validation step
+    save_checkpoint({
+        EPOCH: args.epochs,
+        STATE_DICT: model.state_dict(),
+        BEST_VAL: best_val,
+        OPTIMIZER: optimizer.optimizer.state_dict(),
+        CURR_VAL: val_loss
+    },
+        experiment=args.name
+    )
+    LOGGER.info(f'* Val loss: {val_loss:.4f}')
 
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
     batch_time = AverageMeter()
