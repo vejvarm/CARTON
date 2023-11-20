@@ -266,7 +266,7 @@ def main():
     LOGGER.info(f"Unique tokens in ner vocabulary: {len(vocabs[NER])}")
     LOGGER.info(f"Unique tokens in coref vocabulary: {len(vocabs[COREF])}")
     LOGGER.info(f'Epochs: {args.epochs}')
-    LOGGER.info(f'Batches: {args.batch_size}')
+    LOGGER.info(f'Batch size: {args.batch_size}')
 
     # run epochs
     for epoch in range(args.start_epoch, args.epochs):
