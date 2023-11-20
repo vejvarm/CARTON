@@ -456,8 +456,8 @@ def rapidfuzz_query(query, filter_type, kg, res_size=50):
     return filtered_res if filtered_res else unfiltered_res
 
 
-def save_checkpoint(state):
-    filename = f'{ROOT_PATH}/{args.snapshots}/{MODEL_NAME}_e{state[EPOCH]}_v{state[CURR_VAL]:.4f}_{args.task}.pth.tar'
+def save_checkpoint(state: dict, experiment: str = ""):
+    filename = f'{ROOT_PATH}/{args.snapshots}/{MODEL_NAME}_{experiment}_e{state[EPOCH]}_v{state[CURR_VAL]:.4f}_{args.task}.pth.tar'
     torch.save(state, filename)
 
 

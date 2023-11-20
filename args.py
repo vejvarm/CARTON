@@ -10,6 +10,7 @@ def get_parser():
     parser.add_argument('--seed', default=1234, type=int)
     parser.add_argument('--no-cuda', action='store_true')
     parser.add_argument('--cuda-device', default=0, type=int)
+    parser.add_argument('--name', default="", type=str)
 
     # data
     parser.add_argument('--data-path', default='data/final/csqa')
