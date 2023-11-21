@@ -16,7 +16,7 @@ def get_parser():
     parser.add_argument('--data-path', default='data/final/csqa')
     parser.add_argument('--no-data-cache', action='store_true')
     parser.add_argument('--no-vocab-cache', action='store_true')
-    parser.add_argument('--cache-path', default='.cache', type=str)
+    parser.add_argument('--cache-path', default='.cache/merged', type=str)
     # parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
     parser.add_argument('--ent_dict_path', default="knowledge_graph/items_wikidata_n.json")
     parser.add_argument('--rel_dict_path', default="knowledge_graph/index_rel_dict.json")
@@ -58,7 +58,7 @@ def get_parser():
     parser.add_argument('--pool_size', default=100, type=int)
 
     # test and inference
-    parser.add_argument('--model-path', default='experiments/models/CARTONNER_csqa_e10_v0.0102_multitask.pth.tar',
+    parser.add_argument('--model-path', default='experiments/models/CARTONNER_merged_e10_v0.0153_multitask.pth.tar',
                         type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--inference_partition', default=InferencePartition.TEST.value,

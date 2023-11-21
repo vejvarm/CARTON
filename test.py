@@ -41,7 +41,7 @@ else:
 
 def main():
     # load data
-    dataset = CSQADataset(args)
+    dataset = CSQADataset(args, splits=('test', ))  # assuming we already have the correct vocab cache from all splits!
     vocabs = dataset.get_vocabs()
     inference_data = dataset.get_inference_data()  # TODO: check and refactor this function
 

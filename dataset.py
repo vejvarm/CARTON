@@ -2,6 +2,7 @@ import json
 import pathlib
 import pickle
 from collections import Counter
+from dataclasses import dataclass
 from glob import glob
 from itertools import chain
 
@@ -9,6 +10,7 @@ from torchtext.vocab import Vocab
 from transformers import BertTokenizer
 from torchtext.data import Field, Example, Dataset
 import torch
+from torch.nn.utils.rnn import pad_sequence
 
 from constants import (LOGICAL_FORM, ROOT_PATH, QUESTION_TYPE, ENTITY, GOLD, LABEL, NA_TOKEN, SEP_TOKEN,
                        GOLD_ACTIONS, PAD_TOKEN, ACTION, RELATION, TYPE, PREV_ANSWER, VALUE, QUESTION,
@@ -16,25 +18,95 @@ from constants import (LOGICAL_FORM, ROOT_PATH, QUESTION_TYPE, ENTITY, GOLD, LAB
                        UNK_TOKEN, END_TOKEN, INPUT, ID, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, B, I, O)
 
 
+@dataclass
+class DataBatch:
+    """
+        data[split]
+        [0] ... ID
+        [1] ... INPUT
+        [2] ... LOGICAL_FORM
+        [3] ... NER
+        [4] ... COREF
+        [5] ... PREDICATE_POINTER
+        [6] ... TYPE_POINTER
+        [7] ... ENTITY
+    """
+    id: torch.Tensor  # str
+    input: torch.Tensor  # str
+    logical_form: torch.Tensor  # list[str]
+    ner: torch.Tensor  # list[str]
+    coref: torch.Tensor  # list[str]
+    predicate_pointer: torch.Tensor  # list[int]
+    type_pointer = torch.Tensor  # list[int]
+    entity_pointer = torch.Tensor  # list[int]
+
+    def __init__(self, batch: list[list[any]], vocabs: dict, device: str):
+        id = []
+        inp = []
+        lf = []
+        ner = []
+        coref = []
+        predicate_pointer = []
+        type_pointer = []
+        entity_pointer = []
+        for sample in batch:
+            id.append(int(sample[0]))
+            inp.append(self._tensor([vocabs[INPUT].stoi[s] for s in sample[1]]))
+            lf.append(self._tensor([vocabs[LOGICAL_FORM].stoi[s] for s in sample[2]]))
+            ner.append(self._tensor([vocabs[NER].stoi[s] for s in sample[3]]))
+            coref.append(self._tensor([vocabs[COREF].stoi[s] for s in sample[4]]))
+            predicate_pointer.append(self._tensor([vocabs[PREDICATE_POINTER].stoi[s] for s in sample[5]]))
+            type_pointer.append(self._tensor([vocabs[TYPE_POINTER].stoi[s] for s in sample[6]]))
+            entity_pointer.append(self._tensor([vocabs[ENTITY].stoi[s] for s in sample[7]]))
+
+        self.id = self._tensor(id).to(device)
+        self.input = pad_sequence(inp,
+                                  padding_value=vocabs[INPUT].stoi[PAD_TOKEN],
+                                  batch_first=True).to(device)
+        self.logical_form = pad_sequence(lf,
+                                         padding_value=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN],
+                                         batch_first=True).to(device)  # ANCHOR this is not gonna work as we assume all LFs have same length, which is not true
+        self.ner = pad_sequence(ner,
+                                padding_value=vocabs[NER].stoi[PAD_TOKEN],
+                                batch_first=True).to(device)
+        self.coref = pad_sequence(coref,
+                                  padding_value=vocabs[COREF].stoi[PAD_TOKEN],
+                                  batch_first=True).to(device)
+        self.predicate_pointer = pad_sequence(predicate_pointer,
+                                              padding_value=vocabs[PREDICATE_POINTER].stoi[PAD_TOKEN],
+                                              batch_first=True).to(device)
+        self.type_pointer = pad_sequence(type_pointer,
+                                         padding_value=vocabs[TYPE_POINTER].stoi[PAD_TOKEN],
+                                         batch_first=True).to(device)
+        self.entity_pointer = pad_sequence(entity_pointer,
+                                           padding_value=vocabs[ENTITY].stoi[PAD_TOKEN],
+                                           batch_first=True).to(device)
+
+    @staticmethod
+    def _tensor(data):
+        return torch.tensor(data)
+
+
+def collate_fn(batch, vocabs: dict, device: str):
+    return DataBatch(batch, vocabs, device)
+
+
 class CSQADataset:
 
-    def __init__(self, args):
+    def __init__(self, args, splits=('train', 'val', 'test')):
         data_path_rel = args.data_path
-        self.train_path = ROOT_PATH.joinpath(data_path_rel).joinpath("train")
-        self.val_path = ROOT_PATH.joinpath(data_path_rel).joinpath("val")
-        self.test_path = ROOT_PATH.joinpath(data_path_rel).joinpath("test")
+        self.source_paths = {split: ROOT_PATH.joinpath(data_path_rel).joinpath(split) for split in splits}
+        # self.train_path = ROOT_PATH.joinpath(data_path_rel).joinpath("train")
+        # self.val_path = ROOT_PATH.joinpath(data_path_rel).joinpath("val")
+        # self.test_path = ROOT_PATH.joinpath(data_path_rel).joinpath("test")
 
         self.id = 0
         self.no_data_cache = args.no_data_cache
         self.no_vocab_cache = args.no_vocab_cache
         self.cache_path = pathlib.Path(args.cache_path)
         self.cache_path.mkdir(parents=True, exist_ok=True)
-        self.data, self.helpers = self.preprocess_data()
-        # self.load_data_and_fields(data, helpers)
+        self.data, self.helpers = self.preprocess_data(splits)
         self.vocabs = self.build_vocabs(self.data)
-        # print(self.vocabs[ID].itos[0])
-        # print(f"{self.vocabs[INPUT].itos[10]}: {self.vocabs[INPUT].vectors[10]}")
-        # print(f"{self.vocabs[COREF].itos[10]}: {self.vocabs[COREF].freqs}")
         print("done")
         # exit()
 
@@ -89,12 +161,13 @@ class CSQADataset:
         return vocabs
 
     def preprocess_data(self, splits=('train', 'val', 'test')):
-        source_paths = {'train': self.train_path,
-                        'val': self.val_path,
-                        'test': self.test_path}
+        # source_paths = {'train': self.train_path,
+        #                 'val': self.val_path,
+        #                 'test': self.test_path}
+
         data = dict()
         helpers = dict()
-        for split in splits:
+        for split, path_to_split in self.source_paths.items():
             data_cache_file = self.cache_path.joinpath(split).with_suffix(".pkl")
             helper_cache_file = self.cache_path.joinpath(f"{split}_helper").with_suffix(".pkl")
             if data_cache_file.exists() and helper_cache_file.exists() and not self.no_data_cache:
@@ -104,7 +177,7 @@ class CSQADataset:
             else:
                 print(f"Building {split} from raw data...")
                 raw_data = []
-                split_files = source_paths[split].glob("*/QA_*.json")
+                split_files = path_to_split.glob("*/QA_*.json")
                 for f in split_files:
                     with open(f, encoding='utf8') as json_file:
                         raw_data.append(json.load(json_file))
@@ -430,7 +503,7 @@ class CSQADataset:
         return input_data, helper_data
 
     def get_inference_data(self, max_files: int = None):
-        files = self.test_path.glob('*/QA_*.json')
+        files = self.source_paths['test'].glob('*/QA_*.json')
 
         partition = []
         for i, f in enumerate(files):
@@ -615,10 +688,12 @@ class CSQADataset:
         return vocab
 
     def get_data(self):
-        return self.data['train'], self.data['val'], self.data['test']
+        # return self.data['train'], self.data['val'], self.data['test']
+        return self.data
 
     def get_data_helper(self):
-        return self.helpers['train'], self.helpers['val'], self.helpers['test']
+        # return self.helpers['train'], self.helpers['val'], self.helpers['test']
+        return self.helpers
 
     # def get_fields(self):
     #     return {

@@ -478,6 +478,56 @@ class SingleTaskLoss(nn.Module):
         return self.criterion(output, target)
 
 
+class SingleTaskAccuracy(nn.Module):
+    '''Single Task Accuracy'''
+    def __init__(self, device=DEVICE):
+        super().__init__()
+        self.device = device
+
+    def forward(self, output, target):
+        # Assuming outputs and labels are torch tensors.
+        # Outputs could be raw logits or probabilities from the last layer of a neural network
+        # Convert outputs to predicted class indices if they are not already
+        # TODO: maybe do .to(self.device)
+        preds = output.argmax(dim=1) if output.ndim > 1 else output
+        correct = preds.eq(target).sum()
+        return correct.float() / target.size(0)
+
+
+class MultiTaskAcc(nn.Module):
+    '''Multi Task Learning Accuracy Calculation'''
+    def __init__(self, device=DEVICE):
+        super().__init__()
+        self.device = device
+        self.lf_acc = SingleTaskAccuracy(self.device)
+        self.ner_acc = SingleTaskAccuracy(self.device)
+        self.coref_acc = SingleTaskAccuracy(self.device)
+        self.pp_acc = SingleTaskAccuracy(self.device)
+        self.tp_acc = SingleTaskAccuracy(self.device)
+
+        self.mml_emp = torch.Tensor([True, True, True, True, True])
+        self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))
+
+    def forward(self, output, target):
+        # weighted loss
+        accs = torch.stack((
+            self.lf_acc(output[LOGICAL_FORM], target[LOGICAL_FORM]),
+            self.ner_acc(output[NER], target[NER]),
+            self.coref_acc(output[COREF], target[COREF]),
+            self.pp_acc(output[PREDICATE_POINTER], target[PREDICATE_POINTER]),
+            self.tp_acc(output[TYPE_POINTER], target[TYPE_POINTER]),
+        ))
+
+        return {
+            LOGICAL_FORM: accs[0],
+            NER: accs[1],
+            COREF: accs[2],
+            PREDICATE_POINTER: accs[3],
+            TYPE_POINTER: accs[4],
+            MULTITASK: accs.mean()
+        }
+
+
 class MultiTaskLoss(nn.Module):
     '''Multi Task Learning Loss'''
     def __init__(self, ignore_index, device=DEVICE):

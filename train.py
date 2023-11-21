@@ -3,7 +3,6 @@ import random
 import logging
 from typing import Iterator, List
 from copy import deepcopy
-from dataclasses import dataclass
 from functools import partial
 
 import numpy as np
@@ -11,9 +10,7 @@ import torch.optim
 from tqdm import tqdm
 
 from model import CARTON
-from dataset import CSQADataset
-from torchtext.data import BucketIterator
-from torch.nn.utils.rnn import pad_sequence
+from dataset import CSQADataset, collate_fn
 from torch.utils.data import DataLoader, SequentialSampler, BatchSampler, RandomSampler
 from utils import (NoamOpt, AverageMeter, SingleTaskLoss, MultiTaskLoss, save_checkpoint, init_weights)
 
@@ -43,148 +40,12 @@ else:
     DEVICE = "cpu"
 
 
-@dataclass
-class DataBatch:
-    """
-        data[split]
-        [0] ... ID
-        [1] ... INPUT
-        [2] ... LOGICAL_FORM
-        [3] ... NER
-        [4] ... COREF
-        [5] ... PREDICATE_POINTER
-        [6] ... TYPE_POINTER
-        [7] ... ENTITY
-    """
-    id: torch.Tensor  # str
-    input: torch.Tensor  # str
-    logical_form: torch.Tensor  # list[str]
-    ner: torch.Tensor  # list[str]
-    coref: torch.Tensor  # list[str]
-    predicate_pointer: torch.Tensor  # list[int]
-    type_pointer = torch.Tensor  # list[int]
-    entity_pointer = torch.Tensor  # list[int]
-
-    def __init__(self, batch: list[list[any]], vocabs: dict, device: str):
-        id = []
-        inp = []
-        lf = []
-        ner = []
-        coref = []
-        predicate_pointer = []
-        type_pointer = []
-        entity_pointer = []
-        for sample in batch:
-            id.append(int(sample[0]))
-            inp.append(self._tensor([vocabs[INPUT].stoi[s] for s in sample[1]]))
-            lf.append(self._tensor([vocabs[LOGICAL_FORM].stoi[s] for s in sample[2]]))
-            ner.append(self._tensor([vocabs[NER].stoi[s] for s in sample[3]]))
-            coref.append(self._tensor([vocabs[COREF].stoi[s] for s in sample[4]]))
-            predicate_pointer.append(self._tensor([vocabs[PREDICATE_POINTER].stoi[s] for s in sample[5]]))
-            type_pointer.append(self._tensor([vocabs[TYPE_POINTER].stoi[s] for s in sample[6]]))
-            entity_pointer.append(self._tensor([vocabs[ENTITY].stoi[s] for s in sample[7]]))
-
-        self.id = self._tensor(id).to(device)
-        self.input = pad_sequence(inp,
-                                  padding_value=vocabs[INPUT].stoi[PAD_TOKEN],
-                                  batch_first=True).to(device)
-        self.logical_form = pad_sequence(lf,
-                                         padding_value=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN],
-                                         batch_first=True).to(device)  # ANCHOR this is not gonna work as we assume all LFs have same length, which is not true
-        self.ner = pad_sequence(ner,
-                                padding_value=vocabs[NER].stoi[PAD_TOKEN],
-                                batch_first=True).to(device)
-        self.coref = pad_sequence(coref,
-                                  padding_value=vocabs[COREF].stoi[PAD_TOKEN],
-                                  batch_first=True).to(device)
-        self.predicate_pointer = pad_sequence(predicate_pointer,
-                                              padding_value=vocabs[PREDICATE_POINTER].stoi[PAD_TOKEN],
-                                              batch_first=True).to(device)
-        self.type_pointer = pad_sequence(type_pointer,
-                                         padding_value=vocabs[TYPE_POINTER].stoi[PAD_TOKEN],
-                                         batch_first=True).to(device)
-        self.entity_pointer = pad_sequence(entity_pointer,
-                                           padding_value=vocabs[ENTITY].stoi[PAD_TOKEN],
-                                           batch_first=True).to(device)
-
-    @staticmethod
-    def _tensor(data):
-        return torch.tensor(data)
-
-
-def collate_fn(batch, vocabs: dict, device: str):
-    return DataBatch(batch, vocabs, device)
-
-
-# train_iter = IMDB(split='train')
-# train_dataloader = DataLoader(list(train_iter), batch_size=8, shuffle=True,
-#                               collate_fn=collate_batch)
-
-# class CustomBatchSampler:
-#
-#     def __init__(self, split_dataset: list):
-#
-#
-#     def __init__(self, sampler: Union[Sampler[int], Iterable[int]], batch_size: int, drop_last: bool) -> None:
-#         # Since collections.abc.Iterable does not check for `__getitem__`, which
-#         # is one way for an object to be an iterable, we don't do an `isinstance`
-#         # check here.
-#         if not isinstance(batch_size, int) or isinstance(batch_size, bool) or \
-#                 batch_size <= 0:
-#             raise ValueError("batch_size should be a positive integer value, "
-#                              "but got batch_size={}".format(batch_size))
-#         if not isinstance(drop_last, bool):
-#             raise ValueError("drop_last should be a boolean value, but got "
-#                              "drop_last={}".format(drop_last))
-#         self.sampler = sampler
-#         self.batch_size = batch_size
-#         self.drop_last = drop_last
-#
-#
-#     def __iter__(self) -> Iterator[List[int]]:
-#         # Implemented based on the benchmarking in https://github.com/pytorch/pytorch/pull/76951
-#         if self.drop_last:
-#             sampler_iter = iter(self.sampler)
-#             while True:
-#                 try:
-#                     batch = [next(sampler_iter) for _ in range(self.batch_size)]
-#                     yield batch
-#                 except StopIteration:
-#                     break
-#         else:
-#             batch = [0] * self.batch_size
-#             idx_in_batch = 0
-#             for idx in self.sampler:
-#                 batch[idx_in_batch] = idx
-#                 idx_in_batch += 1
-#                 if idx_in_batch == self.batch_size:
-#                     yield batch
-#                     idx_in_batch = 0
-#                     batch = [0] * self.batch_size
-#             if idx_in_batch > 0:
-#                 yield batch[:idx_in_batch]
-#
-#     def batch_sampler(self, split_list: list, batch_size: int, pool_size=10000):
-#         indices = [(i, len(s[1])) for i, s in enumerate(split_list)]
-#         random.shuffle(indices)
-#         pooled_indices = []
-#         # create pool of indices with similar lengths
-#         for i in range(0, len(indices), batch_size * pool_size):
-#             pooled_indices.extend(sorted(indices[i:i + batch_size * pool_size], key=lambda x: x[1]))
-#
-#         pooled_indices = [x[0] for x in pooled_indices]
-#
-#         # yield indices for current batch
-#         for i in range(0, len(pooled_indices), batch_size):
-#             yield pooled_indices[i:i + batch_size]
-
-
 def main():
     # load data
-    dataset = CSQADataset(args)
+    dataset = CSQADataset(args)  # load all data from all splits to build full vocab from all splits
     vocabs = dataset.get_vocabs()
-    train_data, val_data, _ = dataset.get_data()  # TODO
-    train_helper, val_helper, _ = dataset.get_data_helper()  # TODO
+    data_dict = dataset.get_data()  # TODO
+    helper_dict = dataset.get_data_helper()
 
     # load model
     model = CARTON(vocabs, DEVICE).to(DEVICE)
@@ -225,28 +86,28 @@ def main():
     else:
         best_val = float('inf')
 
-    # bs = CustomBatchSampler(train_data)
+    # bs = CustomBatchSampler(data_dict['train'])
     # prepare training and validation loader
-    train_loader = torch.utils.data.DataLoader(train_data,
+    train_loader = torch.utils.data.DataLoader(data_dict['train'],
                                                # batch_size=args.batch_size,
                                                # shuffle=True,
                                                pin_memory=True,
                                                collate_fn=partial(collate_fn, vocabs=vocabs, device=DEVICE),
-                                               batch_sampler=BatchSampler(RandomSampler(train_data),
+                                               batch_sampler=BatchSampler(RandomSampler(data_dict['train']),
                                                                           batch_size=args.batch_size,
                                                                           drop_last=False),
                                                )
 
-    val_loader = torch.utils.data.DataLoader(val_data,
+    val_loader = torch.utils.data.DataLoader(data_dict['val'],
                                              batch_size=args.batch_size,
                                              shuffle=False,
                                              collate_fn=partial(collate_fn, vocabs=vocabs, device=DEVICE))
 
     LOGGER.info('Loaders prepared.')
-    LOGGER.info(f"Training data: {len(train_data)}")
-    LOGGER.info(f"Validation data: {len(val_data)}")
-    # LOGGER.info(f'Question example: {train_data}')
-    # LOGGER.info(f'Logical form example: {train_data.examples[0].logical_form}')
+    LOGGER.info(f"Training data: {len(data_dict['train'])}")
+    LOGGER.info(f"Validation data: {len(data_dict['val'])}")
+    # LOGGER.info(f'Question example: {data_dict['train']}')
+    # LOGGER.info(f'Logical form example: {data_dict['train'].examples[0].logical_form}')
     LOGGER.info(f"Unique tokens in input vocabulary: {len(vocabs[INPUT])}")
     LOGGER.info(f"Unique tokens in logical form vocabulary: {len(vocabs[LOGICAL_FORM])}")
     LOGGER.info(f"Unique tokens in ner vocabulary: {len(vocabs[NER])}")
@@ -258,7 +119,7 @@ def main():
     for epoch in range(args.start_epoch, args.epochs):
         # evaluate on validation set
         if epoch % args.valfreq == 0:
-            val_loss = validate(val_loader, model, vocabs, val_helper, criterion, single_task_loss)
+            val_loss = validate(val_loader, model, vocabs, helper_dict['val'], criterion, single_task_loss)
             best_val = min(val_loss, best_val)  # log every validation step
             save_checkpoint({
                     EPOCH: epoch,
@@ -272,10 +133,10 @@ def main():
             LOGGER.info(f'* Val loss: {val_loss:.4f}')
 
         # train for one epoch
-        train(train_loader, model, vocabs, train_helper, criterion, optimizer, epoch)
+        train(train_loader, model, vocabs, helper_dict['train'], criterion, optimizer, epoch)
 
     # Validate and save the final epoch
-    val_loss = validate(val_loader, model, vocabs, val_helper, criterion, single_task_loss)
+    val_loss = validate(val_loader, model, vocabs, helper_dict['val'], criterion, single_task_loss)
     best_val = min(val_loss, best_val)  # log every validation step
     save_checkpoint({
         EPOCH: args.epochs,
@@ -287,6 +148,7 @@ def main():
         experiment=args.name
     )
     LOGGER.info(f'* Val loss: {val_loss:.4f}')
+
 
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
     batch_time = AverageMeter()
@@ -313,13 +175,13 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
             LOGGER.debug(f'output[NER] in train: ({output[NER].shape}) {output[NER]}')
             LOGGER.debug(f'output[COREF] in train: ({output[COREF].shape}) {output[COREF]}')
 
-            ner_out = output[NER].detach().argmax(1).tolist()
-            LOGGER.debug(f'ner_out in train: ({len(ner_out)}) {ner_out}')
-            ner_str = [vocabs[NER].itos[i] for i in ner_out][1:-1]
-            LOGGER.debug(f'ner_str in train: ({len(ner_str)}) {ner_str}')
-            ner_indices = {k: tag.split('-')[-1] for k, tag in enumerate(ner_str) if
-                                       tag.startswith(B) or tag.startswith(I)}  # idx: type_id
-            LOGGER.debug(f'ner_indices in train: ({len(ner_indices)}) {ner_indices}')
+            # ner_out = output[NER].detach().argmax(1).tolist()
+            # LOGGER.debug(f'ner_out in train: ({len(ner_out)}) {ner_out}')
+            # ner_str = [vocabs[NER].itos[i] for i in ner_out][1:-1]
+            # LOGGER.debug(f'ner_str in train: ({len(ner_str)}) {ner_str}')
+            # ner_indices = {k: tag.split('-')[-1] for k, tag in enumerate(ner_str) if
+            #                            tag.startswith(B) or tag.startswith(I)}  # idx: type_id
+            # LOGGER.debug(f'ner_indices in train: ({len(ner_indices)}) {ner_indices}')
 
             # prepare targets
             target = {
