@@ -5,6 +5,7 @@ import json
 import logging
 import torch.nn as nn
 from tqdm import tqdm
+from torchmetrics.classification import MulticlassAccuracy, MulticlassRecall
 
 import helpers
 from action_executor.actions import search_by_label, create_entity
@@ -55,10 +56,12 @@ class NoamOpt:
     def zero_grad(self):
         self.optimizer.zero_grad()
 
+
 # meter class for storing results
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-    def __init__(self):
+    def __init__(self, name="meter"):
+        self.name = name
         self.reset()
 
     def reset(self):
@@ -72,6 +75,7 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
 
 class Predictor(object):
     """Predictor class"""
@@ -479,7 +483,7 @@ class SingleTaskLoss(nn.Module):
 
 
 class SingleTaskAccuracy(nn.Module):
-    '''Single Task Accuracy'''
+    '''Single Task Accuracy (equivalent to "micro"-averaged accuracy)'''
     def __init__(self, device=DEVICE):
         super().__init__()
         self.device = device
@@ -488,14 +492,16 @@ class SingleTaskAccuracy(nn.Module):
         # Assuming outputs and labels are torch tensors.
         # Outputs could be raw logits or probabilities from the last layer of a neural network
         # Convert outputs to predicted class indices if they are not already
-        # TODO: maybe do .to(self.device)
-        preds = output.argmax(dim=1) if output.ndim > 1 else output
+        preds = output.argmax(dim=1) if output.ndim > 1 else output  # get token with max probability
+        # print(f"output ({output.ndim}|{preds.ndim}): {target}|{preds}")
         correct = preds.eq(target).sum()
+
         return correct.float() / target.size(0)
 
 
 class MultiTaskAcc(nn.Module):
-    '''Multi Task Learning Accuracy Calculation'''
+    """Multi Task Learning Accuracy Calculation"""
+
     def __init__(self, device=DEVICE):
         super().__init__()
         self.device = device
@@ -528,8 +534,68 @@ class MultiTaskAcc(nn.Module):
         }
 
 
+class MultiTaskAccTorchmetrics(nn.Module):
+    """Multi Task Learning Accuracy Calculation implemented via TorchMetrics."""
+
+    def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE, averaging_type="macro",
+                 module_names=(LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER)):
+        """
+        :param averaging_type:  if "micro": Equivalent to the MultiTaskAcc class (good for eval)
+                                if "macro":  Gives equal weight to all classes (good for training, not good for eval)
+                                if "weighted"  macro, but weighted by class importance TODO: understand better
+        """
+        super().__init__()
+        self.module_names = module_names
+        self.multi_acc = {}
+        for name in self.module_names:
+            n_classes = num_classes[name]
+            if pads is not None:
+                ignore_idx = pads[name]
+            else:
+                ignore_idx = None
+            self.multi_acc[name] = MulticlassAccuracy(average=averaging_type, multidim_average='global',
+                                                      num_classes=n_classes, ignore_index=ignore_idx).to(device)
+
+    def forward(self, output, target):
+        # weighted loss
+        accs = torch.stack([self.multi_acc[mn](output[mn], target[mn]) for mn in self.module_names])
+
+        results = {mn: accs[i] for i, mn in enumerate(self.module_names)}
+        results[MULTITASK] = accs.mean()
+
+        return results
+
+
+class MultiTaskRecTorchmetrics(nn.Module):
+    """Multi Task Learning Macro-averaged Recall Calculation implemented via torchmetrics"""
+
+    def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE, averaging_type="macro",
+                 module_names=(LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER)):
+        super().__init__()
+        self.module_names = module_names
+        self.multi_rec = {}
+        for name in self.module_names:
+            n_classes = num_classes[name]
+            if pads is not None:
+                ignore_idx = pads[name]
+            else:
+                ignore_idx = None
+            self.multi_rec[name] = MulticlassRecall(average=averaging_type, multidim_average='global',
+                                                    num_classes=n_classes, ignore_index=ignore_idx).to(device)
+
+    def forward(self, output, target):
+        # weighted loss
+        recalls = torch.stack([self.multi_rec[mn](output[mn], target[mn]) for mn in self.module_names])
+
+        results = {mn: recalls[i] for i, mn in enumerate(self.module_names)}
+        results[MULTITASK] = recalls.mean()
+        # for mn in self.module_names:
+        #     print(f"{output[mn].shape}|{target[mn].shape}")
+        return results
+
+
 class MultiTaskLoss(nn.Module):
-    '''Multi Task Learning Loss'''
+    """Multi Task Learning Loss"""
     def __init__(self, ignore_index, device=DEVICE):
         super().__init__()
         self.device = device
@@ -567,11 +633,13 @@ class MultiTaskLoss(nn.Module):
             MULTITASK: losses.mean()
         }[args.task]
 
+
 def init_weights(model):
     # initialize model parameters with Glorot / fan_avg
     for p in model.parameters():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
+
 
 # ANCHOR LASAGNE parameter initialisation
 def Embedding(num_embeddings, embedding_dim, padding_idx):
@@ -580,6 +648,7 @@ def Embedding(num_embeddings, embedding_dim, padding_idx):
     nn.init.uniform_(m.weight, -0.1, 0.1)
     nn.init.constant_(m.weight[padding_idx], 0)
     return m
+
 
 def Linear(in_features, out_features, bias=True):
     """Linear layer"""

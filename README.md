@@ -56,6 +56,15 @@ For training you will need to adjust the paths in [args](args.py) file. At the s
 python train.py
 ```
 
+## Inference Framework 
+Calculates accuracy and recall on test split
+- accuracy averaging: 'micro'
+- recal averaging: 'macro'
+``` bash
+python inference.py --name csqa --batch-size 50 --data-path data/final/csqa --model-path experiments/models/CARTONNER_csqa_e10_v0.0102_multitask.pth.tar
+```
+will save metric results as JSON files into `ROOT_PATH/args.path_inference/args.name` folder.
+
 ## Generate Actions
 After the model has finished training we perform the inference in 2 steps.
 First, we generate the actions and save them in JSON file using the trained model.

@@ -26,7 +26,7 @@ def get_parser():
     parser.add_argument('--snapshots', default='experiments/snapshots', type=str)
     parser.add_argument('--path_results', default='experiments/results', type=str)
     parser.add_argument('--path_error_analysis', default='experiments/error_analysis', type=str)
-    parser.add_argument('--path_inference', default='experiments/inference', type=str)
+    parser.add_argument('--path-inference', default='experiments/inference', type=str)
 
     # task
     parser.add_argument('--task', default=Task.MULTITASK.value, choices=[tsk.value for tsk in Task], type=str)
@@ -54,11 +54,11 @@ def get_parser():
     parser.add_argument('--valfreq', default=1, type=int)
     parser.add_argument('--resume', default='', type=str)
     parser.add_argument('--clip', default=5, type=int)
-    parser.add_argument('--batch_size', default=25, type=int)  # NOTE: changed from 25
+    parser.add_argument('--batch-size', default=25, type=int)  # NOTE: changed from 25
     parser.add_argument('--pool_size', default=100, type=int)
 
     # test and inference
-    parser.add_argument('--model-path', default='experiments/models/CARTONNER_merged_e10_v0.0153_multitask.pth.tar',
+    parser.add_argument('--model-path', default='experiments/models/CARTONNER_csqa_e10_v0.0102_multitask.pth.tar',
                         type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--inference_partition', default=InferencePartition.TEST.value,
