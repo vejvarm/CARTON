@@ -61,7 +61,7 @@ Calculates accuracy and recall on test split
 - accuracy averaging: 'micro'
 - recal averaging: 'macro'
 ``` bash
-python inference.py --name csqa --batch-size 50 --data-path data/final/csqa --model-path experiments/models/CARTONNER_csqa_e10_v0.0102_multitask.pth.tar
+python inference.py --name "00_csqa_on_merged" --batch-size 40 --model-path experiments/models/CARTONNER_csqa_e10_v0.0102_multitask.pth.tar --data-path data/csqa-merged --cache-path .cache/merged/
 ```
 will save metric results as JSON files into `ROOT_PATH/args.path_inference/args.name` folder.
 
