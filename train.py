@@ -115,6 +115,7 @@ def main():
     LOGGER.info(f'Epochs: {args.epochs}')
     LOGGER.info(f'Batch size: {args.batch_size}')
 
+    LOGDIR.joinpath("tb").mkdir(parents=True, exist_ok=True)
     tb_writer = SummaryWriter(LOGDIR.joinpath("tb"))
 
     # run epochs
