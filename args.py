@@ -24,7 +24,7 @@ def get_parser():
 
     # experiments
     parser.add_argument('--snapshots', default='experiments/snapshots', type=str)
-    parser.add_argument('--path_results', default='experiments/results', type=str)
+    parser.add_argument('--path-results', default='experiments/results', type=str)
     parser.add_argument('--path_error_analysis', default='experiments/error_analysis', type=str)
     parser.add_argument('--path-inference', default='experiments/inference', type=str)
 

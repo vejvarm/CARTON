@@ -468,7 +468,7 @@ def rapidfuzz_query(query, filter_type, kg, res_size=50):
 
 
 def save_checkpoint(state: dict, experiment: str = ""):
-    filename = f'{ROOT_PATH}/{args.snapshots}/{MODEL_NAME}_{experiment}_e{state[EPOCH]}_v{state[CURR_VAL]:.4f}_{args.task}.pth.tar'
+    filename = ROOT_PATH.joinpath(args.snapshots).joinpath(experiment).joinpath(f"{MODEL_NAME}_{experiment}_e{state[EPOCH]}_v{state[CURR_VAL]:.4f}_{args.task}.pth.tar")
     torch.save(state, filename)
 
 
