@@ -66,7 +66,8 @@ class DataBatch:
                                   batch_first=True).to(device)
         self.logical_form = pad_sequence(lf,
                                          padding_value=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN],
-                                         batch_first=True).to(device)  # ANCHOR this is not gonna work as we assume all LFs have same length, which is not true
+                                         batch_first=True).to(
+            device)  # ANCHOR this is not gonna work as we assume all LFs have same length, which is not true
         self.ner = pad_sequence(ner,
                                 padding_value=vocabs[NER].stoi[PAD_TOKEN],
                                 batch_first=True).to(device)
@@ -118,16 +119,18 @@ class CSQADataset:
 
     def build_vocabs(self, stream_data: bool):
         self.vocab_cache.mkdir(exist_ok=True, parents=True)
-        if stream_data:
-            self.vocabs = self._build_vocabs_streaming()
+        if self.vocab_cache.joinpath("id_vocab.pkl").exists() and not self.rebuild_vocab_cache:
+            self.vocabs = self._build_vocabs(from_cache=True)
         elif self.data is not None:
             self.vocabs = self._build_vocabs()
+        elif stream_data:
+            self.vocabs = self._build_vocabs_streaming()
         else:
             raise ValueError("To build vocabs either set args.stream_data to True or run self.preprocess_data first")
 
         return self.vocabs
 
-    def _build_vocabs(self):
+    def _build_vocabs(self, from_cache=False):
         """ Build vocabularies for each field from loaded preprocessed data.
 
         # data[split]:
@@ -141,11 +144,11 @@ class CSQADataset:
             # [7] ... ENTITY
         """
 
-
         vocabs = dict()
         data_aggregate = []
-        for split in self.data.values():
-            data_aggregate.extend(split)
+        if not from_cache:
+            for split in self.data.values():
+                data_aggregate.extend(split)
         print("Building vocabularies...")
         vocabs[ID] = self._build_vocab([item[0] for item in data_aggregate],
                                        specials=[],
@@ -180,6 +183,7 @@ class CSQADataset:
     def _build_vocabs_streaming(self):
         """Build vocabularies from the dataset files in a streaming way (when memory is problem)."""
 
+        self.id = 0
         for split in self.splits:
             for file_path in tqdm(self.source_paths[split].glob("*/QA_*.json"), desc=f"Loading {split} split"):
                 with open(file_path, encoding='utf8') as json_file:
@@ -191,33 +195,35 @@ class CSQADataset:
         # Create and save vocabularies
         vocabs = dict()
         print("Building vocabularies (streaming)...")
-        vocabs[ID] = self._build_vocab(self.counters[ID],
-                                       specials=[],
-                                       vocab_cache=self.vocab_cache.joinpath("id_vocab.pkl"))
-        vocabs[INPUT] = self._build_vocab(self.counters[INPUT],
-                                          specials=[NA_TOKEN, SEP_TOKEN, START_TOKEN, CTX_TOKEN, PAD_TOKEN, UNK_TOKEN],
-                                          lower=True,
-                                          vectors='glove.840B.300d',
-                                          vocab_cache=self.vocab_cache.joinpath("input_vocab.pkl"))
-        vocabs[LOGICAL_FORM] = self._build_vocab(self.counters[LOGICAL_FORM],
-                                                 specials=[START_TOKEN, END_TOKEN, PAD_TOKEN, UNK_TOKEN],
-                                                 lower=True,
-                                                 vocab_cache=self.vocab_cache.joinpath("lf_vocab.pkl"))
-        vocabs[NER] = self._build_vocab(self.counters[NER],
-                                        specials=[O, PAD_TOKEN],
-                                        vocab_cache=self.vocab_cache.joinpath("ner_vocab.pkl"))
-        vocabs[COREF] = self._build_vocab(self.counters[COREF],
-                                          specials=['0', PAD_TOKEN],
-                                          vocab_cache=self.vocab_cache.joinpath("coref_vocab.pkl"))
-        vocabs[PREDICATE_POINTER] = self._build_vocab(self.counters[PREDICATE_POINTER],
+        vocabs[ID] = self._counter_to_vocab(self.counters[ID],
+                                            specials=[],
+                                            vocab_cache=self.vocab_cache.joinpath("id_vocab.pkl"))
+        vocabs[ID] = self._counter_to_vocab(self.counters[ID],
+                                            specials=[],
+                                            vocab_cache=self.vocab_cache.joinpath("id_vocab.pkl"))
+        vocabs[INPUT] = self._counter_to_vocab(self.counters[INPUT],
+                                               specials=[NA_TOKEN, SEP_TOKEN, START_TOKEN, CTX_TOKEN, PAD_TOKEN,
+                                                         UNK_TOKEN],
+                                               vectors='glove.840B.300d',
+                                               vocab_cache=self.vocab_cache.joinpath("input_vocab.pkl"))
+        vocabs[LOGICAL_FORM] = self._counter_to_vocab(self.counters[LOGICAL_FORM],
+                                                      specials=[START_TOKEN, END_TOKEN, PAD_TOKEN, UNK_TOKEN],
+                                                      vocab_cache=self.vocab_cache.joinpath("lf_vocab.pkl"))
+        vocabs[NER] = self._counter_to_vocab(self.counters[NER],
+                                             specials=[O, PAD_TOKEN],
+                                             vocab_cache=self.vocab_cache.joinpath("ner_vocab.pkl"))
+        vocabs[COREF] = self._counter_to_vocab(self.counters[COREF],
+                                               specials=['0', PAD_TOKEN],
+                                               vocab_cache=self.vocab_cache.joinpath("coref_vocab.pkl"))
+        vocabs[PREDICATE_POINTER] = self._counter_to_vocab(self.counters[PREDICATE_POINTER],
+                                                           specials=[NA_TOKEN, PAD_TOKEN],
+                                                           vocab_cache=self.vocab_cache.joinpath("pred_vocab.pkl"))
+        vocabs[TYPE_POINTER] = self._counter_to_vocab(self.counters[TYPE_POINTER],
                                                       specials=[NA_TOKEN, PAD_TOKEN],
-                                                      vocab_cache=self.vocab_cache.joinpath("pred_vocab.pkl"))
-        vocabs[TYPE_POINTER] = self._build_vocab(self.counters[TYPE_POINTER],
-                                                 specials=[NA_TOKEN, PAD_TOKEN],
-                                                 vocab_cache=self.vocab_cache.joinpath("type_vocab.pkl"))
-        vocabs[ENTITY] = self._build_vocab(self.counters[ENTITY],
-                                           specials=[PAD_TOKEN, NA_TOKEN],
-                                           vocab_cache=self.vocab_cache.joinpath("ent_vocab.pkl"))
+                                                      vocab_cache=self.vocab_cache.joinpath("type_vocab.pkl"))
+        vocabs[ENTITY] = self._counter_to_vocab(self.counters[ENTITY],
+                                                specials=[PAD_TOKEN, NA_TOKEN],
+                                                vocab_cache=self.vocab_cache.joinpath("ent_vocab.pkl"))
 
         return vocabs
 
@@ -275,8 +281,8 @@ class CSQADataset:
                     is_clarification = False
                     continue
 
-                user = conversation[2*i]
-                system = conversation[2*i + 1]
+                user = conversation[2 * i]
+                system = conversation[2 * i + 1]
 
                 if user['question-type'] == 'Simple Insert (Direct)':
                     # No Context
@@ -292,7 +298,10 @@ class CSQADataset:
                     # coref entities - prepare coref values
                     action_entities = [action[1] for action in system[GOLD_ACTIONS] if action[0] == ENTITY]
                     for context in reversed(user['context']):
-                        if context[2] in action_entities and context[4] == B and str(action_entities.index(context[2])) not in coref and user['description'] not in ['Simple Question|Mult. Entity', 'Verification|one entity, multiple entities (as object) referred indirectly']:
+                        if context[2] in action_entities and context[4] == B and str(
+                                action_entities.index(context[2])) not in coref and user['description'] not in [
+                            'Simple Question|Mult. Entity',
+                            'Verification|one entity, multiple entities (as object) referred indirectly']:
                             coref.append(str(action_entities.index(context[2])))
                         else:
                             coref.append(NA_TOKEN)
@@ -311,8 +320,8 @@ class CSQADataset:
                 elif user['question-type'] == 'Clarification':
                     # get next context
                     is_clarification = True
-                    next_user = conversation[2*(i+1)]
-                    next_system = conversation[2*(i+1) + 1]
+                    next_user = conversation[2 * (i + 1)]
+                    next_system = conversation[2 * (i + 1) + 1]
 
                     # skip if ner history is spurious
                     if is_history_ner_spurious:
@@ -325,7 +334,8 @@ class CSQADataset:
                         continue
 
                     # skip if ner is spurious
-                    if user['is_ner_spurious'] or system['is_ner_spurious'] or next_user['is_ner_spurious'] or next_system['is_ner_spurious']:
+                    if user['is_ner_spurious'] or system['is_ner_spurious'] or next_user['is_ner_spurious'] or \
+                            next_system['is_ner_spurious']:
                         is_history_ner_spurious = True
                         continue
 
@@ -335,7 +345,7 @@ class CSQADataset:
                         prev_system_conv = next_system.copy()
                         continue
 
-                    if i == 0: # NA + [SEP] + NA + [SEP] + current_question
+                    if i == 0:  # NA + [SEP] + NA + [SEP] + current_question
                         input.extend([NA_TOKEN, SEP_TOKEN, NA_TOKEN, SEP_TOKEN])
                         ner_tag.extend([O, O, O, O])
                     else:
@@ -375,7 +385,8 @@ class CSQADataset:
                     # ANCHOR LASAGNE coref entities - prepare coref values
                     action_entities = [action[1] for action in next_system[GOLD_ACTIONS] if action[0] == ENTITY]
                     for context in reversed(user['context'] + system['context'] + next_user['context']):
-                        if context[2] in action_entities and context[4] == B and str(action_entities.index(context[2])) not in coref:
+                        if context[2] in action_entities and context[4] == B and str(
+                                action_entities.index(context[2])) not in coref:
                             coref.append(str(action_entities.index(context[2])))
                         else:
                             coref.append(NA_TOKEN)
@@ -385,21 +396,24 @@ class CSQADataset:
                     else:
                         coref.append(NA_TOKEN)
                         for context in reversed(prev_system_conv['context']):
-                            if context[2] in action_entities and context[4] == B and str(action_entities.index(context[2])) not in coref:
+                            if context[2] in action_entities and context[4] == B and str(
+                                    action_entities.index(context[2])) not in coref:
                                 coref.append(str(action_entities.index(context[2])))
                             else:
                                 coref.append(NA_TOKEN)
 
                         coref.append(NA_TOKEN)
                         for context in reversed(prev_user_conv['context']):
-                            if context[2] in action_entities and context[4] == B and str(action_entities.index(context[2])) not in coref:
+                            if context[2] in action_entities and context[4] == B and str(
+                                    action_entities.index(context[2])) not in coref:
                                 coref.append(str(action_entities.index(context[2])))
                             else:
                                 coref.append(NA_TOKEN)
 
                     # entities turn # NOTE: this just takes all available entities in this turn (needed for Clarification)
                     if 'entities' in prev_user_conv: entity_pointer.update(prev_user_conv['entities'])
-                    if 'entities_in_utterance' in prev_user_conv: entity_pointer.update(prev_user_conv['entities_in_utterance'])
+                    if 'entities_in_utterance' in prev_user_conv: entity_pointer.update(
+                        prev_user_conv['entities_in_utterance'])
                     entity_pointer.update(prev_system_conv['entities_in_utterance'])
                     if 'entities' in user: entity_pointer.update(user['entities'])
                     if 'entities_in_utterance' in user: entity_pointer.update(user['entities_in_utterance'])
@@ -414,7 +428,7 @@ class CSQADataset:
                     prev_user_conv = next_user.copy()
                     prev_system_conv = next_system.copy()
                 else:
-                    if is_history_ner_spurious: # skip if history is ner spurious
+                    if is_history_ner_spurious:  # skip if history is ner spurious
                         is_history_ner_spurious = False
                         if not user['is_ner_spurious'] and not system['is_ner_spurious']:
                             prev_user_conv = user.copy()
@@ -432,7 +446,7 @@ class CSQADataset:
                         prev_system_conv = system.copy()
                         continue
 
-                    if i == 0: # NA + [SEP] + NA + [SEP] + current_question
+                    if i == 0:  # NA + [SEP] + NA + [SEP] + current_question
                         input.extend([NA_TOKEN, SEP_TOKEN, NA_TOKEN, SEP_TOKEN])
                         ner_tag.extend([O, O, O, O])
                     else:
@@ -462,7 +476,10 @@ class CSQADataset:
                     # coref entities - prepare coref values
                     action_entities = [action[1] for action in system[GOLD_ACTIONS] if action[0] == ENTITY]
                     for context in reversed(user['context']):
-                        if context[2] in action_entities and context[4] == B and str(action_entities.index(context[2])) not in coref and user['description'] not in ['Simple Question|Mult. Entity', 'Verification|one entity, multiple entities (as object) referred indirectly']:
+                        if context[2] in action_entities and context[4] == B and str(
+                                action_entities.index(context[2])) not in coref and user['description'] not in [
+                            'Simple Question|Mult. Entity',
+                            'Verification|one entity, multiple entities (as object) referred indirectly']:
                             coref.append(str(action_entities.index(context[2])))
                         else:
                             coref.append(NA_TOKEN)
@@ -473,14 +490,20 @@ class CSQADataset:
                     else:
                         coref.append(NA_TOKEN)
                         for context in reversed(prev_system_conv['context']):
-                            if context[2] in action_entities and context[4] == B and str(action_entities.index(context[2])) not in coref and user['description'] not in ['Simple Question|Mult. Entity', 'Verification|one entity, multiple entities (as object) referred indirectly']:
+                            if context[2] in action_entities and context[4] == B and str(
+                                    action_entities.index(context[2])) not in coref and user['description'] not in [
+                                'Simple Question|Mult. Entity',
+                                'Verification|one entity, multiple entities (as object) referred indirectly']:
                                 coref.append(str(action_entities.index(context[2])))
                             else:
                                 coref.append(NA_TOKEN)
 
                         coref.append(NA_TOKEN)
                         for context in reversed(prev_user_conv['context']):
-                            if context[2] in action_entities and context[4] == B and str(action_entities.index(context[2])) not in coref and user['description'] not in ['Simple Question|Mult. Entity', 'Verification|one entity, multiple entities (as object) referred indirectly']:
+                            if context[2] in action_entities and context[4] == B and str(
+                                    action_entities.index(context[2])) not in coref and user['description'] not in [
+                                'Simple Question|Mult. Entity',
+                                'Verification|one entity, multiple entities (as object) referred indirectly']:
                                 coref.append(str(action_entities.index(context[2])))
                             else:
                                 coref.append(NA_TOKEN)
@@ -488,7 +511,8 @@ class CSQADataset:
                     # entities turn
                     if prev_user_conv is not None and prev_system_conv is not None:
                         if 'entities' in prev_user_conv: entity_pointer.update(prev_user_conv['entities'])
-                        if 'entities_in_utterance' in prev_user_conv: entity_pointer.update(prev_user_conv['entities_in_utterance'])
+                        if 'entities_in_utterance' in prev_user_conv: entity_pointer.update(
+                            prev_user_conv['entities_in_utterance'])
                         entity_pointer.update(prev_system_conv['entities_in_utterance'])
                     if 'entities' in user: entity_pointer.update(user['entities'])
                     if 'entities_in_utterance' in user: entity_pointer.update(user['entities_in_utterance'])
@@ -591,8 +615,8 @@ class CSQADataset:
                     is_clarification = False
                     continue
 
-                user = conversation[2*i]
-                system = conversation[2*i + 1]
+                user = conversation[2 * i]
+                system = conversation[2 * i + 1]
 
                 if i > 0 and 'context' not in prev_system_conv:
                     if len(prev_system_conv['entities_in_utterance']) > 0:
@@ -614,10 +638,10 @@ class CSQADataset:
                 if user['question-type'] == 'Clarification':
                     # get next context
                     is_clarification = True
-                    next_user = conversation[2*(i+1)]
-                    next_system = conversation[2*(i+1) + 1]
+                    next_user = conversation[2 * (i + 1)]
+                    next_system = conversation[2 * (i + 1) + 1]
 
-                    if i == 0: # NA + [SEP] + NA + [SEP] + current_question
+                    if i == 0:  # NA + [SEP] + NA + [SEP] + current_question
                         input.extend([NA_TOKEN, SEP_TOKEN, NA_TOKEN, SEP_TOKEN])
                     else:
                         # add prev context user
@@ -641,7 +665,9 @@ class CSQADataset:
                     # next user context
                     for context in next_user['context']: input.append(context[1])
 
-                    question_type = [user['question-type'], next_user['question-type']] if 'question-type' in next_user else user['question-type']
+                    question_type = [user['question-type'],
+                                     next_user['question-type']] if 'question-type' in next_user else user[
+                        'question-type']
                     results = next_system['all_entities']
                     answer = next_system['utterance']
                     gold_actions = next_system[GOLD_ACTIONS] if GOLD_ACTIONS in next_system else None
@@ -649,20 +675,21 @@ class CSQADataset:
 
                     # entities turn
                     context_entities = set()
-#                    if 'entities' in prev_user_conv: context_entities.update(prev_user_conv['entities'])
-                    if 'entities_in_utterance' in prev_user_conv: context_entities.update(prev_user_conv['entities_in_utterance'])
+                    #                    if 'entities' in prev_user_conv: context_entities.update(prev_user_conv['entities'])
+                    if 'entities_in_utterance' in prev_user_conv: context_entities.update(
+                        prev_user_conv['entities_in_utterance'])
                     if prev_system_conv: context_entities.update(prev_system_conv['entities_in_utterance'])
-#                    if 'entities' in user: context_entities.update(user['entities'])
+                    #                    if 'entities' in user: context_entities.update(user['entities'])
                     if 'entities_in_utterance' in user: context_entities.update(user['entities_in_utterance'])
                     context_entities.update(system['entities_in_utterance'])
-#                    if 'entities' in next_user: context_entities.update(next_user['entities'])
+                    #                    if 'entities' in next_user: context_entities.update(next_user['entities'])
                     if 'entities_in_utterance' in next_user: context_entities.update(next_user['entities_in_utterance'])
 
                     # track context history
                     prev_user_conv = next_user.copy()
                     prev_system_conv = next_system.copy()
                 else:
-                    if i == 0: # NA + [SEP] + NA + [SEP] + current_question
+                    if i == 0:  # NA + [SEP] + NA + [SEP] + current_question
                         input.extend([NA_TOKEN, SEP_TOKEN, NA_TOKEN, SEP_TOKEN])
                     else:
                         # add prev context user
@@ -696,9 +723,10 @@ class CSQADataset:
                     context_entities = set()
                     if prev_user_conv is not None and prev_system_conv is not None:
                         # if 'entities' in prev_user_conv: context_entities.update(prev_user_conv['entities'])
-                        if 'entities_in_utterance' in prev_user_conv: context_entities.update(prev_user_conv['entities_in_utterance'])
+                        if 'entities_in_utterance' in prev_user_conv: context_entities.update(
+                            prev_user_conv['entities_in_utterance'])
                         if prev_system_conv: context_entities.update(prev_system_conv['entities_in_utterance'])
-#                    if 'entities' in user: context_entities.update(user['entities'])
+                    #                    if 'entities' in user: context_entities.update(user['entities'])
                     if 'entities_in_utterance' in user: context_entities.update(user['entities_in_utterance'])
                     context_entities.update(system['entities_in_utterance'])
 
@@ -749,6 +777,20 @@ class CSQADataset:
             pickle.dump(vocab, vocab_cache.open("wb"))
         return vocab
 
+    def _counter_to_vocab(self, counter: Counter, specials: list[str], min_freq=0, vectors=None,
+                          vocab_cache: pathlib.Path = None):
+
+        if vocab_cache is not None and vocab_cache.exists() and not self.rebuild_vocab_cache:
+            print(f"\t...loading {vocab_cache.stem} from {vocab_cache}")
+            return pickle.load(vocab_cache.open("rb"), encoding="utf8")
+
+        # Build a vocabulary by assigning a unique ID to each token
+        vocab = Vocab(counter, specials=specials, min_freq=min_freq, vectors=vectors)
+
+        if vocab_cache is not None:
+            pickle.dump(vocab, vocab_cache.open("wb"))
+        return vocab
+
     def get_data(self):
         # return self.data['train'], self.data['val'], self.data['test']
         return self.data
@@ -791,9 +833,14 @@ class CSQADataset:
         # [6] ... TYPE_POINTER
         # [7] ... ENTITY
         """
-        for i, key in enumerate(self._field_names):
-            # i.e. c.update(i for j in [['NA', '[PAD]', 'Q1155636', 'Q914286'], ['NA', '[PAD]', 'Q914286', 'Q22978913', 'Q1037042']] for i in j)
-            if key == ID:
-                self.counters[key].update([item[i] for item in processed_data])
-            else:
-                self.counters[key].update([item for lst in processed_data for item in lst[i]])
+        for item in processed_data:
+            self.counters[ID].update(str(self.id))
+            self.counters[INPUT].update([s.lower() for s in item[1]])
+            self.counters[LOGICAL_FORM].update([s.lower() for s in item[2]])
+            self.counters[NER].update(item[3])
+            self.counters[COREF].update(item[4])
+            self.counters[PREDICATE_POINTER].update(item[5])
+            self.counters[TYPE_POINTER].update(item[6])
+            self.counters[ENTITY].update(item[7])
+
+            self.id += 1
