@@ -20,7 +20,7 @@ from args import get_parser
 parser = get_parser()
 args = parser.parse_args()
 
-LOGDIR = ROOT_PATH.joinpath(args.snapshots).joinpath("logs")
+LOGDIR = ROOT_PATH.joinpath(args.snapshots).joinpath(args.name).joinpath("logs")
 LOGDIR.mkdir(exist_ok=True, parents=True)
 # set LOGGER
 LOGGER = setup_logger(__name__,
@@ -115,7 +115,7 @@ def main():
     LOGGER.info(f'Epochs: {args.epochs}')
     LOGGER.info(f'Batch size: {args.batch_size}')
 
-    LOGDIR.joinpath("tb").mkdir(parents=True, exist_ok=True)
+    # LOGDIR.joinpath("tb").mkdir(parents=True, exist_ok=True)
     tb_writer = SummaryWriter(LOGDIR.joinpath("tb"))
 
     # run epochs
