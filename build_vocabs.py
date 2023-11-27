@@ -1,21 +1,13 @@
-import time
 import random
 import logging
-from functools import partial
 
 import numpy as np
-import torch.optim
-from tqdm import tqdm
 
-from model import CARTON
-from dataset import CSQADataset, collate_fn
-from torch.utils.data import DataLoader, SequentialSampler, BatchSampler, RandomSampler
-from torch.utils.tensorboard import SummaryWriter
-from utils import (NoamOpt, AverageMeter, SingleTaskLoss, MultiTaskLoss, save_checkpoint, init_weights)
-
+from dataset import CSQADataset
 from helpers import setup_logger
 from constants import *
 from args import get_parser
+
 
 parser = get_parser()
 args = parser.parse_args()
