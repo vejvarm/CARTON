@@ -58,8 +58,11 @@ class DataBatch:
             coref.append(self._tensor([vocabs[COREF].stoi[s] for s in sample[4]]))
             predicate_pointer.append(self._tensor([vocabs[PREDICATE_POINTER].stoi[s] for s in sample[5]]))
             type_pointer.append(self._tensor([vocabs[TYPE_POINTER].stoi[s] for s in sample[6]]))
-            entity_pointer.append(self._tensor([vocabs[ENTITY].stoi[s] for s in sample[7]]))
-
+            try:
+                entity_pointer.append(self._tensor([vocabs[ENTITY].stoi[s] for s in sample[7]]))
+            except KeyError as err:
+                repr(err)  # !HACK
+                entity_pointer.append(self._tensor([vocabs['NA'].stoi[s] for s in sample[7]]))
         self.id = self._tensor(id).to(device)
         self.input = pad_sequence(inp,
                                   padding_value=vocabs[INPUT].stoi[PAD_TOKEN],
