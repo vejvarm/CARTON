@@ -17,6 +17,7 @@ def get_parser():
     parser.add_argument('--vocab-cache', default='.cache/vocabs', type=str)
     parser.add_argument('--rebuild-data-cache', action='store_true')
     parser.add_argument('--rebuild-vocab-cache', action='store_true')
+    parser.add_argument('--stream-data', action='store_true')
     # parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
     parser.add_argument('--ent_dict_path', default="knowledge_graph/items_wikidata_n.json")
     parser.add_argument('--rel_dict_path', default="knowledge_graph/index_rel_dict.json")

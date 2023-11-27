@@ -44,9 +44,8 @@ else:
 def main():
     # load data
     dataset = CSQADataset(args)  # load all data from all splits to build full vocab from all splits
-    vocabs = dataset.get_vocabs()
-    data_dict = dataset.get_data()  # TODO
-    helper_dict = dataset.get_data_helper()
+    data_dict, helper_dict = dataset.preprocess_data()
+    vocabs = dataset.build_vocabs(args.stream_data)
 
     # load model
     model = CARTON(vocabs, DEVICE).to(DEVICE)

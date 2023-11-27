@@ -98,9 +98,8 @@ if __name__ == "__main__":
 
     # load data
     dataset = CSQADataset(args, splits=('test', ))  # assuming we already have the correct vocab cache from all splits!
-    vocabs = dataset.get_vocabs()
-    data_dict = dataset.get_data()
-    helper_dict = dataset.get_data_helper()
+    data_dict, helper_dict = dataset.preprocess_data()
+    vocabs = dataset.build_vocabs(args.stream_data)
 
     test_loader = torch.utils.data.DataLoader(data_dict['test'],
                                               batch_size=args.batch_size,

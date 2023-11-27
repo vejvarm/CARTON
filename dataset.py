@@ -7,6 +7,7 @@ from glob import glob
 from itertools import chain
 
 from torchtext.vocab import Vocab
+from tqdm import tqdm
 from transformers import BertTokenizer
 from torchtext.data import Field, Example, Dataset
 import torch
@@ -96,37 +97,54 @@ class CSQADataset:
     def __init__(self, args, splits=('train', 'val', 'test')):
         self.data_path = ROOT_PATH.joinpath(args.data_path)
         self.source_paths = {split: self.data_path.joinpath(split) for split in splits}
-        # self.train_path = ROOT_PATH.joinpath(data_path_rel).joinpath("train")
-        # self.val_path = ROOT_PATH.joinpath(data_path_rel).joinpath("val")
-        # self.test_path = ROOT_PATH.joinpath(data_path_rel).joinpath("test")
+        self.splits = splits
+
+        self._field_names = [ID, INPUT, LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, ENTITY]
+
+        # Initialize counters for each field
+        self.counters = {k: Counter() for k in self._field_names}
+        self.vocabs = dict()
+        self.data = None
+        self.helpers = None
 
         self.id = 0
         self.rebuild_data_cache = args.rebuild_data_cache
         self.rebuild_vocab_cache = args.rebuild_vocab_cache
         self.vocab_cache = pathlib.Path(args.vocab_cache)
         self.data_cache = self.data_path.joinpath(".cache")
-        self.data, self.helpers = self.preprocess_data(splits)
-        self.vocabs = self.build_vocabs(self.data)
-        print("done")
+        # self.data, self.helpers = self.preprocess_data()
+        # self.vocabs = self.build_vocabs(args.stream_data)
         # exit()
 
-    def build_vocabs(self, data: dict[str: list]):
-        # data[split]
-        # [0] ... ID
-        # [1] ... INPUT
-        # [2] ... LOGICAL_FORM
-        # [3] ... NER
-        # [4] ... COREF
-        # [5] ... PREDICATE_POINTER
-        # [6] ... TYPE_POINTER
-        # [7] ... ENTITY
-
+    def build_vocabs(self, stream_data: bool):
         self.vocab_cache.mkdir(exist_ok=True, parents=True)
+        if stream_data:
+            self.vocabs = self._build_vocabs_streaming()
+        elif self.data is not None:
+            self.vocabs = self._build_vocabs()
+        else:
+            raise ValueError("To build vocabs either set args.stream_data to True or run self.preprocess_data first")
 
-        # Build vocabularies for each field
+        return self.vocabs
+
+    def _build_vocabs(self):
+        """ Build vocabularies for each field from loaded preprocessed data.
+
+        # data[split]:
+            # [0] ... ID
+            # [1] ... INPUT
+            # [2] ... LOGICAL_FORM
+            # [3] ... NER
+            # [4] ... COREF
+            # [5] ... PREDICATE_POINTER
+            # [6] ... TYPE_POINTER
+            # [7] ... ENTITY
+        """
+
+
         vocabs = dict()
         data_aggregate = []
-        for split in data.values():
+        for split in self.data.values():
             data_aggregate.extend(split)
         print("Building vocabularies...")
         vocabs[ID] = self._build_vocab([item[0] for item in data_aggregate],
@@ -159,7 +177,51 @@ class CSQADataset:
 
         return vocabs
 
-    def preprocess_data(self, splits=('train', 'val', 'test')):
+    def _build_vocabs_streaming(self):
+        """Build vocabularies from the dataset files in a streaming way (when memory is problem)."""
+
+        for split in self.splits:
+            for file_path in tqdm(self.source_paths[split].glob("*/QA_*.json"), desc=f"Loading {split} split"):
+                with open(file_path, encoding='utf8') as json_file:
+                    raw_data = json.load(json_file)
+
+                processed_data, _ = self._prepare_data([raw_data])
+                self.update_counters(processed_data)
+
+        # Create and save vocabularies
+        vocabs = dict()
+        print("Building vocabularies (streaming)...")
+        vocabs[ID] = self._build_vocab(self.counters[ID],
+                                       specials=[],
+                                       vocab_cache=self.vocab_cache.joinpath("id_vocab.pkl"))
+        vocabs[INPUT] = self._build_vocab(self.counters[INPUT],
+                                          specials=[NA_TOKEN, SEP_TOKEN, START_TOKEN, CTX_TOKEN, PAD_TOKEN, UNK_TOKEN],
+                                          lower=True,
+                                          vectors='glove.840B.300d',
+                                          vocab_cache=self.vocab_cache.joinpath("input_vocab.pkl"))
+        vocabs[LOGICAL_FORM] = self._build_vocab(self.counters[LOGICAL_FORM],
+                                                 specials=[START_TOKEN, END_TOKEN, PAD_TOKEN, UNK_TOKEN],
+                                                 lower=True,
+                                                 vocab_cache=self.vocab_cache.joinpath("lf_vocab.pkl"))
+        vocabs[NER] = self._build_vocab(self.counters[NER],
+                                        specials=[O, PAD_TOKEN],
+                                        vocab_cache=self.vocab_cache.joinpath("ner_vocab.pkl"))
+        vocabs[COREF] = self._build_vocab(self.counters[COREF],
+                                          specials=['0', PAD_TOKEN],
+                                          vocab_cache=self.vocab_cache.joinpath("coref_vocab.pkl"))
+        vocabs[PREDICATE_POINTER] = self._build_vocab(self.counters[PREDICATE_POINTER],
+                                                      specials=[NA_TOKEN, PAD_TOKEN],
+                                                      vocab_cache=self.vocab_cache.joinpath("pred_vocab.pkl"))
+        vocabs[TYPE_POINTER] = self._build_vocab(self.counters[TYPE_POINTER],
+                                                 specials=[NA_TOKEN, PAD_TOKEN],
+                                                 vocab_cache=self.vocab_cache.joinpath("type_vocab.pkl"))
+        vocabs[ENTITY] = self._build_vocab(self.counters[ENTITY],
+                                           specials=[PAD_TOKEN, NA_TOKEN],
+                                           vocab_cache=self.vocab_cache.joinpath("ent_vocab.pkl"))
+
+        return vocabs
+
+    def preprocess_data(self):
 
         data = dict()
         helpers = dict()
@@ -183,7 +245,10 @@ class CSQADataset:
                 pickle.dump(data[split], data_cache_file.open("wb"))
                 pickle.dump(helpers[split], helper_cache_file.open("wb"))
 
-        return data, helpers
+        self.data = data
+        self.helpers = helpers
+
+        return self.data, self.helpers
 
     def _prepare_data(self, data):
         input_data = []
@@ -714,3 +779,18 @@ class CSQADataset:
             TYPE_POINTER: self.vocabs[TYPE_POINTER],
             ENTITY: self.vocabs[ENTITY],
         }
+
+    def update_counters(self, processed_data):
+        """Update counters for each field based on processed data.
+        # [0] ... ID
+        # [1] ... INPUT
+        # [2] ... LOGICAL_FORM
+        # [3] ... NER
+        # [4] ... COREF
+        # [5] ... PREDICATE_POINTER
+        # [6] ... TYPE_POINTER
+        # [7] ... ENTITY
+        """
+
+        for i, key in enumerate(self._field_names):
+            self.counters[key].update([item[i] for item in processed_data])
