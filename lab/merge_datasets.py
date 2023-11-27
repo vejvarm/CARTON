@@ -67,7 +67,7 @@ def main(args):
     merged_dir.mkdir(parents=True, exist_ok=True)
 
     ratio = float(args.ratio)
-    assert ratio > 0.
+    assert ratio > 0. or ratio == -1
     splits = tuple(args.splits)
 
     # load stats
@@ -84,7 +84,10 @@ def main(args):
 
         # calculate num samples from D2T for enrichment from ratio
         csqa_total_turns = Counter(csqa_stats[subset]).total()
-        csqa_d2t_size = calculate_csqa_d2t_size(csqa_total_turns, ratio)
+        if ratio == -1:
+            csqa_d2t_size = len(csqa_d2t_files)
+        else:
+            csqa_d2t_size = calculate_csqa_d2t_size(csqa_total_turns, ratio)
 
         # copy files
         copy_files(csqa_files, csqa_d2t_files, merged_dir / subset, csqa_d2t_size)
@@ -99,7 +102,7 @@ if __name__ == "__main__":
     parser.add_argument('--merged-dir', type=str, help='Path to the directory where the merged dataset will be stored.')
 
     # Optional arguments
-    parser.add_argument('--ratio', type=float, default=0.2, help='Ratio of CSQA-D2T samples to include (0. to 1.).')
+    parser.add_argument('--ratio', type=float, default=0.2, help='Ratio of CSQA-D2T samples to include (0. to 1.). If -1: merge full datasets together!')
     parser.add_argument('--splits', nargs='+', default=["test", "train", "val"],
                         choices=["test", "train", "val"], help='Dataset splits to process.')
 
