@@ -39,3 +39,7 @@ def main():
     _ = dataset.build_vocabs(args.stream_data)
     print("done")
     # data_dict, helper_dict = dataset.preprocess_data()
+
+
+if __name__ == "__main__":
+    main()
