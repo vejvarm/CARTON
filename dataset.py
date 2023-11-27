@@ -61,7 +61,7 @@ class DataBatch:
             try:
                 entity_pointer.append(self._tensor([vocabs[ENTITY].stoi[s] for s in sample[7]]))
             except KeyError as err:
-                repr(err)
+                print(repr(err))
                 """ HACK!   File "/work/CARTON/dataset.py", line 61, in <listcomp>
                 entity_pointer.append(self._tensor([vocabs[ENTITY].stoi[s] for s in sample[7]]))
                 KeyError: 'Q4622539'
