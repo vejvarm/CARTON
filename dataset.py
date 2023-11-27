@@ -94,23 +94,23 @@ def collate_fn(batch, vocabs: dict, device: str):
 class CSQADataset:
 
     def __init__(self, args, splits=('train', 'val', 'test')):
-        data_path_rel = args.data_path
-        self.source_paths = {split: ROOT_PATH.joinpath(data_path_rel).joinpath(split) for split in splits}
+        self.data_path = ROOT_PATH.joinpath(args.data_path)
+        self.source_paths = {split: self.data_path.joinpath(split) for split in splits}
         # self.train_path = ROOT_PATH.joinpath(data_path_rel).joinpath("train")
         # self.val_path = ROOT_PATH.joinpath(data_path_rel).joinpath("val")
         # self.test_path = ROOT_PATH.joinpath(data_path_rel).joinpath("test")
 
         self.id = 0
-        self.no_data_cache = args.no_data_cache
-        self.no_vocab_cache = args.no_vocab_cache
-        self.cache_path = pathlib.Path(args.cache_path)
-        self.cache_path.mkdir(parents=True, exist_ok=True)
+        self.rebuild_data_cache = args.rebuild_data_cache
+        self.rebuild_vocab_cache = args.rebuild_vocab_cache
+        self.vocab_cache = pathlib.Path(args.vocab_cache)
+        self.data_cache = self.data_path.joinpath(".cache")
         self.data, self.helpers = self.preprocess_data(splits)
         self.vocabs = self.build_vocabs(self.data)
         print("done")
         # exit()
 
-    def build_vocabs(self, data: dict[str: list], cache_subfolder="vocabs"):
+    def build_vocabs(self, data: dict[str: list]):
         # data[split]
         # [0] ... ID
         # [1] ... INPUT
@@ -121,8 +121,7 @@ class CSQADataset:
         # [6] ... TYPE_POINTER
         # [7] ... ENTITY
 
-        cache_sub_path = self.cache_path.joinpath(cache_subfolder)
-        cache_sub_path.mkdir(exist_ok=True, parents=True)
+        self.vocab_cache.mkdir(exist_ok=True, parents=True)
 
         # Build vocabularies for each field
         vocabs = dict()
@@ -132,45 +131,43 @@ class CSQADataset:
         print("Building vocabularies...")
         vocabs[ID] = self._build_vocab([item[0] for item in data_aggregate],
                                        specials=[],
-                                       vocab_cache=cache_sub_path.joinpath("id_vocab.pkl"))
+                                       vocab_cache=self.vocab_cache.joinpath("id_vocab.pkl"))
         vocabs[INPUT] = self._build_vocab([item[1] for item in data_aggregate],
                                           specials=[NA_TOKEN, SEP_TOKEN, START_TOKEN, CTX_TOKEN, PAD_TOKEN, UNK_TOKEN],
                                           lower=True,
                                           vectors='glove.840B.300d',
-                                          vocab_cache=cache_sub_path.joinpath("input_vocab.pkl"))
+                                          vocab_cache=self.vocab_cache.joinpath("input_vocab.pkl"))
         vocabs[LOGICAL_FORM] = self._build_vocab([item[2] for item in data_aggregate],
                                                  specials=[START_TOKEN, END_TOKEN, PAD_TOKEN, UNK_TOKEN],
                                                  lower=True,
-                                                 vocab_cache=cache_sub_path.joinpath("lf_vocab.pkl"))
+                                                 vocab_cache=self.vocab_cache.joinpath("lf_vocab.pkl"))
         vocabs[NER] = self._build_vocab([item[3] for item in data_aggregate],
                                         specials=[O, PAD_TOKEN],
-                                        vocab_cache=cache_sub_path.joinpath("ner_vocab.pkl"))
+                                        vocab_cache=self.vocab_cache.joinpath("ner_vocab.pkl"))
         vocabs[COREF] = self._build_vocab([item[4] for item in data_aggregate],
                                           specials=['0', PAD_TOKEN],
-                                          vocab_cache=cache_sub_path.joinpath("coref_vocab.pkl"))
+                                          vocab_cache=self.vocab_cache.joinpath("coref_vocab.pkl"))
         vocabs[PREDICATE_POINTER] = self._build_vocab([item[5] for item in data_aggregate],
                                                       specials=[NA_TOKEN, PAD_TOKEN],
-                                                      vocab_cache=cache_sub_path.joinpath("pred_vocab.pkl"))
+                                                      vocab_cache=self.vocab_cache.joinpath("pred_vocab.pkl"))
         vocabs[TYPE_POINTER] = self._build_vocab([item[6] for item in data_aggregate],
                                                  specials=[NA_TOKEN, PAD_TOKEN],
-                                                 vocab_cache=cache_sub_path.joinpath("type_vocab.pkl"))
+                                                 vocab_cache=self.vocab_cache.joinpath("type_vocab.pkl"))
         vocabs[ENTITY] = self._build_vocab([item[7] for item in data_aggregate],
                                            specials=[PAD_TOKEN, NA_TOKEN],
-                                           vocab_cache=cache_sub_path.joinpath("ent_vocab.pkl"))
+                                           vocab_cache=self.vocab_cache.joinpath("ent_vocab.pkl"))
 
         return vocabs
 
     def preprocess_data(self, splits=('train', 'val', 'test')):
-        # source_paths = {'train': self.train_path,
-        #                 'val': self.val_path,
-        #                 'test': self.test_path}
 
         data = dict()
         helpers = dict()
+        self.data_cache.mkdir(parents=True, exist_ok=True)
         for split, path_to_split in self.source_paths.items():
-            data_cache_file = self.cache_path.joinpath(split).with_suffix(".pkl")
-            helper_cache_file = self.cache_path.joinpath(f"{split}_helper").with_suffix(".pkl")
-            if data_cache_file.exists() and helper_cache_file.exists() and not self.no_data_cache:
+            data_cache_file = self.data_cache.joinpath(split).with_suffix(".pkl")
+            helper_cache_file = self.data_cache.joinpath(f"{split}_helper").with_suffix(".pkl")
+            if data_cache_file.exists() and helper_cache_file.exists() and not self.rebuild_data_cache:
                 print(f"Loading {split} from cache...")
                 data[split] = pickle.load(data_cache_file.open("rb"), encoding='utf8')
                 helpers[split] = pickle.load(helper_cache_file.open("rb"), encoding='utf8')
@@ -669,7 +666,7 @@ class CSQADataset:
     def _build_vocab(self, tokens, specials: list[str], lower=False, min_freq=0,
                      vectors=None,
                      vocab_cache: pathlib.Path = None):
-        if vocab_cache is not None and vocab_cache.exists() and not self.no_vocab_cache:
+        if vocab_cache is not None and vocab_cache.exists() and not self.rebuild_vocab_cache:
             print(f"\t...loading {vocab_cache.stem} from {vocab_cache}")
             return pickle.load(vocab_cache.open("rb"), encoding="utf8")
 

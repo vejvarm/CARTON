@@ -14,9 +14,9 @@ def get_parser():
 
     # data
     parser.add_argument('--data-path', default='data/final/csqa')
-    parser.add_argument('--no-data-cache', action='store_true')
-    parser.add_argument('--no-vocab-cache', action='store_true')
-    parser.add_argument('--cache-path', default='.cache/merged', type=str)
+    parser.add_argument('--vocab-cache', default='.cache/vocabs', type=str)
+    parser.add_argument('--rebuild-data-cache', action='store_true')
+    parser.add_argument('--rebuild-vocab-cache', action='store_true')
     # parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
     parser.add_argument('--ent_dict_path', default="knowledge_graph/items_wikidata_n.json")
     parser.add_argument('--rel_dict_path', default="knowledge_graph/index_rel_dict.json")
