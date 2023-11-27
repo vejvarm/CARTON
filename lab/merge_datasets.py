@@ -1,4 +1,3 @@
-from collections import Counter
 from pathlib import Path
 from tqdm import tqdm
 import shutil
@@ -83,7 +82,7 @@ def main(args):
         csqa_d2t_files = list_files(csqa_d2t_dir / subset, shuffle=True)
 
         # calculate num samples from D2T for enrichment from ratio
-        csqa_total_turns = Counter(csqa_stats[subset]).total()
+        csqa_total_turns = sum(csqa_stats[subset].values())  # equivalent to Counter(csqa_stats[subset]).total()
         if ratio == -1:
             csqa_d2t_size = len(csqa_d2t_files)
         else:
