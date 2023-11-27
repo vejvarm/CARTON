@@ -791,6 +791,9 @@ class CSQADataset:
         # [6] ... TYPE_POINTER
         # [7] ... ENTITY
         """
-
         for i, key in enumerate(self._field_names):
-            self.counters[key].update([item[i] for item in processed_data])
+            # i.e. c.update(i for j in [['NA', '[PAD]', 'Q1155636', 'Q914286'], ['NA', '[PAD]', 'Q914286', 'Q22978913', 'Q1037042']] for i in j)
+            if key == ID:
+                self.counters[key].update([item[i] for item in processed_data])
+            else:
+                self.counters[key].update([item for lst in processed_data for item in lst[i]])
