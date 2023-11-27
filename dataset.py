@@ -66,7 +66,7 @@ class DataBatch:
                 entity_pointer.append(self._tensor([vocabs[ENTITY].stoi[s] for s in sample[7]]))
                 KeyError: 'Q4622539'
                 """
-                entity_pointer.append(self._tensor([vocabs['ENTITY'].stoi['NA']]))
+                entity_pointer.append(self._tensor([vocabs[ENTITY].stoi['NA']]))
         self.id = self._tensor(id).to(device)
         self.input = pad_sequence(inp,
                                   padding_value=vocabs[INPUT].stoi[PAD_TOKEN],
