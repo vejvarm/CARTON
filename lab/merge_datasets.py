@@ -58,8 +58,7 @@ def copy_files(csqa_files, csqa_d2t_files, dest_directory, csqa_d2t_size):
         # copy remaining files to leftovers folder
         folder_path = dest_directory / "QA_-1"
         i = 0
-        pbar.set_postfix({'folder': f"{folder_path.name} ({len(csqa_folders)+1}/{len(csqa_folders)})"})
-        print(f"total before leftover: {pbar.n}")
+        print(f"Total copied before leftover: {pbar.n}")
         while True:
             try:
                 new_file_name = f"QA_{i}.json"
@@ -67,13 +66,14 @@ def copy_files(csqa_files, csqa_d2t_files, dest_directory, csqa_d2t_size):
                 new_file_path = folder_path / new_file_name
                 if i == 0:
                     folder_path.mkdir(exist_ok=True, parents=True)
+                    pbar.set_postfix({'folder': f"{folder_path.name} ({len(csqa_folders) + 1}/{len(csqa_folders)})"})
                 shutil.copy(str(csqa_d2t_file), str(new_file_path))
                 # update mapping file
                 f.write(json.dumps({str(new_file_path): str(csqa_d2t_file)}))
                 i += 1
                 pbar.update(1)
             except StopIteration:
-                print("No more CSQA-D2T files to distribute.")
+                print(f"Leftover count: {i}. No more CSQA-D2T files to distribute.")
                 break
 
 
