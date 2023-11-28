@@ -20,7 +20,7 @@ def copy_files(csqa_files, csqa_d2t_files, dest_directory, csqa_d2t_size):
         folder = file_path.parent.name
         csqa_folders.setdefault(folder, []).append(file_path)
 
-    num_csqa_d2t_per_folder = round(csqa_d2t_size / len(csqa_folders))  # BUG, not len(csqa_files) but
+    num_csqa_d2t_per_folder = round(csqa_d2t_size / len(csqa_folders))
 
     csqa_d2t_iter = iter(csqa_d2t_files)
     with tqdm(desc="Copying D2T files", total=csqa_d2t_size, leave=True) as pbar:
@@ -64,6 +64,8 @@ def copy_files(csqa_files, csqa_d2t_files, dest_directory, csqa_d2t_size):
                 new_file_name = f"QA_{i}.json"
                 csqa_d2t_file = next(csqa_d2t_iter)
                 new_file_path = folder_path / new_file_name
+                if i == 0:
+                    folder_path.mkdir(exist_ok=True, parents=True)
                 shutil.copy(str(csqa_d2t_file), str(new_file_path))
                 # update mapping file
                 f.write(json.dumps({str(new_file_path): str(csqa_d2t_file)}))
