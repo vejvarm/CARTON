@@ -59,6 +59,7 @@ def copy_files(csqa_files, csqa_d2t_files, dest_directory, csqa_d2t_size):
         folder_path = dest_directory / "QA_-1"
         i = 0
         pbar.set_postfix({'folder': f"{folder_path.name} ({len(csqa_folders)+1}/{len(csqa_folders)})"})
+        print(f"total before leftover: {pbar.n}")
         while True:
             try:
                 new_file_name = f"QA_{i}.json"
