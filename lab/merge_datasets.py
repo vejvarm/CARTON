@@ -20,37 +20,58 @@ def copy_files(csqa_files, csqa_d2t_files, dest_directory, csqa_d2t_size):
         folder = file_path.parent.name
         csqa_folders.setdefault(folder, []).append(file_path)
 
-    num_csqa_d2t_per_folder = csqa_d2t_size // len(csqa_folders)  # BUG, not len(csqa_files) but
+    num_csqa_d2t_per_folder = round(csqa_d2t_size / len(csqa_folders))  # BUG, not len(csqa_files) but
 
     csqa_d2t_iter = iter(csqa_d2t_files)
-    for folder, files in tqdm(csqa_folders.items(), desc="Copying files", leave=True):
-        folder_path = dest_directory / folder
-        folder_path.mkdir(parents=True, exist_ok=True)
+    with tqdm(desc="Copying D2T files", total=csqa_d2t_size, leave=True) as pbar:
+        for fldr_idx, (folder, files) in enumerate(csqa_folders.items()):
+            folder_path = dest_directory / folder
+            folder_path.mkdir(parents=True, exist_ok=True)
 
-        # Find the maximum 'y' in QA_y.json
-        max_y = max(int(file.name.split('_')[1].split('.')[0]) for file in files)
+            # Find the maximum 'y' in QA_y.json
+            max_y = max(int(file.name.split('_')[1].split('.')[0]) for file in files)
 
-        # open mapping file in the split root
-        with open(dest_directory / "mapping.jsonl", 'a') as f:
-            # Copy CSQA files
-            for file_path in files:
-                new_file_path = folder_path / file_path.name
-                shutil.copy(str(file_path), str(new_file_path))
-                # update mapping file
-                f.write(json.dumps({str(new_file_path): str(file_path)}) + '\n')
-
-            # Copy and rename CSQA-D2T files
-            for i in range(num_csqa_d2t_per_folder):
-                try:
-                    new_file_name = f"QA_{max_y + 1 + i}.json"
-                    csqa_d2t_file = next(csqa_d2t_iter)
-                    new_file_path = folder_path / new_file_name
-                    shutil.copy(str(csqa_d2t_file), str(new_file_path))
+            # open mapping file in the split root
+            with open(dest_directory / "mapping.jsonl", 'a') as f:
+                pbar.set_postfix({'folder': f"{folder_path.name} ({fldr_idx+1}/{len(csqa_folders)})"})
+                # Copy CSQA files
+                for file_path in files:
+                    new_file_path = folder_path / file_path.name
+                    shutil.copy(str(file_path), str(new_file_path))
                     # update mapping file
-                    f.write(json.dumps({str(new_file_path): str(csqa_d2t_file)}))
-                except StopIteration:
-                    print("No more CSQA-D2T files to distribute.")
-                    break
+                    f.write(json.dumps({str(new_file_path): str(file_path)}) + '\n')
+
+                # Copy and rename CSQA-D2T files
+                for i in range(num_csqa_d2t_per_folder):
+                    try:
+                        new_file_name = f"QA_{max_y + 1 + i}.json"
+                        csqa_d2t_file = next(csqa_d2t_iter)
+                        new_file_path = folder_path / new_file_name
+                        shutil.copy(str(csqa_d2t_file), str(new_file_path))
+                        # update mapping file
+                        f.write(json.dumps({str(new_file_path): str(csqa_d2t_file)}))
+                        pbar.update(1)
+                    except StopIteration:
+                        print("No more CSQA-D2T files to distribute.")
+                        break
+
+        # copy remaining files to leftovers folder
+        folder_path = dest_directory / "QA_-1"
+        i = 0
+        pbar.set_postfix({'folder': f"{folder_path.name} ({len(csqa_folders)+1}/{len(csqa_folders)})"})
+        while True:
+            try:
+                new_file_name = f"QA_{i}.json"
+                csqa_d2t_file = next(csqa_d2t_iter)
+                new_file_path = folder_path / new_file_name
+                shutil.copy(str(csqa_d2t_file), str(new_file_path))
+                # update mapping file
+                f.write(json.dumps({str(new_file_path): str(csqa_d2t_file)}))
+                i += 1
+                pbar.update(1)
+            except StopIteration:
+                print("No more CSQA-D2T files to distribute.")
+                break
 
 
 def calculate_csqa_d2t_size(csqa_size, ratio):
