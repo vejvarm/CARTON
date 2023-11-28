@@ -205,9 +205,6 @@ class CSQADataset:
         vocabs[ID] = self._counter_to_vocab(self.counters[ID],
                                             specials=[],
                                             vocab_cache=self.vocab_cache.joinpath("id_vocab.pkl"))
-        vocabs[ID] = self._counter_to_vocab(self.counters[ID],
-                                            specials=[],
-                                            vocab_cache=self.vocab_cache.joinpath("id_vocab.pkl"))
         vocabs[INPUT] = self._counter_to_vocab(self.counters[INPUT],
                                                specials=[NA_TOKEN, SEP_TOKEN, START_TOKEN, CTX_TOKEN, PAD_TOKEN,
                                                          UNK_TOKEN],
