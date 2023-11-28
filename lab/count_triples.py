@@ -36,11 +36,12 @@ def categorize_by_num_of_triples(input_dir, splits=("test", "train", "val")):
 def main(args):
     total, num_triples_counter, convo_len_counter = categorize_by_num_of_triples(args.input)
 
-    stats = {**num_triples_counter}
+    stats = dict(**num_triples_counter)
+    stats["total_samples"] = {k: sum(c.values()) for k, c in num_triples_counter.items()}
 
     total_counter = Counter()
     [total_counter.update(ctr) for ctr in num_triples_counter.values()]
-    stats["total"] = total_counter
+    stats["total_triples"] = total_counter
     stats["convo_len"] = convo_len_counter
 
     print(f"FILES TOTAL: {total}")
