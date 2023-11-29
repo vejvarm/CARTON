@@ -117,7 +117,7 @@ if __name__ == "__main__":
     model.load_state_dict(checkpoint['state_dict'])
     print(f"=> loaded checkpoint '{args.model_path}' (epoch {checkpoint['epoch']})")
 
-    predictor = Predictor(model, vocabs)
+    # predictor = Predictor(model, vocabs)
 
 
 

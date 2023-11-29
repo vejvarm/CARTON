@@ -605,7 +605,7 @@ class MultiTaskLoss(nn.Module):
         self.pred_pointer = SingleTaskLoss(ignore_index)
         self.type_pointer = SingleTaskLoss(ignore_index)
 
-        self.mml_emp = torch.Tensor([True, True, True, True, True])
+        self.mml_emp = torch.Tensor([True, True, False, True, True])
         self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))
 
     def forward(self, output, target):

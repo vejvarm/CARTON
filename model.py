@@ -87,6 +87,7 @@ class NerNet(nn.Module):
             Flatten(),
             nn.Dropout(dropout),
             nn.Linear(args.emb_dim, tags)
+            # TODO: add Softmax?
         )
 
     def forward(self, x):
@@ -94,7 +95,7 @@ class NerNet(nn.Module):
         return self.ner_linear(h), h
 
 
-# ANCHOR: This is interesting
+# ANCHOR: COREF is not training! something must be wrong with pred/target labels to calculate loss?
 class CorefNet(nn.Module):
     def __init__(self, tags, dropout=args.dropout):
         super(CorefNet, self).__init__()
@@ -103,7 +104,8 @@ class CorefNet(nn.Module):
             nn.LeakyReLU(),
             Flatten(),
             nn.Dropout(dropout),
-            nn.Linear(args.emb_dim, tags)
+            nn.Linear(args.emb_dim, tags),
+            # TODO: add Softmax?
         )
 
     def forward(self, x):
@@ -262,6 +264,7 @@ class Decoder(nn.Module):
 
         x = h.contiguous().view(-1, h.shape[-1])
         x = self.linear_out(x)
+        # TODO: add Softmax?
 
         return x, h
 
