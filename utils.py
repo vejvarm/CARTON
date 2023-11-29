@@ -511,11 +511,8 @@ class MultiTaskAcc(nn.Module):
         self.pp_acc = SingleTaskAccuracy(self.device)
         self.tp_acc = SingleTaskAccuracy(self.device)
 
-        self.mml_emp = torch.Tensor([True, True, True, True, True])
-        self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))
-
     def forward(self, output, target):
-        # weighted loss
+        # micro-averaged accuracy
         accs = torch.stack((
             self.lf_acc(output[LOGICAL_FORM], target[LOGICAL_FORM]),
             self.ner_acc(output[NER], target[NER]),
@@ -605,7 +602,7 @@ class MultiTaskLoss(nn.Module):
         self.pred_pointer = SingleTaskLoss(ignore_index)
         self.type_pointer = SingleTaskLoss(ignore_index)
 
-        self.mml_emp = torch.Tensor([True, True, False, True, True])
+        self.mml_emp = torch.Tensor([True, True, True, True, True])
         self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))
 
     def forward(self, output, target):

@@ -11,7 +11,8 @@ from model import CARTON
 from dataset import CSQADataset, collate_fn
 from torch.utils.data import DataLoader, SequentialSampler, BatchSampler, RandomSampler
 from torch.utils.tensorboard import SummaryWriter
-from utils import (NoamOpt, AverageMeter, SingleTaskLoss, MultiTaskLoss, save_checkpoint, init_weights)
+from utils import (NoamOpt, AverageMeter, SingleTaskLoss, MultiTaskLoss, save_checkpoint, init_weights,
+                   MultiTaskAccTorchmetrics)
 
 from helpers import setup_logger
 from constants import *
@@ -122,7 +123,7 @@ def main():
     for epoch in range(args.start_epoch, args.epochs):
         # evaluate on validation set
         if epoch % args.valfreq == 0:
-            val_loss = validate(val_loader, model, vocabs, helper_dict['val'], criterion, single_task_loss)
+            val_loss, accs = validate(val_loader, model, vocabs, helper_dict['val'], criterion, single_task_loss)
             best_val = min(val_loss, best_val)  # log every validation step
             save_checkpoint({
                     EPOCH: epoch,
@@ -133,15 +134,21 @@ def main():
                 },
                 experiment=args.name
             )
-            LOGGER.info(f'* Val loss: {val_loss:.4f}')
             tb_writer.add_scalar('val loss', val_loss, epoch)
+
+            acc_sum = 0.
+            for name, acc_meter in accs.items():
+                acc_sum += acc_meter.avg
+                tb_writer.add_scalar(f'val acc {name}', acc_meter.avg, epoch)
+            acc_mean = acc_sum/len(accs)
+            LOGGER.info(f'\tTOTAL Loss: {val_loss:.4f} | TOTAL Acc: {acc_mean}')
 
         # train for one epoch
         train_loss = train(train_loader, model, vocabs, helper_dict['train'], criterion, optimizer, epoch)
         tb_writer.add_scalar('training loss', train_loss, epoch+1)
 
     # Validate and save the final epoch
-    val_loss = validate(val_loader, model, vocabs, helper_dict['val'], criterion, single_task_loss)
+    val_loss, accs = validate(val_loader, model, vocabs, helper_dict['val'], criterion, single_task_loss)
     best_val = min(val_loss, best_val)  # log every validation step
     save_checkpoint({
         EPOCH: args.epochs,
@@ -152,8 +159,14 @@ def main():
     },
         experiment=args.name
     )
-    LOGGER.info(f'* Val loss: {val_loss:.4f}')
     tb_writer.add_scalar('val loss', val_loss, args.epochs)
+
+    acc_sum = 0.
+    for name, acc_meter in accs.items():
+        acc_sum += acc_meter.avg
+        tb_writer.add_scalar(f'val acc {name}', acc_meter.avg, args.epochs)
+    acc_mean = acc_sum / len(accs)
+    LOGGER.info(f'\tTOTAL Loss: {val_loss:.4f} | TOTAL Acc: {acc_mean}')
 
 
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
@@ -236,11 +249,20 @@ def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss
     losses_pred = AverageMeter()
     losses_type = AverageMeter()
 
+    pad = {k: v.stoi["[PAD]"] for k, v in vocabs.items() if k != "id"}
+    num_classes = {k: len(v) for k, v in vocabs.items() if k != "id"}
+    acc_calculator = MultiTaskAccTorchmetrics(num_classes, pads=pad, device=DEVICE, averaging_type='micro')  # !we use 'micro' to NOT bloat up classes, which don't have much samples (that would be useful for training)
+    accuracies = {LOGICAL_FORM: AverageMeter(),
+                  NER: AverageMeter(),
+                  COREF: AverageMeter(),
+                  PREDICATE_POINTER: AverageMeter(),
+                  TYPE_POINTER: AverageMeter()}
+
     # switch to evaluate mode
     model.eval()
 
     with torch.no_grad():
-        for _, batch in tqdm(enumerate(val_loader), desc="\tvalidation"):
+        for _, batch in tqdm(enumerate(val_loader), desc="\tvalidation", total=len(val_loader)):
             # get inputs
             input = batch.input
             logical_form = batch.logical_form
@@ -281,9 +303,18 @@ def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss
             losses_pred.update(loss_pred.detach(), input.size(0))
             losses_type.update(loss_type.detach(), input.size(0))
 
-    LOGGER.info(f"Val losses:: LF: {losses_lf.avg} | NER: {losses_ner.avg} | COREF: {losses_coref.avg} | "
+            # compute accuracies
+            accs = acc_calculator(output, target)
+            for name, meter in accuracies.items():
+                meter.update(accs[name])
+
+    LOGGER.info("VALIDATION")
+    LOGGER.info(f"\tLoss:: LF: {losses_lf.avg} | NER: {losses_ner.avg} | COREF: {losses_coref.avg} | "
                 f"PRED: {losses_pred.avg} | TYPE: {losses_type.avg}")
-    return losses.avg
+    LOGGER.info(f"\tAccuracy:: LF: {accuracies[LOGICAL_FORM].avg} | NER: {accuracies[NER].avg} | "
+                f"COREF: {accuracies[COREF].avg} | PRED: {accuracies[PREDICATE_POINTER].avg} | "
+                f"TYPE: {accuracies[TYPE_POINTER].avg}")
+    return losses.avg, accs
 
 
 if __name__ == '__main__':

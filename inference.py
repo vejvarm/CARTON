@@ -119,8 +119,6 @@ if __name__ == "__main__":
 
     # predictor = Predictor(model, vocabs)
 
-
-
     # acc_calculator = MultiTaskAcc(DEVICE)
     # accuracies = {LOGICAL_FORM: AverageMeter(),
     #               NER: AverageMeter(),
