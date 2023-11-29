@@ -314,7 +314,7 @@ def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss
     LOGGER.info(f"\tAccuracy:: LF: {accuracies[LOGICAL_FORM].avg} | NER: {accuracies[NER].avg} | "
                 f"COREF: {accuracies[COREF].avg} | PRED: {accuracies[PREDICATE_POINTER].avg} | "
                 f"TYPE: {accuracies[TYPE_POINTER].avg}")
-    return losses.avg, accs
+    return losses.avg, accuracies
 
 
 if __name__ == '__main__':
