@@ -104,6 +104,7 @@ def extract_entities_and_sentences(input_batch, ner_batch, coref_batch):
 
 if __name__ == "__main__":
     save_path = ROOT_PATH.joinpath(args.path_inference).joinpath(args.name)
+    print(f"BATCH SIZE: {args.batch_size}")
     print(f"results will be saved to `{save_path}`.")
 
     # load data

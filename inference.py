@@ -20,10 +20,6 @@ from args import get_parser
 parser = get_parser()
 args = parser.parse_args()
 
-# args.seed = 69  # canada, queen victoria, lefty west
-# args.seed = 100
-# args.batch_size = 1
-
 # TODO: figure out what I just did :D
 # TODO: what would it take to calculate accuracy based on completel logical form!?
 
