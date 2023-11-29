@@ -141,7 +141,7 @@ def main():
                 acc_sum += acc_meter.avg
                 tb_writer.add_scalar(f'val acc {name}', acc_meter.avg, epoch)
             acc_mean = acc_sum/len(accs)
-            LOGGER.info(f'\tTOTAL Loss: {val_loss:.4f} | TOTAL Acc: {acc_mean}')
+            LOGGER.info(f'\tTOTAL Loss: {val_loss:.4f} | TOTAL Acc: {acc_mean:.4f}')
 
         # train for one epoch
         train_loss = train(train_loader, model, vocabs, helper_dict['train'], criterion, optimizer, epoch)
@@ -166,7 +166,7 @@ def main():
         acc_sum += acc_meter.avg
         tb_writer.add_scalar(f'val acc {name}', acc_meter.avg, args.epochs)
     acc_mean = acc_sum / len(accs)
-    LOGGER.info(f'\tTOTAL Loss: {val_loss:.4f} | TOTAL Acc: {acc_mean}')
+    LOGGER.info(f'\tTOTAL Loss: {val_loss:.4f} | TOTAL Acc: {acc_mean:.4f}')
 
 
 def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch):
@@ -309,11 +309,11 @@ def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss
                 meter.update(accs[name])
 
     LOGGER.info("VALIDATION")
-    LOGGER.info(f"\tLoss:: LF: {losses_lf.avg} | NER: {losses_ner.avg} | COREF: {losses_coref.avg} | "
-                f"PRED: {losses_pred.avg} | TYPE: {losses_type.avg}")
-    LOGGER.info(f"\tAccuracy:: LF: {accuracies[LOGICAL_FORM].avg} | NER: {accuracies[NER].avg} | "
-                f"COREF: {accuracies[COREF].avg} | PRED: {accuracies[PREDICATE_POINTER].avg} | "
-                f"TYPE: {accuracies[TYPE_POINTER].avg}")
+    LOGGER.info(f"\tLoss:: LF: {losses_lf.avg:.4f} | NER: {losses_ner.avg:.4f} | COREF: {losses_coref.avg:.4f} | "
+                f"PRED: {losses_pred.avg:.4f} | TYPE: {losses_type.avg:.4f}")
+    LOGGER.info(f"\tAccuracy:: LF: {accuracies[LOGICAL_FORM].avg:.4f} | NER: {accuracies[NER].avg:.4f} | "
+                f"COREF: {accuracies[COREF].avg:.4f} | PRED: {accuracies[PREDICATE_POINTER].avg:.4f} | "
+                f"TYPE: {accuracies[TYPE_POINTER].avg:.4f}")
     return losses.avg, accuracies
 
 
