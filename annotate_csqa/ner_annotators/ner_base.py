@@ -12,6 +12,10 @@ class NERBase:
     def find_entity_in_utterance(self, entity, utterance):
         results = []
         ent_len = len(entity)
+
+        if ent_len == 0:
+            return []
+
         for ind in (i for i, e in enumerate(utterance) if e == entity[0]):
             if utterance[ind:ind+ent_len] == entity:
                 results.append((ind, ind+ent_len-1))
@@ -22,44 +26,52 @@ class NERBase:
         entities = user['entities_in_utterance']
 
         context = self.tokenizer(utterance)
+        ent_labels = {}
         ent_data = {}
         for entity in entities:
-            ent_label = self.operator.get_entity_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
-            tok_ent = self.tokenizer(unidecode(ent_label.lower()))
-            try:
-                ent_in_utter = self.find_entity_in_utterance(tok_ent, context)
-            except Exception as ex:
-                print(ex)
-                self.log_error('Entity not found on utterance', user['utterance'])
-                user['is_ner_spurious'] = True
-                system['is_ner_spurious'] = True
-                return user, system
-            if not is_verification and not ent_in_utter:
-                self.log_error('Entity not found on utterance', user['utterance'])
-                user['is_ner_spurious'] = True
-                system['is_ner_spurious'] = True
-                return user, system
+            ent_labels[entity] = self.operator.get_entity_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
             ent_data[entity] = {
                 'type': self.get_type(entity),
-                'ent_label': ent_label,
-                'tok_ent': tok_ent,
-                'indices': list(range(ent_in_utter[0][0], ent_in_utter[0][1]+1)) if ent_in_utter else []
+                'ent_label': ent_labels[entity],
+                'tok_ent': self.tokenizer(unidecode(ent_labels[entity].lower())),
             }
+        # sort entities by the length of their labels
+        ent_labels_short_first = sorted(ent_labels.items(), key=lambda x: len(x[1]), reverse=False)
+        is_ner_spurious = False
+        for entity, _ in ent_labels_short_first:
+            try:
+                ent_in_utter = self.find_entity_in_utterance(ent_data[entity]['tok_ent'], context)
+                # Q0e1: [(29, 29), (35, 35)]
+                # Q0e2: [(0, 3), (8, 11)]
+                # Q0e3: [(0, 6)]
+            except Exception as ex:
+                print(ex)
+                self.log_error(f'Entity {entity} not found in utterance', user['utterance'])
+                is_ner_spurious = True
+                ent_in_utter = []
+                # return user, system
+            if not is_verification and not ent_in_utter:
+                self.log_error(f'Entity {entity} not found in utterance', user['utterance'])
+                is_ner_spurious = True
+                # return user, system
+            ent_data[entity]['indices'] = [range(idcs[0], idcs[1]+1) for idcs in ent_in_utter] if ent_in_utter else []
 
         utter_context = []
         for i, word in enumerate(context):
             word_context = [i, word, 'NA', 'NA', 'O']
-            for ent, data in ent_data.items():
-                if i in data['indices']:
-                    word_context[-1] = 'B' if data['indices'] and i == data['indices'][0] else 'I'
-                    word_context[-2] = data['type']
-                    word_context[-3] = ent
+            for ent, lab in ent_labels_short_first:
+                data = ent_data[ent]
+                for idcs in data['indices']:
+                    if i in idcs:
+                        word_context[-1] = 'B' if idcs and i == idcs[0] else 'I'
+                        word_context[-2] = data['type']
+                        word_context[-3] = ent
             utter_context.append(word_context)
 
         user['context'] = utter_context
         system['context'] = self.get_system_context(system)
-        user['is_ner_spurious'] = False
-        system['is_ner_spurious'] = False
+        user['is_ner_spurious'] = is_ner_spurious
+        system['is_ner_spurious'] = is_ner_spurious
 
         return user, system
 
@@ -285,6 +297,7 @@ class NERBase:
             for j, entity in enumerate(system['entities_in_utterance']):
                 ent_type = self.get_type(entity)
                 label = self.operator.get_entity_label(entity)  # self.kg.id_entity[entity] TODO: doublecheck
+                i = 0
                 for i, word in enumerate(self.tokenizer(label.lower())):
                     if i == 0:
                         ner_tags.append([idx_counter + i, word, entity, ent_type, 'B'])
@@ -319,3 +332,7 @@ class NERBase:
         unicoce_txt = open('TOFIX.txt', 'a')
         unicoce_txt.write(f'{self.__class__.__name__}\t{txt}\t{context}\n')
         unicoce_txt.close()
+
+
+if __name__ == "__main__":
+    nerbase = NERBase

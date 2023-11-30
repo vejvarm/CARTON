@@ -1,0 +1,1734 @@
+{
+    "diameter": [
+        "<subject> has a diameter of <object>."
+    ],
+    "first flight": [
+        "<subject> made its first flight in <object>."
+    ],
+    "conflict": [
+        "<subject> was involved in a conflict in <object>."
+    ],
+    "exhibition history": [
+        "<subject> has an exhibition history that includes <object>."
+    ],
+    "terminus location": [
+        "<subject> terminates at <object>."
+    ],
+    "coat of arms": [
+        "<subject> has a coat of arms featuring <object>."
+    ],
+    "NBN System Key": [
+        "<subject> has an NBN System Key of <object>."
+    ],
+    "distribution": [
+        "<subject> is distributed in <object>."
+    ],
+    "owned by": [
+        "<subject> is owned by <object>."
+    ],
+    "maintained by": [
+        "<subject> is maintained by <object>."
+    ],
+    "commissioned by": [
+        "<subject> was commissioned by <object>."
+    ],
+    "publisher": [
+        "<subject> was published by <object>."
+    ],
+    "basic form of government": [
+        "<subject> has a basic form of government of <object>."
+    ],
+    "item operated": [
+        "<subject> operates <object>."
+    ],
+    "connecting line": [
+        "<subject> is connected by a line to <object>."
+    ],
+    "composer": [
+        "<subject> was composed by <object>."
+    ],
+    "physically interacts with": [
+        "<subject> physically interacts with <object>."
+    ],
+    "architect": [
+        "<subject> was designed by an architect, <object>."
+    ],
+    "bowling style": [
+        "<subject> has a bowling style of <object>."
+    ],
+    "location map": [
+        "<subject> has a location on a map called <object>."
+    ],
+    "strand orientation": [
+        "<subject> has a strand orientation of <object>."
+    ],
+    "stated in": [
+        "<subject> is stated in <object>."
+    ],
+    "licensed to broadcast to": [
+        "<subject> is licensed to broadcast to <object>."
+    ],
+    "dedicated to": [
+        "<subject> is dedicated to <object>."
+    ],
+    "applies to part": [
+        "<subject> applies to the part <object>."
+    ],
+    "powerplant": [
+        "<subject> has a powerplant of <object>."
+    ],
+    "original combination": [
+        "<subject> has an original combination of <object>."
+    ],
+    "academic degree": [
+        "<subject> has an academic degree of <object>."
+    ],
+    "criterion used": [
+        "<subject> was evaluated using the criterion <object>."
+    ],
+    "material used": [
+        "<subject> is made of the material <object>."
+    ],
+    "format as a regular expression": [
+        "<subject> follows the regular expression format <object>."
+    ],
+    "endemic to": [
+        "<subject> is endemic to <object>."
+    ],
+    "hair color": [
+        "<subject> has hair color of <object>."
+    ],
+    "cathedral": [
+        "<subject> is a cathedral located in <object>."
+    ],
+    "video": [
+        "<subject> has video <object>."
+    ],
+    "area": [
+        "<subject> has an area of <object>."
+    ],
+    "orbital inclination": [
+        "<subject> has an orbital inclination of <object>."
+    ],
+    "elevation above sea level": [
+        "<subject> has an elevation above sea level of <object>."
+    ],
+    "native label": [
+        "<subject> has a native label of <object>."
+    ],
+    "route map": [
+        "<subject> has a route map <object>."
+    ],
+    "highway system": [
+        "<subject> is part of the <object> highway system."
+    ],
+    "together with": [
+        "<subject> is together with <object>."
+    ],
+    "place of birth": [
+        "<subject> was born in <object>."
+    ],
+    "track gauge": [
+        "<subject> has a track gauge of <object>."
+    ],
+    "student of": [
+        "<subject> was a student of <object>."
+    ],
+    "height": [
+        "<subject> has a height of <object>."
+    ],
+    "country for sport": [
+        "<subject> represents <object> in sports."
+    ],
+    "family name identical to this first name": [
+        "<subject>'s family name is identical to their first name, <object>."
+    ],
+    "director of photography": [
+        "<subject> was the director of photography for <object>."
+    ],
+    "software version": [
+        "<subject> has software version <object>."
+    ],
+    "number of households": [
+        "<subject> has a number of households of <object>."
+    ],
+    "female population": [
+        "<subject> has a female population of <object>."
+    ],
+    "atomic number": [
+        "<subject> has an atomic number of <object>."
+    ],
+    "employees": [
+        "<subject> has <object> employees."
+    ],
+    "lakes on river": [
+        "<subject> has <object> lakes on the river."
+    ],
+    "population": [
+        "<subject> has a population of <object>."
+    ],
+    "maximum capacity": [
+        "<subject> has a maximum capacity of <object>."
+    ],
+    "from fictional universe": [
+        "<subject> is from the fictional universe of <object>."
+    ],
+    "color": [
+        "<subject> has a color of <object>."
+    ],
+    "member of": [
+        "<subject> is a member of <object>."
+    ],
+    "parity": [
+        "<subject> has a parity of <object>."
+    ],
+    "occupant": [
+        "<subject> is occupied by <object>."
+    ],
+    "legislated by": [
+        "<subject> is legislated by <object>."
+    ],
+    "gestation period": [
+        "<subject> has a gestation period of <object>."
+    ],
+    "exact match": [
+        "<subject> is an exact match of <object>."
+    ],
+    "ballots cast": [
+        "<subject> has <object> ballots cast."
+    ],
+    "length": [
+        "<subject> has a length of <object>."
+    ],
+    "drafted by": [
+        "<subject> is drafted by <object>."
+    ],
+    "sport": [
+        "<subject> is a <object> sport."
+    ],
+    "significant drug interaction": [
+        "<subject> has a significant drug interaction with <object>."
+    ],
+    "electoral district": [
+        "<subject> is located in electoral district <object>."
+    ],
+    "surface played on": [
+        "<subject> is played on <object> surface."
+    ],
+    "contributor": [
+        "<subject> is a contributor to <object>."
+    ],
+    "image of grave": [
+        "<subject> has an image of grave <object>."
+    ],
+    "does not have part": [
+        "<subject> does not have part <object>."
+    ],
+    "chief executive officer": [
+        "<subject> is the chief executive officer of <object>."
+    ],
+    "military branch": [
+        "<subject> belongs to the <object> military branch."
+    ],
+    "flag": [
+        "<subject> has a flag of <object>."
+    ],
+    "producer": [
+        "<subject> is produced by <object>."
+    ],
+    "cast member": [
+        "<subject> is a cast member of <object>."
+    ],
+    "ticker symbol": [
+        "<subject> has a ticker symbol of <object>."
+    ],
+    "award received": [
+        "<subject> received the award <object>."
+    ],
+    "PhilPapers profile": [
+        "<subject> has a PhilPapers profile with ID <object>."
+    ],
+    "PhilPapers author": [
+        "<subject> is a PhilPapers author with ID <object>."
+    ],
+    "number of points/goals conceded": [
+        "<subject> conceded <object> points/goals."
+    ],
+    "PhilPapers topic": [
+        "<subject> has a PhilPapers topic with ID <object>."
+    ],
+    "Library of Congress Cultural Heritage Organizations": [
+        "<subject> is a cultural heritage organization in the Library of Congress with ID <object>."
+    ],
+    "trunk prefix": [
+        "<subject> has a trunk prefix of <object>."
+    ],
+    "period": [
+        "<subject> has a period of <object>."
+    ],
+    "time-weighted average exposure limit": [
+        "<subject> has a time-weighted average exposure limit of <object>."
+    ],
+    "name day": [
+        "<subject> has a name day on <object>."
+    ],
+    "Facebook ID": [
+        "<subject>'s Facebook ID is <object>."
+    ],
+    "found in taxon": [
+        "<subject> is found in the taxon <object>."
+    ],
+    "software engine": [
+        "<subject> uses the software engine <object>."
+    ],
+    "speed": [
+        "<subject>'s speed is <object>."
+    ],
+    "matches/games drawn/tied": [
+        "<subject> has played <object> matches/games that ended in a draw/tie."
+    ],
+    "species kept": [
+        "<subject> keeps the species <object>."
+    ],
+    "watershed area": [
+        "<subject>'s watershed area is <object>."
+    ],
+    "screenwriter": [
+        "<subject> is the screenwriter of <object>."
+    ],
+    "constellation": [
+        "<subject> is located in the constellation <object>."
+    ],
+    "member of sports team": [
+        "<subject> is a member of the sports team <object>."
+    ],
+    "density": [
+        "<subject>'s density is <object>."
+    ],
+    "director": [
+        "<subject> is the director of <object>."
+    ],
+    "author": [
+        "<subject> is the author of <object>."
+    ],
+    "audio": [
+        "<subject>'s audio is <object>."
+    ],
+    "noble family": [
+        "<subject> belongs to the noble family <object>."
+    ],
+    "birth name": [
+        "<subject>'s birth name is <object>."
+    ],
+    "title": [
+        "<subject>'s title is <object>."
+    ],
+    "taxonomic type": [
+        "<subject> is a taxonomic type of <object>."
+    ],
+    "field of this occupation": [
+        "<subject> is in the field of occupation <object>."
+    ],
+    "lifestyle": [
+        "<subject> has a lifestyle of <object>."
+    ],
+    "version type": [
+        "<subject>'s version type is <object>."
+    ],
+    "located in time zone": [
+        "<subject> is located in the time zone <object>."
+    ],
+    "topographic isolation": [
+        "<subject>'s topographic isolation is <object>."
+    ],
+    "coincident with": [
+        "<subject> coincides with <object>."
+    ],
+    "ICAA rating": [
+        "<subject>'s ICAA rating is <object>."
+    ],
+    "broadcast by": [
+        "<subject> was broadcast by <object>."
+    ],
+    "musical conductor": [
+        "<subject> is the musical conductor of <object>."
+    ],
+    "Wikivoyage banner": [
+        "<subject>'s Wikivoyage banner is <object>."
+    ],
+    "chromosome": [
+        "<subject> has the chromosome <object>."
+    ],
+    "product": [
+        "<subject> is a product named <object>."
+    ],
+    "inspired by": [
+        "<subject> is inspired by <object>."
+    ],
+    "first performance": [
+        "<subject> had its first performance on <object>."
+    ],
+    "connecting service": [
+        "<subject> is connected by a service named <object>."
+    ],
+    "manner of death": [
+        "<subject> died by <object>."
+    ],
+    "original network": [
+        "<subject> originally aired on the network <object>."
+    ],
+    "encodes": [
+        "<subject> encodes <object>."
+    ],
+    "afflicts": [
+        "<subject> afflicts <object>."
+    ],
+    "voice actor": [
+        "<subject> is voiced by <object>."
+    ],
+    "capital of": [
+        "<subject> is the capital city of <object>."
+    ],
+    "candidate": [
+        "<subject> is a candidate in <object>."
+    ],
+    "freedom of panorama": [
+        "<subject> has freedom of panorama for <object>."
+    ],
+    "qualifies for event": [
+        "<subject> qualifies for <object> event."
+    ],
+    "speed limit": [
+        "The speed limit on <subject> is <object> km/h."
+    ],
+    "fiscal/tax revenue": [
+        "The fiscal/tax revenue generated by <subject> is <object>."
+    ],
+    "game artist": [
+        "<subject> is an artist for the video game <object>."
+    ],
+    "damaged": [
+        "<subject> was damaged by <object>."
+    ],
+    "destroyed": [
+        "<subject> was destroyed by <object>."
+    ],
+    "visitors per year": [
+        "The number of visitors to <subject> per year is <object>."
+    ],
+    "birthday": [
+        "<subject>'s birthday is on <object>."
+    ],
+    "wheel arrangement": [
+        "<subject> has a wheel arrangement of <object>."
+    ],
+    "Australian Classification": [
+        "<subject> is classified as <object> under the Australian Classification."
+    ],
+    "event distance": [
+        "<subject> has an event distance of <object>."
+    ],
+    "enclosure": [
+        "<subject> is enclosed by <object>."
+    ],
+    "day in year for periodic occurrence": [
+        "<subject>'s periodic occurrence happens on day <object> in the year."
+    ],
+    "medical specialty": [
+        "<subject> specializes in the medical specialty of <object>."
+    ],
+    "notable work": [
+        "<subject>'s notable work is <object>."
+    ],
+    "located next to body of water": [
+        "<subject> is located next to a body of water called <object>."
+    ],
+    "distributor": [
+        "<subject> is distributed by <object>."
+    ],
+    "instrument": [
+        "<subject> plays the instrument <object>."
+    ],
+    "lake outflow": [
+        "<subject> has an outflow to <object> lake."
+    ],
+    "religious order": [
+        "<subject> belongs to the religious order <object>."
+    ],
+    "officeholder": [
+        "<subject> held the office of <object>."
+    ],
+    "storyboard artist": [
+        "<subject> created storyboards for <object>."
+    ],
+    "content deliverer": [
+        "<subject> delivered content to <object>."
+    ],
+    "compulsory education (maximum age)": [
+        "<subject> has a compulsory education age of <object> (minimum age)."
+    ],
+    "compulsory education (minimum age)": [
+        "<subject> has a compulsory education age of <object> (maximum age)."
+    ],
+    "statistical leader": [
+        "<subject> is the statistical leader for <object>."
+    ],
+    "exception to constraint": [
+        "<subject> is an exception to the constraint <object>."
+    ],
+    "vapor pressure": [
+        "<subject> has a vapor pressure of <object>."
+    ],
+    "half-life": [
+        "<subject> has a half-life of <object>."
+    ],
+    "number of participants": [
+        "<subject> has <object> participants."
+    ],
+    "anthem": [
+        "<subject> has the anthem <object>."
+    ],
+    "office contested": [
+        "<subject> is a contested office for <object>."
+    ],
+    "editor": [
+        "<subject> is an editor of <object>."
+    ],
+    "airline hub": [
+        "<subject> is a hub for <object> airline."
+    ],
+    "illustrator": [
+        "<subject> is an illustrator for <object>."
+    ],
+    "chemical structure": [
+        "<subject> has the chemical structure <object>."
+    ],
+    "home venue": [
+        "<subject> is the home venue for <object>."
+    ],
+    "sexual orientation": [
+        "<subject> has a sexual orientation of <object>."
+    ],
+    "league": [
+        "<subject> belongs to the <object> league."
+    ],
+    "place of burial": [
+        "<subject> is buried in <object>."
+    ],
+    "noble title": [
+        "<subject> has the noble title of <object>."
+    ],
+    "uncertainty corresponds to": [
+        "<subject> corresponds to the uncertainty <object>."
+    ],
+    "cause of death": [
+        "<subject> has a cause of death of <object>."
+    ],
+    "stated as": [
+        "<subject> is stated as <object>."
+    ],
+    "work location": [
+        "<subject> worked at <object> location."
+    ],
+    "type of electrification": [
+        "<subject> has the type of electrification <object>."
+    ],
+    "type locality": [
+        "<subject> has the type locality <object>."
+    ],
+    "general manager": [
+        "<subject> is the general manager of <object>."
+    ],
+    "home port": [
+        "<subject> has a home port of <object>."
+    ],
+    "applies to jurisdiction": [
+        "<subject> applies to jurisdiction <object>."
+    ],
+    "serial number": [
+        "<subject> has a serial number of <object>."
+    ],
+    "nominee": [
+        "<subject> is a nominee for <object>."
+    ],
+    "sourcing circumstances": [
+        "<subject> has sourcing circumstances of <object>."
+    ],
+    "route of administration": [
+        "<subject> has a route of administration of <object>."
+    ],
+    "mother": [
+        "<subject> has a mother named <object>."
+    ],
+    "country of citizenship": [
+        "<subject> is a citizen of <object>."
+    ],
+    "spouse": [
+        "<subject> is married to <object>."
+    ],
+    "gender": [
+        "<subject> is of gender <object>."
+    ],
+    "place of death": [
+        "<subject> died in <object>."
+    ],
+    "father": [
+        "<subject> has a father named <object>."
+    ],
+    "local dialing code": [
+        "<subject> has a local dialing code of <object>."
+    ],
+    "located on astronomical body": [
+        "<subject> is located on <object>."
+    ],
+    "subject of": [
+        "<subject> is a subject of <object>."
+    ],
+    "Italian cadastre code": [
+        "<subject> has an Italian cadastre code of <object>."
+    ],
+    "space launch vehicle": [
+        "<subject> is a space launch vehicle with name <object>."
+    ],
+    "input device": [
+        "<subject> uses <object> as an input device."
+    ],
+    "volume": [
+        "<subject> has a volume of <object>."
+    ],
+    "student": [
+        "<subject> is a student of <object>."
+    ],
+    "presenter": [
+        "<subject> is a presenter of <object>."
+    ],
+    "year of taxon name publication": [
+        "<subject> has a year of taxon name publication of <object>."
+    ],
+    "time of discovery": [
+        "<subject> was discovered at time <object>."
+    ],
+    "dissolved or abolished": [
+        "<subject> was dissolved or abolished at time <object>."
+    ],
+    "publication date": [
+        "<subject> has a publication date of <object>."
+    ],
+    "date of death": [
+        "<subject> died on <object>."
+    ],
+    "inception": [
+        "<subject> was founded or created on <object>."
+    ],
+    "longitude of ascending node": [
+        "<subject> has a longitude of ascending node of <object>."
+    ],
+    "heritage status": [
+        "<subject> has a heritage status of <object>."
+    ],
+    "list of works": [
+        "<subject> has a list of works that includes <object>."
+    ],
+    "catalog": [
+        "<subject> is listed in catalog <object>."
+    ],
+    "describes the fictional universe": [
+        "<subject> is set in the fictional universe <object>."
+    ],
+    "tributary": [
+        "<subject> is a tributary of <object>."
+    ],
+    "executive producer": [
+        "<subject> is an executive producer of <object>."
+    ],
+    "road number": [
+        "<subject> is identified by road number <object>."
+    ],
+    "published in": [
+        "<subject> was published in <object>."
+    ],
+    "translator": [
+        "<subject> was translated by <object>."
+    ],
+    "direction relative to location": [
+        "<subject> is located in the direction relative to <object>."
+    ],
+    "tracklist": [
+        "<subject> has a tracklist <object>."
+    ],
+    "instrumentation": [
+        "<subject> features instrumentation <object>."
+    ],
+    "participant": [
+        "<subject> is a participant in <object>."
+    ],
+    "eye color": [
+        "<subject> has eye color <object>."
+    ],
+    "participant of": [
+        "<subject> is a participant of <object>."
+    ],
+    "winner": [
+        "<subject> is the winner of <object>."
+    ],
+    "chairperson": [
+        "<subject> is chaired by <object>."
+    ],
+    "located on street": [
+        "<subject> is located on street <object>."
+    ],
+    "archives at": [
+        "<subject> has archives at <object>."
+    ],
+    "Unicode character": [
+        "<subject> is represented by Unicode character <object>."
+    ],
+    "has facet polytope": [
+        "<subject> has a facet polytope <object>."
+    ],
+    "canonization status": [
+        "<subject> has a canonization status of <object>."
+    ],
+    "pseudonym": [
+        "<subject> is known by the pseudonym <object>."
+    ],
+    "galaxy morphological type": [
+        "<subject> has a galaxy morphological type of <object>."
+    ],
+    "playing hand": [
+        "<subject> has a playing hand of <object>."
+    ],
+    "periapsis": [
+        "<subject> has a periapsis of <object>."
+    ],
+    "list of monuments": [
+        "<subject> has a list of monuments <object>."
+    ],
+    "apoapsis": [
+        "<subject> has an apoapsis of <object>."
+    ],
+    "killed by": [
+        "<subject> was killed by <object>."
+    ],
+    "logo image": [
+        "<subject> has a logo image of <object>."
+    ],
+    "edition or translation of": [
+        "<subject> is an edition or translation of <object>."
+    ],
+    "headquarters location": [
+        "<subject> has headquarters located in <object>."
+    ],
+    "licence plate code": [
+        "<subject> has a license plate code of <object>."
+    ],
+    "parent astronomical body": [
+        "<subject> is a child astronomical body of <object>."
+    ],
+    "medical condition": [
+        "<subject> has a medical condition of <object>."
+    ],
+    "organizer": [
+        "<subject> is organized by <object>."
+    ],
+    "child astronomical body": [
+        "<subject> is a parent astronomical body of <object>."
+    ],
+    "first aid measures": [
+        "<subject> has first aid measures of <object>."
+    ],
+    "parent organization": [
+        "<subject> is a child organization of <object>."
+    ],
+    "collection": [
+        "<subject> is part of a collection <object>."
+    ],
+    "subtitle": [
+        "<subject> has a subtitle <object>."
+    ],
+    "frequency": [
+        "<subject> has a frequency of <object>."
+    ],
+    "quote": [
+        "<subject> is quoted as saying <object>."
+    ],
+    "inscription": [
+        "<subject> has an inscription <object>."
+    ],
+    "sports discipline competed in": [
+        "<subject> competes in the sports discipline of <object>."
+    ],
+    "stage classification": [
+        "<subject> is classified in the stage as <object>."
+    ],
+    "aspect ratio": [
+        "<subject> has an aspect ratio of <object>."
+    ],
+    "place name sign": [
+        "<subject> has a place name sign of <object>."
+    ],
+    "mass": [
+        "<subject> has a mass of <object>."
+    ],
+    "develops from": [
+        "<subject> develops from <object>."
+    ],
+    "discoverer or inventor": [
+        "<subject> was discovered or invented by <object>."
+    ],
+    "media legend": [
+        "<subject> is a media legend about <object>."
+    ],
+    "short author name": [
+        "<subject> has a short author name of <object>."
+    ],
+    "educated at": [
+        "<subject> was educated at <object>."
+    ],
+    "female form of label": [
+        "<subject> has a female form of label <object>."
+    ],
+    "date of official opening": [
+        "<subject> was officially opened on <object>."
+    ],
+    "diplomatic relation": [
+        "<subject> has a diplomatic relation with <object>."
+    ],
+    "port of registry": [
+        "<subject> has a port of registry of <object>."
+    ],
+    "topographic prominence": [
+        "<subject> has a topographic prominence of <object>."
+    ],
+    "Museofile": [
+        "<subject> is assigned a Museofile ID of <object>."
+    ],
+    "issue": [
+        "<subject> has an issue number of <object>."
+    ],
+    "callsign of airline": [
+        "<subject> has an airline callsign of <object>."
+    ],
+    "main subject": [
+        "<subject> is mainly about <object>."
+    ],
+    "duration": [
+        "<subject> has a duration of <object>."
+    ],
+    "eligible voters": [
+        "<subject> has <object> eligible voters."
+    ],
+    "muscle action": [
+        "<subject> involves <object> muscle action."
+    ],
+    "plan image": [
+        "<subject> has a plan image of <object>."
+    ],
+    "biological process": [
+        "<subject> is involved in the biological process of <object>."
+    ],
+    "film editor": [
+        "<subject> was edited by <object>."
+    ],
+    "highway marker": [
+        "<subject> has a highway marker of <object>."
+    ],
+    "molecular function": [
+        "<subject> has a molecular function of <object>."
+    ],
+    "cell component": [
+        "<subject> has a cell component of <object>."
+    ],
+    "product certification": [
+        "<subject> has a product certification of <object>."
+    ],
+    "vessel class": [
+        "<subject> belongs to the vessel class of <object>."
+    ],
+    "head coach": [
+        "<subject> was coached by <object>."
+    ],
+    "designer": [
+        "<subject> was designed by <object>."
+    ],
+    "country": [
+        "<subject> is located in <object>."
+    ],
+    "writing system": [
+        "<subject> is written in the writing system of <object>."
+    ],
+    "contains settlement": [
+        "<subject> contains the settlement of <object>."
+    ],
+    "postal code": [
+        "<subject> has a postal code of <object>."
+    ],
+    "political ideology": [
+        "<subject> has a political ideology of <object>."
+    ],
+    "successful candidate": [
+        "<subject> was the successful candidate of <object>."
+    ],
+    "location of spacecraft launch": [
+        "<subject> was launched from the location of <object>."
+    ],
+    "ortholog": [
+        "<subject> has an ortholog of <object>."
+    ],
+    "title of chess player": [
+        "<subject> has the title of <object> in chess."
+    ],
+    "review score": [
+        "<subject> has a review score of <object>."
+    ],
+    "Rundata": [
+        "<subject> has a Rundata identifier of <object>."
+    ],
+    "pronunciation audio": [
+        "<subject> has a pronunciation audio of <object>."
+    ],
+    "lake inflows": [
+        "<subject> is fed by the inflows of <object>."
+    ],
+    "has grammatical mood": [
+        "<subject> has the grammatical mood of <object>."
+    ],
+    "narrative location": [
+        "<subject> takes place in the narrative location of <object>."
+    ],
+    "name in kana": [
+        "<subject> has a name in kana of <object>."
+    ],
+    "series ordinal": [
+        "<subject> is the <object> entry in a series."
+    ],
+    "cause of": [
+        "<subject> is caused by <object>."
+    ],
+    "short name": [
+        "<subject> has a short name of <object>."
+    ],
+    "male population": [
+        "<object> is the male population of <subject>."
+    ],
+    "production code": [
+        "<subject> has a production code of <object>."
+    ],
+    "innervated by": [
+        "<subject> is innervated by <object>."
+    ],
+    "NMHH film rating": [
+        "<subject> has an NMHH film rating of <object>."
+    ],
+    "floruit": [
+        "<subject> flourished during <object>."
+    ],
+    "number of spans": [
+        "<subject> has <object> spans."
+    ],
+    "spectral class": [
+        "<subject> has a spectral class of <object>."
+    ],
+    "office held by head of government": [
+        "<object> held the office of head of government during the term of <subject>."
+    ],
+    "inventory number": [
+        "<subject> has an inventory number of <object>."
+    ],
+    "location of formation": [
+        "<subject> was formed at <object>."
+    ],
+    "main building contractor": [
+        "<object> was the main building contractor for <subject>."
+    ],
+    "sister city": [
+        "<subject> is a sister city of <object>."
+    ],
+    "minor planet group": [
+        "<subject> is a member of the minor planet group <object>."
+    ],
+    "adjacent station": [
+        "<subject> is adjacent to <object>."
+    ],
+    "legislative body": [
+        "<subject> is the legislative body for <object>."
+    ],
+    "earliest date": [
+        "<subject> existed as early as <object>."
+    ],
+    "points awarded": [
+        "<subject> has been awarded <object> points."
+    ],
+    "anatomical branch of": [
+        "<subject> is a branch of the anatomical structure <object>."
+    ],
+    "has anatomical branch": [
+        "<subject> has the anatomical structure <object> as a branch."
+    ],
+    "base": [
+        "<subject> has a base of <object>."
+    ],
+    "radix": [
+        "<subject> has a radix of <object>."
+    ],
+    "ex taxon author": [
+        "<object> is the ex taxon author of <subject>."
+    ],
+    "space group": [
+        "<subject> belongs to the space group <object>."
+    ],
+    "sister": [
+        "<subject> is a sister of <object>."
+    ],
+    "head of government": [
+        "<subject> is the head of government of <object>."
+    ],
+    "brother": [
+        "<subject> is a brother of <object>."
+    ],
+    "costume designer": [
+        "<object> was the costume designer for <subject>."
+    ],
+    "size of team at start": [
+        "<subject> had a team size of <object> at the start."
+    ],
+    "melting point": [
+        "The melting point of <subject> is <object>."
+    ],
+    "size of team at finish": [
+        "<subject> had a team size of <object> at the finish."
+    ],
+    "genetic association": [
+        "<subject> has a genetic association with <object>."
+    ],
+    "record label": [
+        "<subject> is signed to the record label <object>."
+    ],
+    "national team caps": [
+        "<subject> has <object> national team caps."
+    ],
+    "participating teams": [
+        "<subject> participated in <object> teams."
+    ],
+    "signature": [
+        "<subject> has a signature <object>."
+    ],
+    "employer": [
+        "<subject> is employed by <object>."
+    ],
+    "start time": [
+        "<subject> started on <object>."
+    ],
+    "taxon rank": [
+        "<subject> has a taxonomic rank of <object>."
+    ],
+    "occupation": [
+        "<subject> is an occupation of <object>."
+    ],
+    "field of work": [
+        "<subject> works in the field of <object>."
+    ],
+    "native language": [
+        "<subject> has a native language of <object>."
+    ],
+    "member of political party": [
+        "<subject> is a member of the political party <object>."
+    ],
+    "Dictionary of Swedish National Biography": [
+        "<subject> is listed in the Dictionary of Swedish National Biography as <object>."
+    ],
+    "ClassInd rating": [
+        "<subject> has a ClassInd rating of <object>."
+    ],
+    "type of kinship": [
+        "<subject> has a type of kinship with <object>."
+    ],
+    "relative": [
+        "<subject> is a relative of <object>."
+    ],
+    "Filmiroda rating": [
+        "<subject> has a Filmiroda rating of <object>."
+    ],
+    "manager/director": [
+        "<subject> is managed/directed by <object>.",
+        "<subject> has <object> as the manager/director."
+    ],
+    "has cause": [
+        "<subject> has <object> as the cause.",
+        "<object> is the cause of <subject>."
+    ],
+    "fictional universe described in": [
+        "<subject> is set in the fictional universe described in <object>.",
+        "<object> is the fictional universe in which <subject> is set."
+    ],
+    "number of deaths": [
+        "<subject> has <object> number of deaths.",
+        "<object> is the number of deaths in <subject>."
+    ],
+    "patron saint": [
+        "<subject> has <object> as its patron saint.",
+        "<object> is the patron saint of <subject>."
+    ],
+    "number of episodes": [
+        "<subject> has <object> number of episodes.",
+        "<object> is the number of episodes of <subject>."
+    ],
+    "argument of periapsis": [
+        "<subject> has <object> as its argument of periapsis.",
+        "<object> is the argument of periapsis of <subject>."
+    ],
+    "present in work": [
+        "<subject> is present in the work described in <object>.",
+        "<object> is the work in which <subject> is present."
+    ],
+    "currency": [
+        "<subject> uses <object> as its currency.",
+        "<object> is the currency used in <subject>."
+    ],
+    "position held": [
+        "<subject> has held the position of <object>.",
+        "<object> is the position held by <subject>."
+    ],
+    "acquisition transaction": [
+        "<subject> has undergone an acquisition transaction <object>.",
+        "<object> is the acquisition transaction undergone by <subject>."
+    ],
+    "continent": [
+        "<subject> is located in the continent of <object>.",
+        "<object> is the continent where <subject> is located."
+    ],
+    "capital": [
+        "<subject> is the capital of <object>.",
+        "<object> has <subject> as its capital."
+    ],
+    "official language": [
+        "<subject> has <object> as its official language.",
+        "<object> is the official language of <subject>."
+    ],
+    "head of state": [
+        "<subject> has <object> as its head of state.",
+        "<object> is the head of state of <subject>."
+    ],
+    "platform": [
+        "<subject> is available on the <object> platform.",
+        "<object> is the platform on which <subject> is available."
+    ],
+    "legal form": [
+        "<subject> has <object> as its legal form.",
+        "<object> is the legal form of <subject>."
+    ],
+    "absolute magnitude": [
+        "<subject> has an absolute magnitude of <object>.",
+        "<object> is the absolute magnitude of <subject>."
+    ],
+    "number of pages": [
+        "<subject> has <object> number of pages.",
+        "<object> is the number of pages in <subject>."
+    ],
+    "game mode": [
+        "<subject> can be played in <object> game mode.",
+        "<object> is the game mode in which <subject> can be played."
+    ],
+    "taxon author": [
+        "<subject> is named after <object>, its taxon author.",
+        "<object> is the taxon author of <subject>."
+    ],
+    "end time": [
+        "<subject> ended at <object>.",
+        "<object> is the time when <subject> ended."
+    ],
+    "language of work or name": [
+        "<subject> is written in <object> language.",
+        "<object> is the language in which <subject> is written."
+    ],
+    "decay mode": [
+        "<subject> decays through <object> decay mode.",
+        "<object> is the decay mode of <subject>."
+    ],
+    "decays to": [
+        "<subject> decays to <object>.",
+        "<object> is what <subject> decays to."
+    ],
+    "retrieved": [
+        "<subject> was retrieved on <object>.",
+        "<object> is the date on which <subject> was retrieved."
+    ],
+    "academic major": [
+        "<subject> studied <object> as an academic major.",
+        "<object> is the academic major studied by <subject>."
+    ],
+    "use": [
+        "<subject> is used for <object>.",
+        "<object> is the purpose for which <subject> is used."
+    ],
+    "date of birth": [
+        "<subject> was born on <object>.",
+        "<object> is the date of birth of <subject>."
+    ],
+    "basionym": [
+        "<subject> has <object> as its basionym.",
+        "<object> is the basionym of <subject>."
+    ],
+    "singles record": [
+        "<subject> has a singles record of <object>.",
+        "<object> is the singles record of <subject>."
+    ],
+    "place of detention": [
+        "<subject> was detained in <object> place of detention."
+    ],
+    "direction": [
+        "<subject> is oriented in the <object> direction."
+    ],
+    "male form of label": [
+        "<subject> is the male form of the label <object>."
+    ],
+    "board member": [
+        "<subject> is a member of the board of <object>."
+    ],
+    "opponent during disputation": [
+        "<subject> was an opponent of <object> during a disputation."
+    ],
+    "luminous intensity": [
+        "The luminous intensity of <subject> is <object>."
+    ],
+    "start point": [
+        "<subject> starts at <object>."
+    ],
+    "blood type": [
+        "<subject> has a blood type of <object>."
+    ],
+    "standards body": [
+        "<subject> is a part of the standards body <object>."
+    ],
+    "points for": [
+        "<subject> earned <object> points."
+    ],
+    "diocese": [
+        "<subject> is part of the <object> diocese."
+    ],
+    "ranking": [
+        "<subject> is ranked <object> in a certain context."
+    ],
+    "encoded by": [
+        "<subject> is encoded by <object>."
+    ],
+    "number of matches played": [
+        "<subject> played <object> matches."
+    ],
+    "number of points/goals scored": [
+        "<subject> scored <object> points/goals."
+    ],
+    "losses": [
+        "<subject> lost <object> matches/games."
+    ],
+    "located on terrain feature": [
+        "<subject> is located on <object> terrain feature."
+    ],
+    "wins": [
+        "<subject> won <object> matches/games."
+    ],
+    "parent peak": [
+        "<subject> is a subpeak of <object>."
+    ],
+    "last line": [
+        "<subject> ends with the text <object>."
+    ],
+    "OMIM ID": [
+        "<subject> has OMIM ID <object>."
+    ],
+    "provisional designation": [
+        "<subject> has provisional designation <object>."
+    ],
+    "country of origin": [
+        "<subject> comes from <object> country."
+    ],
+    "approved by": [
+        "<subject> is approved by <object>."
+    ],
+    "chapter": [
+        "<subject> is part of <object> chapter."
+    ],
+    "significant event": [
+        "<subject> is associated with <object> significant event."
+    ],
+    "wheelbase": [
+        "<subject> has a wheelbase of <object>."
+    ],
+    "military designation": [
+        "<subject> has military designation <object>."
+    ],
+    "catalog code": [
+        "<subject> has catalog code <object>."
+    ],
+    "service entry": [
+        "<subject> entered service in <object> year."
+    ],
+    "religion": [
+        "<subject> practices <object> religion."
+    ],
+    "imported from": [
+        "<subject> was imported from <object>."
+    ],
+    "based on": [
+        "<subject> is based on <object>."
+    ],
+    "architectural style": [
+        "<subject> is built in <object> architectural style."
+    ],
+    "filming location": [
+        "<subject> was filmed at <object> location."
+    ],
+    "edition number": [
+        "<subject> has <object> edition number."
+    ],
+    "taxon name": [
+        "<subject> has taxon name <object>."
+    ],
+    "intangible cultural heritage status": [
+        "<subject> has intangible cultural heritage status <object>."
+    ],
+    "general classification": [
+        "<subject> has general classification of <object>."
+    ],
+    "mean anomaly": [
+        "<subject>'s mean anomaly is <object>."
+    ],
+    "minimum viable temperature": [
+        "<subject> has a minimum viable temperature of <object>."
+    ],
+    "number of elevators": [
+        "<subject> has <object> elevators."
+    ],
+    "optimum viable temperature": [
+        "<subject> has an optimum viable temperature of <object>."
+    ],
+    "maximum viable temperature": [
+        "<subject> has a maximum viable temperature of <object>."
+    ],
+    "fabrication method": [
+        "<subject> was fabricated using <object> method."
+    ],
+    "drug used for treatment": [
+        "<subject> is treated using <object> drug."
+    ],
+    "medical condition treated": [
+        "<subject> treats <object> medical condition."
+    ],
+    "mouth of the watercourse": [
+        "<subject> is the mouth of the watercourse <object>."
+    ],
+    "temperature": [
+        "The temperature of <subject> is <object>."
+    ],
+    "founder": [
+        "<subject> was founded by <object>."
+    ],
+    "movement": [
+        "<subject> is associated with the <object> movement."
+    ],
+    "genre": [
+        "<subject> belongs to the <object> genre."
+    ],
+    "operator": [
+        "<subject> is operated by <object>."
+    ],
+    "named after": [
+        "<subject> is named after <object>."
+    ],
+    "highest point": [
+        "The highest point of <subject> is at an elevation of <object>."
+    ],
+    "production designer": [
+        "<subject>'s production design was done by <object>."
+    ],
+    "number of children": [
+        "<subject> has <object> children."
+    ],
+    "armament": [
+        "<subject> has <object> armament."
+    ],
+    "nominated for": [
+        "<subject> was nominated for <object>."
+    ],
+    "runway": [
+        "<subject> has a runway <object>."
+    ],
+    "languages spoken, written or signed": [
+        "<subject> has <object> languages spoken, written or signed."
+    ],
+    "USK rating": [
+        "<subject> has a USK rating of <object>."
+    ],
+    "affiliation": [
+        "<subject> is affiliated with <object>."
+    ],
+    "place served by airport": [
+        "<subject> is a place served by airport <object>."
+    ],
+    "semi-major axis": [
+        "<subject>'s semi-major axis is <object>."
+    ],
+    "source website for the property": [
+        "The source website for the property <subject> is <object>."
+    ],
+    "attributed to": [
+        "<subject> is attributed to <object>."
+    ],
+    "CPU": [
+        "<subject> has a CPU <object>."
+    ],
+    "location of final assembly": [
+        "<subject>'s final assembly location is <object>."
+    ],
+    "orbital period": [
+        "<subject> has an orbital period of <object>."
+    ],
+    "HGNC gene symbol": [
+        "<subject> has an HGNC gene symbol of <object>."
+    ],
+    "subsidiary": [
+        "<subject> is a subsidiary of <object>."
+    ],
+    "convicted of": [
+        "<subject> was convicted of <object>."
+    ],
+    "discography": [
+        "<subject> has a discography of <object>."
+    ],
+    "family name": [
+        "<subject>'s family name is <object>."
+    ],
+    "station code": [
+        "<subject> has a station code of <object>."
+    ],
+    "time gap": [
+        "<subject> has a time gap of <object>."
+    ],
+    "orbital eccentricity": [
+        "<subject> has an orbital eccentricity of <object>."
+    ],
+    "determination method": [
+        "<subject> was determined using the method <object>."
+    ],
+    "total produced": [
+        "<subject> has a total production quantity of <object>."
+    ],
+    "character role": [
+        "<subject> played the character role of <object>."
+    ],
+    "industry": [
+        "<subject> is in the industry <object>."
+    ],
+    "partner": [
+        "<subject> is a partner of <object>."
+    ],
+    "astronaut mission": [
+        "<subject> is part of the astronaut mission <object>."
+    ],
+    "standard molar entropy": [
+        "<subject> has a standard molar entropy of <object>."
+    ],
+    "dynamic viscosity": [
+        "<subject> has a dynamic viscosity of <object>."
+    ],
+    "official religion": [
+        "<subject> has an official religion of <object>."
+    ],
+    "for work": [
+        "<subject> is for the work <object>."
+    ],
+    "standard enthalpy of formation": [
+        "<subject> has a standard enthalpy of formation of <object>."
+    ],
+    "offers view on": [
+        "<subject> offers a view on <object>."
+    ],
+    "art director": [
+        "<subject> is an art director for <object>."
+    ],
+    "uses property": [
+        "<subject> uses the property <object>."
+    ],
+    "commemorative plaque image": [
+        "<subject> has a commemorative plaque image of <object>."
+    ],
+    "name in native language": [
+        "<subject> has a name in native language of <object>."
+    ],
+    "sponsor": [
+        "<subject> is sponsored by <object>."
+    ],
+    "doctoral student": [
+        "<subject> is a doctoral student of <object>."
+    ],
+    "doctoral advisor": [
+        "<subject> is a doctoral advisor of <object>."
+    ],
+    "league points system": [
+        "<subject> uses a league points system of <object>."
+    ],
+    "depicts": [
+        "<subject> depicts <object>."
+    ],
+    "innervates": [
+        "<subject> innervates <object>."
+    ],
+    "location of discovery": [
+        "<subject> was discovered in <object>."
+    ],
+    "has list": [
+        "<subject> has a list of <object>."
+    ],
+    "latest date": [
+        "<subject>'s latest date is <object>."
+    ],
+    "external data available at": [
+        "External data for <subject> is available at <object>."
+    ],
+    "eMedicine": [
+        "<subject> information can be found on eMedicine with ID <object>."
+    ],
+    "phone number": [
+        "<subject>'s phone number is <object>."
+    ],
+    "ammunition": [
+        "<subject> uses <object> as ammunition."
+    ],
+    "lyrics by": [
+        "<subject>'s lyrics were written by <object>."
+    ],
+    "characters": [
+        "<subject> features the following characters: <object>."
+    ],
+    "encoding": [
+        "<subject> is encoded using <object>."
+    ],
+    "biography at the Landtag of Mecklenburg-Vorpommern": [
+        "<subject> has a biography at the Landtag of Mecklenburg-Vorpommern with ID <object>."
+    ],
+    "located at street address": [
+        "<subject> is located at the street address <object>."
+    ],
+    "has tense": [
+        "<subject> has the tense <object>."
+    ],
+    "appointed by": [
+        "<subject> was appointed by <object>."
+    ],
+    "developer": [
+        "<subject> was developed by <object>."
+    ],
+    "location": [
+        "<subject> is located in <object>."
+    ],
+    "license": [
+        "<subject> is licensed under <object>."
+    ],
+    "chemical formula": [
+        "<subject> has the chemical formula <object>."
+    ],
+    "production company": [
+        "<subject> was produced by <object>."
+    ],
+    "feast day": [
+        "<subject>'s feast day is on <object>."
+    ],
+    "creator": [
+        "<subject> was created by <object>."
+    ],
+    "parent taxon": [
+        "<subject> belongs to the parent taxon <object>."
+    ],
+    "ethnic group": [
+        "<subject> belongs to the ethnic group <object>."
+    ],
+    "performer": [
+        "<subject> was performed by <object>."
+    ],
+    "manufacturer": [
+        "<subject> was manufactured by <object>."
+    ],
+    "crosses": [
+        "<subject> crosses <object>."
+    ],
+    "proportion": [
+        "<subject> has a proportion of <object>."
+    ],
+    "place of publication": [
+        "<subject> was published in <object>."
+    ],
+    "relative to": [
+        "<subject> is relative to <object>."
+    ],
+    "patient of": [
+        "<subject> is a patient of <object>."
+    ],
+    "width": [
+        "<subject> has a width of <object>."
+    ],
+    "language": [
+        "<subject> uses the <object> language."
+    ],
+    "number of seasons": [
+        "<subject> has <object> seasons."
+    ],
+    "influenced by": [
+        "<subject> was influenced by <object>."
+    ],
+    "shares border with": [
+        "<subject> shares a border with <object>."
+    ],
+    "child": [
+        "<subject> is a child of <object>."
+    ],
+    "position played on team / speciality": [
+        "<subject> plays in the position/specialty of <object>."
+    ],
+    "voice type": [
+        "<subject> has a voice type of <object>."
+    ],
+    "destination point": [
+        "<subject> has a destination point of <object>."
+    ],
+    "military rank": [
+        "<subject> holds a military rank of <object>."
+    ],
+    "quantity": [
+        "<subject> has a quantity of <object>."
+    ],
+    "stock exchange": [
+        "<subject> is listed on <object> stock exchange."
+    ],
+    "tonality": [
+        "<subject> has a tonality of <object>."
+    ],
+    "official name": [
+        "<subject> has an official name of <object>."
+    ],
+    "nickname": [
+        "<subject> has a nickname of <object>."
+    ],
+    "terminus": [
+        "<subject> terminates at <object>."
+    ],
+    "handedness": [
+        "<subject> has a handedness of <object>."
+    ],
+    "motto text": [
+        "<subject> has a motto text of <object>."
+    ],
+    "Carnegie Classification of Institutions of Higher Education": [
+        "<subject> has a Carnegie Classification of Institutions of Higher Education of <object>."
+    ],
+    "residence": [
+        "<subject> resides in <object>."
+    ],
+    "crystal system": [
+        "<subject> has a crystal system of <object>."
+    ],
+    "doubles record": [
+        "<subject> has a doubles record of <object>."
+    ],
+    "generation time": [
+        "<subject> has a generation time of <object>."
+    ],
+    "hazard on site": [
+        "<subject> has a hazard on site of <object>."
+    ],
+    "number of platform tracks": [
+        "<subject> has <object> platform tracks."
+    ],
+    "number of cylinders": [
+        "<subject> has <object> cylinders."
+    ],
+    "number of speakers": [
+        "<subject> has <object> speakers."
+    ],
+    "time of spacecraft launch": [
+        "<subject> was launched at <object> time."
+    ],
+    "part of": [
+        "<subject> is a part of <object>"
+    ],
+    "conferred by": [
+    "<subject> was conferred by <object>."
+    ],
+    "section, verse, or paragraph": [
+    "<subject> can be found in section, verse, or paragraph <object>."
+    ],
+    "taxon common name": [
+    "<subject> is commonly known as <object>."
+    ],
+    "handle": [
+    "<subject> has a handle of <object>."
+    ],
+    "donated by": [
+    "<subject> was donated by <object>."
+    ],
+    "crew member": [
+    "<subject> has <object> as a crew member."
+    ],
+    "numeric value": [
+    "<subject> has a numeric value of <object>."
+    ],
+    "recovered by": [
+    "<subject> was recovered by <object>."
+    ],
+    "film crew member": [
+    "<subject> has <object> as a film crew member."
+    ],
+    "mount": [
+    "<subject> is mounted on <object>."
+    ],
+    "given name": [
+    "<subject> has a given name of <object>."
+    ],
+    "victory": [
+    "<subject> achieved a victory in <object>."
+    ],
+    "practiced by": [
+    "<subject> is practiced by <object>."
+    ],
+    "territory overlaps": [
+    "<subject> has territory that overlaps with <object>."
+    ],
+    "original language of work": [
+    "<subject> was originally written in <object>."
+    ],
+    "cites": [
+    "<subject> cites <object>."
+    ],
+    "operating system": [
+    "<subject> runs on the <object> operating system."
+    ],
+    "page": [
+    "<subject> can be found on page <object>."
+    ],
+    "bodies of water basin category": [
+    "<subject> falls under the bodies of water basin category of <object>."
+    ],
+    "floors above ground": [
+    "<subject> has <object> floors above ground."
+    ],
+    "programming language": [
+    "<subject> is written in <object> programming language."
+    ],
+    "molecule conformation": [
+    "<subject> has a molecule conformation of <object>."
+    ],
+    "repeals": [
+    "<subject> repeals <object>."
+    ],
+    "symptoms": [
+    "<subject> has symptoms that include <object>."
+    ],
+    "stipe character": [
+    "<subject> has a stipe character of <object>."
+    ],
+    "service retirement": [
+    "<subject> was retired from service in <object>."
+    ],
+    "edibility": [
+    "<subject> has an edibility of <object>."
+    ]
+}

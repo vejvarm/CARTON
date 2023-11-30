@@ -8,19 +8,26 @@ def get_parser():
 
     # general
     parser.add_argument('--seed', default=1234, type=int)
-    parser.add_argument('--no_cuda', action='store_true')
-    parser.add_argument('--cuda_device', default=0, type=int)
+    parser.add_argument('--no-cuda', action='store_true')
+    parser.add_argument('--cuda-device', default=0, type=int)
+    parser.add_argument('--name', default="", type=str)
 
     # data
-    parser.add_argument('--data_path', default='/data/final/csqa')
-    parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
+    parser.add_argument('--data-path', default='data/final/csqa')
+    parser.add_argument('--vocab-cache', default='.cache/vocabs', type=str)
+    parser.add_argument('--rebuild-data-cache', action='store_true')
+    parser.add_argument('--rebuild-vocab-cache', action='store_true')
+    parser.add_argument('--stream-data', action='store_true')
+    # parser.add_argument('--embedding_path', default='/knowledge_graph/entity_embeddings.json')
+    parser.add_argument('--ent_dict_path', default="knowledge_graph/items_wikidata_n.json")
+    parser.add_argument('--rel_dict_path', default="knowledge_graph/index_rel_dict.json")
     parser.add_argument('--kg_type', default=KGType.ELASTICSEARCH.value, choices=[tp.value for tp in KGType])
 
     # experiments
     parser.add_argument('--snapshots', default='experiments/snapshots', type=str)
-    parser.add_argument('--path_results', default='experiments/results', type=str)
+    parser.add_argument('--path-results', default='experiments/results', type=str)
     parser.add_argument('--path_error_analysis', default='experiments/error_analysis', type=str)
-    parser.add_argument('--path_inference', default='experiments/inference', type=str)
+    parser.add_argument('--path-inference', default='experiments/inference', type=str)
 
     # task
     parser.add_argument('--task', default=Task.MULTITASK.value, choices=[tsk.value for tsk in Task], type=str)
@@ -43,20 +50,22 @@ def get_parser():
     parser.add_argument('--warmup', default=4000, type=float)
     parser.add_argument('--factor', default=1, type=float)
     parser.add_argument('--weight_decay', default=0, type=float)
-    parser.add_argument('--epochs', default=100, type=int)
+    parser.add_argument('--weighted-loss', action='store_true')
+    parser.add_argument('--epochs', default=10, type=int)
     parser.add_argument('--start_epoch', default=0, type=int)
     parser.add_argument('--valfreq', default=1, type=int)
     parser.add_argument('--resume', default='', type=str)
     parser.add_argument('--clip', default=5, type=int)
-    parser.add_argument('--batch_size', default=10, type=int)  # NOTE: changed from 25
+    parser.add_argument('--batch-size', default=25, type=int)  # NOTE: changed from 25
+    parser.add_argument('--pool_size', default=100, type=int)
 
     # test and inference
-    parser.add_argument('--model_path', default='experiments/models/CARTONwNERwLinPtr_e42_v0.0145_multitask.pth.tar',
+    parser.add_argument('--model-path', default='experiments/models/CARTONNER_csqa15_e10_v0.0065_multitask.pth.tar',
                         type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--inference_partition', default=InferencePartition.TEST.value,
                         choices=[ip.value for ip in InferencePartition], type=str)
-    parser.add_argument('--question_type', default=QuestionTypes.SIMPLE_DIRECT.value,
+    parser.add_argument('--question-type', default=QuestionTypes.SIMPLE_DIRECT.value,
                         choices=[qt.value for qt in QuestionTypes], type=str)
     parser.add_argument('--max_results', default=1000, help='maximum number of results', type=int)
     parser.add_argument('--ner_max_distance', default=[0, 0, 1, 1, 1, 2])
@@ -71,6 +80,9 @@ def get_parser():
     parser.add_argument('--elastic_certs', default='./knowledge_graph/certs/http_ca.crt')
     parser.add_argument('--elastic_user', default='elastic')
     parser.add_argument('--elastic_password', default=Passwords.FREYA.value, choices=[pw.value for pw in Passwords])
+
+    # production related
+    parser.add_argument('--production', action='store_true', help='production with unknown KG.')
 
     return parser
 

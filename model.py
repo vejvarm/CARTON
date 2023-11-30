@@ -12,14 +12,15 @@ args = parse_and_get_args()
 
 
 class CARTON(nn.Module):
-    def __init__(self, vocabs):
+    def __init__(self, vocabs, device=DEVICE):
         super(CARTON, self).__init__()
         self.vocabs = vocabs
-        self.encoder = Encoder(vocabs[INPUT], DEVICE)
-        self.decoder = Decoder(vocabs[LOGICAL_FORM], DEVICE)
+        self.device = device
+        self.encoder = Encoder(vocabs[INPUT], self.device)
+        self.decoder = Decoder(vocabs[LOGICAL_FORM], self.device)
         self.ner = NerNet(len(vocabs[NER]))
         self.coref = CorefNet(len(vocabs[COREF]))
-        self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER])
+        self.stptr_net = StackedPointerNetworks(vocabs[PREDICATE_POINTER], vocabs[TYPE_POINTER], self.device)
 
     def forward(self, src_tokens, trg_tokens):
         encoder_out = self.encoder(src_tokens)
@@ -74,7 +75,7 @@ class Flatten(nn.Module):
 # ANCHOR: BIO entity labeling (annotator)
 #   Finding all entities in the input utterance (BIO & types)
 class NerNet(nn.Module):
-    def __init__(self, tags, dropout=args.dropout):
+    def __init__(self, tags: int, dropout: float = args.dropout):
         super(NerNet, self).__init__()
         self.ner_lstm = nn.Sequential(
             nn.LSTM(input_size=args.emb_dim, hidden_size=args.emb_dim, batch_first=True),
@@ -86,6 +87,7 @@ class NerNet(nn.Module):
             Flatten(),
             nn.Dropout(dropout),
             nn.Linear(args.emb_dim, tags)
+            # TODO: add Softmax?
         )
 
     def forward(self, x):
@@ -93,7 +95,7 @@ class NerNet(nn.Module):
         return self.ner_linear(h), h
 
 
-# ANCHOR: This is interesting
+# ANCHOR: COREF is not training! something must be wrong with pred/target labels to calculate loss?
 class CorefNet(nn.Module):
     def __init__(self, tags, dropout=args.dropout):
         super(CorefNet, self).__init__()
@@ -102,7 +104,8 @@ class CorefNet(nn.Module):
             nn.LeakyReLU(),
             Flatten(),
             nn.Dropout(dropout),
-            nn.Linear(args.emb_dim, tags)
+            nn.Linear(args.emb_dim, tags),
+            # TODO: add Softmax?
         )
 
     def forward(self, x):
@@ -110,9 +113,10 @@ class CorefNet(nn.Module):
 
 
 class PointerStack(nn.Module):
-    def __init__(self, vocab):
+    def __init__(self, vocab, device: str):
         super(PointerStack, self).__init__()
-        self.kg_items = torch.tensor(list(vocab.stoi.values())).to(DEVICE)
+        self.device = device
+        self.kg_items = torch.tensor(list(vocab.stoi.values())).to(self.device)
         self.embeddings = nn.Embedding(len(vocab), args.emb_dim)
         self.dropout = nn.Dropout(args.dropout)
         self.tahn = nn.Tanh()
@@ -146,14 +150,14 @@ class PointerStack(nn.Module):
 
 
 class StackedPointerNetworks(nn.Module):
-    def __init__(self, predicate_vocab, type_vocab):
+    def __init__(self, predicate_vocab, type_vocab, device: str):
         super(StackedPointerNetworks, self).__init__()
-
+        self.device = device
         self.context_linear = nn.Linear(args.emb_dim*2, args.emb_dim)
         self.dropout = nn.Dropout(args.dropout)
 
-        self.predicate_pointer = PointerStack(predicate_vocab)
-        self.type_pointer = PointerStack(type_vocab)
+        self.predicate_pointer = PointerStack(predicate_vocab, self.device)
+        self.type_pointer = PointerStack(type_vocab, self.device)
 
     def forward(self, encoder_ctx, decoder_h):
         x = torch.cat([encoder_ctx.expand(decoder_h.shape), decoder_h], dim=-1)  # ANCHOR: this is gonna be problematic!
@@ -260,6 +264,7 @@ class Decoder(nn.Module):
 
         x = h.contiguous().view(-1, h.shape[-1])
         x = self.linear_out(x)
+        # TODO: add Softmax?
 
         return x, h
 
@@ -310,17 +315,17 @@ class MultiHeadedAttention(nn.Module):
         K = K.view(batch_size, -1, self.heads, self.attn_dim).permute(0, 2, 1, 3) # (batch, heads, sent_len, attn_dim)
         V = V.view(batch_size, -1, self.heads, self.attn_dim).permute(0, 2, 1, 3) # (batch, heads, sent_len, attn_dim)
 
-        energy = torch.matmul(Q, K.permute(0, 1, 3, 2)) / self.scale # (batch, heads, sent_len, sent_len)
+        energy = torch.matmul(Q, K.permute(0, 1, 3, 2)) / self.scale  # (batch, heads, sent_len, sent_len)
 
         if mask is not None:
-            energy = energy.masked_fill(mask == 0, -1e10)
+            energy = energy.masked_fill(mask == 0, -1e10)  # TODO RuntimeError: The size of tensor a (10) must match the size of tensor b (20) at non-singleton dimension 3
 
-        attention = F.softmax(energy, dim=-1) # (batch, heads, sent_len, sent_len)
+        attention = F.softmax(energy, dim=-1)  # (batch, heads, sent_len, sent_len)
         attention = F.dropout(attention, p=self.dropout, training=self.training)
 
-        x = torch.matmul(attention, V) # (batch, heads, sent_len, attn_dim)
-        x = x.permute(0, 2, 1, 3).contiguous() # (batch, sent_len, heads, attn_dim)
-        x = x.view(batch_size, -1, self.heads * (self.attn_dim)) # (batch, sent_len, embed_dim)
+        x = torch.matmul(attention, V)  # (batch, heads, sent_len, attn_dim)
+        x = x.permute(0, 2, 1, 3).contiguous()  # (batch, sent_len, heads, attn_dim)
+        x = x.view(batch_size, -1, self.heads * (self.attn_dim))  # (batch, sent_len, embed_dim)
         x = self.linear_out(x)
 
         return x

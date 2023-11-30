@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-from lab.expand_csqa import CSQAInsertBuilder
+from text_generation.build_simple_insert_dataset import CSQAInsertBuilder
 from text_generation.qa2d import get_model
 from action_executor.actions import ESActionOperator
 from helpers import connect_to_elasticsearch, setup_logger
@@ -58,7 +58,7 @@ def compare_generated_utterances(model_choices: list[QA2DModelChoices] or QA2DMo
 
                 # 2) TRANSFORM utterances to statements
                 for labels_as in labels_as_list:
-                    statement = builder.transorm_utterances(entry_user, entry_system, labels_as=labels_as)
+                    statement = builder.transform_utterances(entry_user, entry_system, labels_as=labels_as)
                     LOGGER.info(f'statement: {statement}')
                     LOGGER.info(f"".center(50, "-") + "\n\n")
 

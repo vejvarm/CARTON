@@ -4,6 +4,9 @@ import time
 import json
 import logging
 import torch.nn as nn
+import torchtext.vocab
+from tqdm import tqdm
+from torchmetrics.classification import MulticlassAccuracy, MulticlassRecall
 
 import helpers
 from action_executor.actions import search_by_label, create_entity
@@ -54,10 +57,12 @@ class NoamOpt:
     def zero_grad(self):
         self.optimizer.zero_grad()
 
+
 # meter class for storing results
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-    def __init__(self):
+    def __init__(self, name="meter"):
+        self.name = name
         self.reset()
 
     def reset(self):
@@ -71,6 +76,7 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
 
 class Predictor(object):
     """Predictor class"""
@@ -250,20 +256,21 @@ class Scorer(object):
 
 
 class Inference(object):
-    def __init__(self):
+    def __init__(self, logger=LOGGER):
         self.tokenizer = BertTokenizer.from_pretrained(BERT_BASE_UNCASED)
         self.inference_actions = []
         self.es = Elasticsearch(args.elastic_host, ca_certs=args.elastic_certs,
                                 basic_auth=(args.elastic_user, args.elastic_password),
                                 retry_on_timeout=True)  # for inverse index search
+        self.logger = logger
 
     def construct_actions(self, inference_data, predictor):
-        LOGGER.info(f'Constructing actions for: {args.question_type}')
+        self.logger.info(f'Constructing actions for: {args.question_type}')
         self.inference_actions = []  # clear inference actions from previous run
         tic = time.perf_counter()
         # based on model outpus create a final logical form to execute
         question_type_inference_data = [data for data in inference_data if args.question_type in data[QUESTION_TYPE]]
-        for i, sample in enumerate(question_type_inference_data):
+        for i, sample in tqdm(enumerate(question_type_inference_data)):
             predictions = predictor.predict(sample[CONTEXT_QUESTION])  # NOTE: detokenized predictions!
             actions = []
             logical_form_prediction = predictions[LOGICAL_FORM]
@@ -379,11 +386,15 @@ class Inference(object):
                 ent_tokens = [context_question[idx] for idx, _ in ent_idx]
                 # get string from tokens using tokenizer
                 ent_label = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')  # NOTE: this is label of one entity
+                ent_label = ent_label.replace("[SEP]", "").replace("NA", "").strip()
+                if ent_label == "":
+                    break
                 # get elastic search results
-                es_results = search_by_label(self.es, ent_label, ent_idx[0][1])  # use type from B tag only (rest is redundant)
+                es_results = search_by_label(self.es, ent_label, ent_idx[0][1], index=args.elastic_index_ent_full)  # use type from B tag only (rest is redundant)
                 if not es_results:
                     # if no entity was found, generate new entity!
-                    es_results = [create_entity(self.es, label=ent_label, types=[ent_idx[0][1]])]
+                    type_list = list(set([ent_idx[i][1] for i in range(len(ent_idx))]))
+                    es_results = [create_entity(self.es, label=ent_label, types=type_list, production=args.production, logger=self.logger)]
                 # add indices to dict
                 for idx, _ in ent_idx:
                     ner_idx_ent[idx] = es_results
@@ -395,10 +406,11 @@ class Inference(object):
             # get string from tokens using tokenizer
             ent_label = self.tokenizer.convert_tokens_to_string(ent_tokens).replace('##', '')  # NOTE: this is label of one entity
             # get elastic search results
-            es_results = search_by_label(self.es, ent_label, ent_idx[0][1])  # use type from B tag only (rest is redundant)
+            es_results = search_by_label(self.es, ent_label, ent_idx[0][1], index=args.elastic_index_ent_full)  # use type from B tag only (rest is redundant)
             if not es_results:
                 # if no entity was found, generate new entity!
-                es_results = [create_entity(self.es, label=ent_label, types=[ent_idx[0][1]])]
+                type_list = list(set([ent_idx[i][1] for i in range(len(ent_idx))]))
+                es_results = [create_entity(self.es, label=ent_label, types=type_list, production=args.production, logger=self.logger)]
             # add indices to dict
             for idx, _ in ent_idx:
                 ner_idx_ent[idx] = es_results
@@ -456,33 +468,174 @@ def rapidfuzz_query(query, filter_type, kg, res_size=50):
     return filtered_res if filtered_res else unfiltered_res
 
 
-def save_checkpoint(state):
-    filename = f'{ROOT_PATH}/{args.snapshots}/{MODEL_NAME}_e{state[EPOCH]}_v{state[CURR_VAL]:.4f}_{args.task}.pth.tar'
+def save_checkpoint(state: dict, experiment: str = ""):
+    filename = ROOT_PATH.joinpath(args.snapshots).joinpath(experiment).joinpath(f"{MODEL_NAME}_{experiment}_e{state[EPOCH]}_v{state[CURR_VAL]:.4f}_{args.task}.pth.tar")
     torch.save(state, filename)
 
 
 class SingleTaskLoss(nn.Module):
     '''Single Task Loss'''
-    def __init__(self, ignore_index):
+    def __init__(self, ignore_index: int, device=None, weight: torch.Tensor = None):
         super().__init__()
-        self.criterion = nn.CrossEntropyLoss(ignore_index=ignore_index)
+        self.criterion = nn.CrossEntropyLoss(weight=weight, ignore_index=ignore_index)
 
     def forward(self, output, target):
         return self.criterion(output, target)
 
 
-class MultiTaskLoss(nn.Module):
-    '''Multi Task Learning Loss'''
-    def __init__(self, ignore_index):
+class SingleTaskAccuracy(nn.Module):
+    '''Single Task Accuracy (equivalent to "micro"-averaged accuracy)'''
+    def __init__(self, device=DEVICE):
         super().__init__()
-        self.lf_loss = SingleTaskLoss(ignore_index)
-        self.ner_loss = SingleTaskLoss(ignore_index)
-        self.coref_loss = SingleTaskLoss(ignore_index)
-        self.pred_pointer = SingleTaskLoss(ignore_index)
-        self.type_pointer = SingleTaskLoss(ignore_index)
+        self.device = device
 
+    def forward(self, output, target):
+        # Assuming outputs and labels are torch tensors.
+        # Outputs could be raw logits or probabilities from the last layer of a neural network
+        # Convert outputs to predicted class indices if they are not already
+        preds = output.argmax(dim=1) if output.ndim > 1 else output  # get token with max probability
+        # print(f"output ({output.ndim}|{preds.ndim}): {target}|{preds}")
+        correct = preds.eq(target).sum()
+
+        return correct.float() / target.size(0)
+
+
+class MultiTaskAcc(nn.Module):
+    """Multi Task Learning Accuracy Calculation"""
+
+    def __init__(self, device=DEVICE):
+        super().__init__()
+        self.device = device
+        self.lf_acc = SingleTaskAccuracy(self.device)
+        self.ner_acc = SingleTaskAccuracy(self.device)
+        self.coref_acc = SingleTaskAccuracy(self.device)
+        self.pp_acc = SingleTaskAccuracy(self.device)
+        self.tp_acc = SingleTaskAccuracy(self.device)
+
+    def forward(self, output, target):
+        # micro-averaged accuracy
+        accs = torch.stack((
+            self.lf_acc(output[LOGICAL_FORM], target[LOGICAL_FORM]),
+            self.ner_acc(output[NER], target[NER]),
+            self.coref_acc(output[COREF], target[COREF]),
+            self.pp_acc(output[PREDICATE_POINTER], target[PREDICATE_POINTER]),
+            self.tp_acc(output[TYPE_POINTER], target[TYPE_POINTER]),
+        ))
+
+        return {
+            LOGICAL_FORM: accs[0],
+            NER: accs[1],
+            COREF: accs[2],
+            PREDICATE_POINTER: accs[3],
+            TYPE_POINTER: accs[4],
+            MULTITASK: accs.mean()
+        }
+
+
+class MultiTaskAccTorchmetrics(nn.Module):
+    """Multi Task Learning Accuracy Calculation implemented via TorchMetrics."""
+
+    def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE, averaging_type="macro",
+                 module_names=(LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER)):
+        """
+        :param averaging_type:  if "micro": Equivalent to the MultiTaskAcc class (good for eval)
+                                if "macro":  Gives equal weight to all classes (good for training, not good for eval)
+                                if "weighted"  macro, but weighted by class importance TODO: understand better
+        """
+        super().__init__()
+        self.module_names = module_names
+        self.multi_acc = {}
+        for name in self.module_names:
+            n_classes = num_classes[name]
+            if pads is not None:
+                ignore_idx = pads[name]
+            else:
+                ignore_idx = None
+            self.multi_acc[name] = MulticlassAccuracy(average=averaging_type, multidim_average='global',
+                                                      num_classes=n_classes, ignore_index=ignore_idx).to(device)
+
+    def forward(self, output, target):
+        # weighted loss
+        accs = torch.stack([self.multi_acc[mn](output[mn], target[mn]) for mn in self.module_names])
+
+        results = {mn: accs[i] for i, mn in enumerate(self.module_names)}
+        results[MULTITASK] = accs.mean()
+
+        return results
+
+
+class MultiTaskRecTorchmetrics(nn.Module):
+    """Multi Task Learning Macro-averaged Recall Calculation implemented via torchmetrics"""
+
+    def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE, averaging_type="macro",
+                 module_names=(LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER)):
+        super().__init__()
+        self.module_names = module_names
+        self.multi_rec = {}
+        for name in self.module_names:
+            n_classes = num_classes[name]
+            if pads is not None:
+                ignore_idx = pads[name]
+            else:
+                ignore_idx = None
+            self.multi_rec[name] = MulticlassRecall(average=averaging_type, multidim_average='global',
+                                                    num_classes=n_classes, ignore_index=ignore_idx).to(device)
+
+    def forward(self, output, target):
+        # weighted loss
+        recalls = torch.stack([self.multi_rec[mn](output[mn], target[mn]) for mn in self.module_names])
+
+        results = {mn: recalls[i] for i, mn in enumerate(self.module_names)}
+        results[MULTITASK] = recalls.mean()
+        # for mn in self.module_names:
+        #     print(f"{output[mn].shape}|{target[mn].shape}")
+        return results
+
+
+def calc_class_weights(vocabs: dict[str: torchtext.vocab.Vocab]) -> dict[str: torch.Tensor]:
+    weights = {}
+
+    for nm, vocab in vocabs.items():
+        freqs = vocab.freqs  # counter
+
+        weights[nm] = []
+        for tok, tok_freq in freqs.items():
+            weights[nm].append(1. / tok_freq)
+
+        wtotal = sum(weights[nm])
+        for i in range(len(weights[nm])):
+            weights[nm][i] /= wtotal
+
+        weights[nm] = torch.tensor(weights[nm])
+
+        # validate order
+        fr_tensor = torch.Tensor(list(freqs.values()))
+        weighted_fr_tensor = weights[nm]*fr_tensor
+        assert torch.all(weighted_fr_tensor.isclose(weighted_fr_tensor.mean()))
+
+    return weights
+
+
+class MultiTaskLoss(nn.Module):
+    """Multi Task Learning Loss"""
+    def __init__(self, ignore_indices: dict, device=DEVICE, weights: dict = None):
+        super().__init__()
+        if weights is None:
+            weights = {k: None for k in [LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER]}
+
+        self.device = device
+        self.lf_loss = SingleTaskLoss(ignore_indices[LOGICAL_FORM], weight=weights[LOGICAL_FORM])
+        self.ner_loss = SingleTaskLoss(ignore_indices[NER], weight=weights[NER])
+        self.coref_loss = SingleTaskLoss(ignore_indices[COREF], weight=weights[COREF])
+        self.pred_pointer = SingleTaskLoss(ignore_indices[PREDICATE_POINTER], weight=weights[PREDICATE_POINTER])
+        self.type_pointer = SingleTaskLoss(ignore_indices[TYPE_POINTER], weight=weights[TYPE_POINTER])
+
+        # class weights (balancing)
+        self.weights = weights
+
+        # trained task weights
         self.mml_emp = torch.Tensor([True, True, True, True, True])
-        self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))
+        self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))  # so it actually learns to weight the losses
 
     def forward(self, output, target):
         # weighted loss
@@ -495,25 +648,27 @@ class MultiTaskLoss(nn.Module):
         ))
 
         dtype = task_losses.dtype
-        stds = (torch.exp(self.log_vars)**(1/2)).to(DEVICE).to(dtype)
-        weights = 1 / ((self.mml_emp.to(DEVICE).to(dtype)+1)*(stds**2))
+        stds = (torch.exp(self.log_vars)**(1/2)).to(self.device).to(dtype)
+        weights = 1 / ((self.mml_emp.to(self.device).to(dtype)+1)*(stds**2))
 
-        losses = weights * task_losses + torch.log(stds)
+        weighted_losses = weights * task_losses + torch.log(stds)
 
         return {
-            LOGICAL_FORM: losses[0],
-            NER: losses[1],
-            COREF: losses[2],
-            PREDICATE_POINTER: losses[3],
-            TYPE_POINTER: losses[4],
-            MULTITASK: losses.mean()
-        }[args.task]
+            LOGICAL_FORM: task_losses[0],
+            NER: task_losses[1],
+            COREF: task_losses[2],
+            PREDICATE_POINTER: task_losses[3],
+            TYPE_POINTER: task_losses[4],
+            MULTITASK: weighted_losses.mean()
+        }
+
 
 def init_weights(model):
     # initialize model parameters with Glorot / fan_avg
     for p in model.parameters():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
+
 
 # ANCHOR LASAGNE parameter initialisation
 def Embedding(num_embeddings, embedding_dim, padding_idx):
@@ -522,6 +677,7 @@ def Embedding(num_embeddings, embedding_dim, padding_idx):
     nn.init.uniform_(m.weight, -0.1, 0.1)
     nn.init.constant_(m.weight[padding_idx], 0)
     return m
+
 
 def Linear(in_features, out_features, bias=True):
     """Linear layer"""
