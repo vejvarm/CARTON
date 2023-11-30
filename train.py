@@ -58,7 +58,7 @@ def main():
     LOGGER.info(f'The model has {sum(p.numel() for p in model.parameters() if p.requires_grad):,} trainable parameters')
 
     # define loss function (criterion)
-    ignore_indices = {task: vocabs[task].stoi[PAD_TOKEN] for task in vocabs.keys()}
+    ignore_indices = {task: vocabs[task].stoi[PAD_TOKEN] for task in vocabs.keys() if task != ID}
     class_weight_dict = None
     if args.weighted_loss:
         class_weight_dict = calc_class_weights(vocabs)
