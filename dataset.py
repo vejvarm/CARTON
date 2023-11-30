@@ -220,7 +220,7 @@ class CSQADataset:
                                              specials=[O, PAD_TOKEN],
                                              vocab_cache=self.vocab_cache.joinpath("ner_vocab.pkl"))
         vocabs[COREF] = self._counter_to_vocab(self.counters[COREF],
-                                               specials=['0', PAD_TOKEN],
+                                               specials=[NA_TOKEN, PAD_TOKEN],
                                                vocab_cache=self.vocab_cache.joinpath("coref_vocab.pkl"))
         vocabs[PREDICATE_POINTER] = self._counter_to_vocab(self.counters[PREDICATE_POINTER],
                                                            specials=[NA_TOKEN, PAD_TOKEN],
@@ -229,7 +229,7 @@ class CSQADataset:
                                                       specials=[NA_TOKEN, PAD_TOKEN],
                                                       vocab_cache=self.vocab_cache.joinpath("type_vocab.pkl"))
         vocabs[ENTITY] = self._counter_to_vocab(self.counters[ENTITY],
-                                                specials=[PAD_TOKEN, NA_TOKEN],
+                                                specials=[NA_TOKEN, PAD_TOKEN],
                                                 vocab_cache=self.vocab_cache.joinpath("ent_vocab.pkl"))
 
         return vocabs
