@@ -1,6 +1,9 @@
 # CARTON w/ Named Entity Recognition
 - inspired by and forked from [endrikacupaj/CARTON](https://github.com/endrikacupaj/CARTON.git)
+- inspired by [endrikacupaj/LASAGNE](https://github.com/endrikacupaj/LASAGNE)
 
+## Architecture
+![CARTONNER](image/CARTONNER.png?raw=true "CARTONNER architecture")
 
 ## Premise
 Expand CARTON beyond static knowledge and allow it to work with dynamic Knolwedge Graphs.
