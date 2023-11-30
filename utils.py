@@ -10,7 +10,7 @@ from torchmetrics.classification import MulticlassAccuracy, MulticlassRecall
 
 import helpers
 from action_executor.actions import search_by_label, create_entity
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from transformers import BertTokenizer
 from elasticsearch import Elasticsearch
 
@@ -621,7 +621,7 @@ class MultiTaskLoss(nn.Module):
     def __init__(self, ignore_indices: dict, device=DEVICE, weights: dict = None):
         super().__init__()
         if weights is None:
-            weights = defaultdict(None)
+            weights = {k: None for k in [LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER]}
 
         self.device = device
         self.lf_loss = SingleTaskLoss(ignore_indices[LOGICAL_FORM], weight=weights[LOGICAL_FORM])
