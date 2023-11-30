@@ -14,4 +14,4 @@ if __name__ == "__main__":
         vocab = pickle.load(pth.open("rb"), encoding="utf8")
         vocab_example_map[pth.stem] = [vocab.itos[i] for i in range(10)]
 
-    json.dump(vocab_example_map, vocab_folder.joinpath("examples2.json").open("w"))
+    json.dump(vocab_example_map, vocab_folder.joinpath("examples.json").open("w"))

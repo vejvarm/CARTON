@@ -18,7 +18,6 @@ from constants import (LOGICAL_FORM, ROOT_PATH, QUESTION_TYPE, ENTITY, GOLD, LAB
                        CONTEXT_QUESTION, CONTEXT_ENTITIES, ANSWER, RESULTS, PREV_RESULTS, START_TOKEN, CTX_TOKEN,
                        UNK_TOKEN, END_TOKEN, INPUT, ID, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, B, I, O)
 
-
 @dataclass
 class DataBatch:
     """
@@ -94,8 +93,11 @@ def collate_fn(batch, vocabs: dict, device: str):
 
 
 class CSQADataset:
+    UNK = UNK_TOKEN
 
     def __init__(self, args, splits=('train', 'val', 'test')):
+        Vocab.UNK = UNK_TOKEN
+
         self.data_path = ROOT_PATH.joinpath(args.data_path)
         self.source_paths = {split: self.data_path.joinpath(split) for split in splits}
         self.splits = splits
@@ -166,7 +168,7 @@ class CSQADataset:
                                         specials=[O, PAD_TOKEN],
                                         vocab_cache=self.vocab_cache.joinpath("ner_vocab.pkl"))
         vocabs[COREF] = self._build_vocab([item[4] for item in data_aggregate],
-                                          specials=['0', PAD_TOKEN],
+                                          specials=[NA_TOKEN, PAD_TOKEN],
                                           vocab_cache=self.vocab_cache.joinpath("coref_vocab.pkl"))
         vocabs[PREDICATE_POINTER] = self._build_vocab([item[5] for item in data_aggregate],
                                                       specials=[NA_TOKEN, PAD_TOKEN],
@@ -175,7 +177,7 @@ class CSQADataset:
                                                  specials=[NA_TOKEN, PAD_TOKEN],
                                                  vocab_cache=self.vocab_cache.joinpath("type_vocab.pkl"))
         vocabs[ENTITY] = self._build_vocab([item[7] for item in data_aggregate],
-                                           specials=[PAD_TOKEN, NA_TOKEN],
+                                           specials=[NA_TOKEN, PAD_TOKEN],
                                            vocab_cache=self.vocab_cache.joinpath("ent_vocab.pkl"))
 
         return vocabs
@@ -190,6 +192,14 @@ class CSQADataset:
                     raw_data = json.load(json_file)
 
                 processed_data, _ = self._prepare_data([raw_data])
+                # # !DEBUG >>>
+                # debug_data = {'raw': raw_data, 'processed': processed_data}
+                # debug_path = ROOT_PATH.joinpath("debug")
+                # new_path = debug_path.joinpath(file_path.parent.name).joinpath(file_path.name).with_suffix(".pkl")
+                # new_path.parent.mkdir(exist_ok=True, parents=True)
+                # with open(new_path, "wb") as debug_file:
+                #     pickle.dump(debug_data, debug_file)
+                # # <<<
                 self.update_counters(processed_data)
 
         # Create and save vocabularies
@@ -292,6 +302,7 @@ class CSQADataset:
                         input.append(context[1])
                         ner_tag.append(f'{context[-1]}-{context[-2]}' if context[-1] in [B, I] else context[-1])
 
+                    # TODO: understand this and see if we do this correctly (compare with C)
                     # coref entities - prepare coref values
                     action_entities = [action[1] for action in system[GOLD_ACTIONS] if action[0] == ENTITY]
                     for context in reversed(user['context']):
