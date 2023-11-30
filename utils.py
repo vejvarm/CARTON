@@ -4,12 +4,13 @@ import time
 import json
 import logging
 import torch.nn as nn
+import torchtext.vocab
 from tqdm import tqdm
 from torchmetrics.classification import MulticlassAccuracy, MulticlassRecall
 
 import helpers
 from action_executor.actions import search_by_label, create_entity
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from transformers import BertTokenizer
 from elasticsearch import Elasticsearch
 
@@ -474,9 +475,9 @@ def save_checkpoint(state: dict, experiment: str = ""):
 
 class SingleTaskLoss(nn.Module):
     '''Single Task Loss'''
-    def __init__(self, ignore_index, device=None):
+    def __init__(self, ignore_index: int, device=None, weight: torch.Tensor = None):
         super().__init__()
-        self.criterion = nn.CrossEntropyLoss(ignore_index=ignore_index)
+        self.criterion = nn.CrossEntropyLoss(weight=weight, ignore_index=ignore_index)
 
     def forward(self, output, target):
         return self.criterion(output, target)
@@ -591,19 +592,50 @@ class MultiTaskRecTorchmetrics(nn.Module):
         return results
 
 
+def calc_class_weights(vocabs: dict[str: torchtext.vocab.Vocab]) -> dict[str: torch.Tensor]:
+    weights = {}
+
+    for nm, vocab in vocabs.items():
+        freqs = vocab.freqs  # counter
+
+        weights[nm] = []
+        for tok, tok_freq in freqs.items():
+            weights[nm].append(1. / tok_freq)
+
+        wtotal = sum(weights[nm])
+        for i in range(len(weights[nm])):
+            weights[nm][i] /= wtotal
+
+        weights[nm] = torch.tensor(weights[nm])
+
+        # validate order
+        fr_tensor = torch.Tensor(list(freqs.values()))
+        weighted_fr_tensor = weights[nm]*fr_tensor
+        assert torch.all(weighted_fr_tensor.isclose(weighted_fr_tensor.mean()))
+
+    return weights
+
+
 class MultiTaskLoss(nn.Module):
     """Multi Task Learning Loss"""
-    def __init__(self, ignore_index, device=DEVICE):
+    def __init__(self, ignore_indices: dict, device=DEVICE, weights: dict = None):
         super().__init__()
-        self.device = device
-        self.lf_loss = SingleTaskLoss(ignore_index)
-        self.ner_loss = SingleTaskLoss(ignore_index)
-        self.coref_loss = SingleTaskLoss(ignore_index)
-        self.pred_pointer = SingleTaskLoss(ignore_index)
-        self.type_pointer = SingleTaskLoss(ignore_index)
+        if weights is None:
+            weights = defaultdict(None)
 
+        self.device = device
+        self.lf_loss = SingleTaskLoss(ignore_indices[LOGICAL_FORM], weight=weights[LOGICAL_FORM])
+        self.ner_loss = SingleTaskLoss(ignore_indices[NER], weight=weights[NER])
+        self.coref_loss = SingleTaskLoss(ignore_indices[COREF], weight=weights[COREF])
+        self.pred_pointer = SingleTaskLoss(ignore_indices[PREDICATE_POINTER], weight=weights[PREDICATE_POINTER])
+        self.type_pointer = SingleTaskLoss(ignore_indices[TYPE_POINTER], weight=weights[TYPE_POINTER])
+
+        # class weights (balancing)
+        self.weights = weights
+
+        # trained task weights
         self.mml_emp = torch.Tensor([True, True, True, True, True])
-        self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))
+        self.log_vars = torch.nn.Parameter(torch.zeros(len(self.mml_emp)))  # so it actually learns to weight the losses
 
     def forward(self, output, target):
         # weighted loss
@@ -619,16 +651,16 @@ class MultiTaskLoss(nn.Module):
         stds = (torch.exp(self.log_vars)**(1/2)).to(self.device).to(dtype)
         weights = 1 / ((self.mml_emp.to(self.device).to(dtype)+1)*(stds**2))
 
-        losses = weights * task_losses + torch.log(stds)
+        weighted_losses = weights * task_losses + torch.log(stds)
 
         return {
-            LOGICAL_FORM: losses[0],
-            NER: losses[1],
-            COREF: losses[2],
-            PREDICATE_POINTER: losses[3],
-            TYPE_POINTER: losses[4],
-            MULTITASK: losses.mean()
-        }[args.task]
+            LOGICAL_FORM: task_losses[0],
+            NER: task_losses[1],
+            COREF: task_losses[2],
+            PREDICATE_POINTER: task_losses[3],
+            TYPE_POINTER: task_losses[4],
+            MULTITASK: weighted_losses.mean()
+        }
 
 
 def init_weights(model):

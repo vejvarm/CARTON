@@ -9,7 +9,7 @@ import torch.nn as nn
 from pathlib import Path
 from model import CARTON
 from dataset import CSQADataset
-from utils import SingleTaskLoss, MultiTaskLoss, AverageMeter, Scorer, Predictor, Inference
+from utils import Predictor, Inference
 
 # import constants
 from constants import DEVICE, ROOT_PATH, ALL_QUESTION_TYPES, MODEL_NAME

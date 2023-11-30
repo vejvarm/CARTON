@@ -11,8 +11,8 @@ from model import CARTON
 from dataset import CSQADataset, collate_fn
 from torch.utils.data import DataLoader, SequentialSampler, BatchSampler, RandomSampler
 from torch.utils.tensorboard import SummaryWriter
-from utils import (NoamOpt, AverageMeter, SingleTaskLoss, MultiTaskLoss, save_checkpoint, init_weights,
-                   MultiTaskAccTorchmetrics)
+from utils import (NoamOpt, AverageMeter, MultiTaskLoss, save_checkpoint, init_weights,
+                   MultiTaskAccTorchmetrics, calc_class_weights)
 
 from helpers import setup_logger
 from constants import *
@@ -58,16 +58,12 @@ def main():
     LOGGER.info(f'The model has {sum(p.numel() for p in model.parameters() if p.requires_grad):,} trainable parameters')
 
     # define loss function (criterion)
-    criterion = {
-        LOGICAL_FORM: SingleTaskLoss,
-        NER: SingleTaskLoss,
-        COREF: SingleTaskLoss,
-        PREDICATE_POINTER: SingleTaskLoss,
-        TYPE_POINTER: SingleTaskLoss,
-        MULTITASK: MultiTaskLoss
-    }[args.task](ignore_index=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN], device=DEVICE)
+    ignore_indices = {task: vocabs[task].stoi[PAD_TOKEN] for task in vocabs.keys()}
+    class_weight_dict = None
+    if args.weighted_loss:
+        class_weight_dict = calc_class_weights(vocabs)
 
-    single_task_loss = SingleTaskLoss(ignore_index=vocabs[LOGICAL_FORM].stoi[PAD_TOKEN])
+    criterion = MultiTaskLoss(ignore_indices=ignore_indices, device=DEVICE, weights=class_weight_dict)
 
     # define optimizer
     optimizer = NoamOpt(torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
@@ -123,7 +119,7 @@ def main():
     for epoch in range(args.start_epoch, args.epochs):
         # evaluate on validation set
         if epoch % args.valfreq == 0:
-            val_loss, accs = validate(val_loader, model, vocabs, helper_dict['val'], criterion, single_task_loss)
+            val_loss, accs = validate(val_loader, model, vocabs, helper_dict['val'], criterion)
             best_val = min(val_loss, best_val)  # log every validation step
             save_checkpoint({
                     EPOCH: epoch,
@@ -148,7 +144,7 @@ def main():
         tb_writer.add_scalar('training loss', train_loss, epoch+1)
 
     # Validate and save the final epoch
-    val_loss, accs = validate(val_loader, model, vocabs, helper_dict['val'], criterion, single_task_loss)
+    val_loss, accs = validate(val_loader, model, vocabs, helper_dict['val'], criterion)
     best_val = min(val_loss, best_val)  # log every validation step
     save_checkpoint({
         EPOCH: args.epochs,
@@ -211,8 +207,8 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
                 TYPE_POINTER: type_t[:, 1:].contiguous().view(-1),
             }
 
-            # compute loss
-            loss = criterion(output, target) if args.task == MULTITASK else criterion(output[args.task], target[args.task])
+            # compute and retrieve specific loss based on args.task
+            loss = criterion(output, target)[args.task]
 
             # record loss
             losses.update(loss.detach(), input.size(0))
@@ -239,7 +235,7 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
     return losses.avg
 
 
-def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss):
+def validate(val_loader, model, vocabs, helper_data, criterion):
     losses = AverageMeter()
 
     # record individual losses
@@ -284,14 +280,15 @@ def validate(val_loader, model, vocabs, helper_data, criterion, single_task_loss
             }
 
             # compute loss
-            loss = criterion(output, target) if args.task == MULTITASK else criterion(output[args.task], target[args.task])
+            loss_dict = criterion(output, target)
+            loss = loss_dict[args.task]
 
             # compute individual losses
-            loss_lf = single_task_loss(output[LOGICAL_FORM], target[LOGICAL_FORM])
-            loss_ner = single_task_loss(output[NER], target[NER])
-            loss_coref = single_task_loss(output[COREF], target[COREF])
-            loss_pred = single_task_loss(output[PREDICATE_POINTER], target[PREDICATE_POINTER])
-            loss_type = single_task_loss(output[TYPE_POINTER], target[TYPE_POINTER])
+            loss_lf = loss_dict[LOGICAL_FORM]
+            loss_ner = loss_dict[NER]
+            loss_coref = loss_dict[COREF]
+            loss_pred = loss_dict[PREDICATE_POINTER]
+            loss_type = loss_dict[TYPE_POINTER]
 
             # record loss
             losses.update(loss.detach(), input.size(0))
