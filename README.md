@@ -1,3 +1,14 @@
+# CARTON w/ Named Entity Recognition
+- inspired by and forked from [endrikacupaj/CARTON](https://github.com/endrikacupaj/CARTON.git)
+
+
+## Premise
+Expand CARTON beyond static knowledge and allow it to work with dynamic Knolwedge Graphs.
+Retrain with new dataset and new `Insert` class (logical form action type), which will update the underlying Knowledge Graph with new RDF triples based on information from the user input sentence.
+
+
+Below is a work in progress Readme adapted from the original repository.
+
 # Context Transformer with Stacked Pointer Networks for Conversational Question Answering over Knowledge Graphs
 
 *Re-implementation using code base and grammar from [here](https://github.com/endrikacupaj/LASAGNE). Original implementation was made by [joanPlepi](https://github.com/joanPlepi).*
@@ -9,20 +20,27 @@ Neural semantic parsing approaches have been widely used for Question Answering 
 CARTON (Context Transformer with Stacked Pointer Networks architecture) architecture. It consists of three modules: 1) A Transformer-based contextual encoder which produces the representation of the current context of the dialogue. 2) A logical form decoder that generates the pattern of actions defined by our proposed grammar. 3) The stacked pointer networks that initialize the KG items to fetch the correct answer.
 
 ## Requirements and Setup
-Python version >= 3.7
-
-PyTorch version >= 1.6.0
+Python version >= 3.9
+PyTorch version >= 1.12.0
 
 ``` bash
 # clone the repository
-git clone https://github.com/endrikacupaj/CARTON.git
-cd CARTON
+git clone https://github.com/vejvarm/CARTONNER.git
+cd CARTONNER
 pip install -r requirements.txt
 ```
+## Dataset
+### CSQA
+The original framework was evaluated on [CSQA](https://amritasaha1812.github.io/CSQA/) dataset. You can download the dataset from [here](https://amritasaha1812.github.io/CSQA/download/).
 
-## CSQA dataset
-Our framework was evaluated on [CSQA](https://amritasaha1812.github.io/CSQA/) dataset. You can download the dataset from [here](https://amritasaha1812.github.io/CSQA/download/).
-
+### CSQA-D2T
+We expand the CSQA dataset with a new `Insert` action class entries. CSQA-D2T:
+- uses artificially generated declarative sentences from factual data from the Wikidata KG
+- aims to train `Insert` action, which will generate new RDF triple in the underlying KG
+- follows same sturcture as CSQA dataset. 
+- is generated using
+  - [(2022, Kasner & Dušek, Neural Pipeline)](https://github.com/kasnerz/zeroshot-d2t-pipeline)
+  - [(2023, Vejvar & Fujimoto, ASPIRO)](https://github.com/vejvarm/ASPIRO)
 ## Wikidata Knowlegde Graph
 Since CSQA is based on Wikidata [Knowlegde Graph](https://www.wikidata.org/wiki/Wikidata:Main_Page), the authors provide a preproccesed version of it which can be used when working with the dataset.
 You can download the preprocessed files from [here](https://zenodo.org/record/4052427#.YBU7xHdKjfZ).
@@ -93,7 +111,8 @@ __else__: generate new `id` and `emb`, add it to `database_file` and return (`id
 ## License
 The repository is under [MIT License](LICENCE).
 
-## Cite
+## Cite 
+### CARTON
 ```bash
 @InProceedings{10.1007/978-3-030-77385-4_21,
 author="Plepi, Joan
