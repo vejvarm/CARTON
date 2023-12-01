@@ -536,7 +536,7 @@ class MultiTaskAccTorchmetrics(nn.Module):
     """Multi Task Learning Accuracy Calculation implemented via TorchMetrics."""
 
     def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE,
-                 averaging_types: dict[str: str] | str = "macro",
+                 averaging_types: dict[str: str] = "macro",
                  module_names=(LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER)):
         """
         :param averaging_type:  if "micro": Equivalent to the MultiTaskAcc class (good for eval)
@@ -575,7 +575,7 @@ class MultiTaskRecTorchmetrics(nn.Module):
     """Multi Task Learning Macro-averaged Recall Calculation implemented via torchmetrics"""
 
     def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE,
-                 averaging_types: dict[str: str] | str = "macro",
+                 averaging_types: dict[str: str] = "macro",
                  module_names=(LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER)):
         super().__init__()
         self.module_names = module_names
