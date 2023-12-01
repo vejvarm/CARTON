@@ -535,7 +535,8 @@ class MultiTaskAcc(nn.Module):
 class MultiTaskAccTorchmetrics(nn.Module):
     """Multi Task Learning Accuracy Calculation implemented via TorchMetrics."""
 
-    def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE, averaging_type="macro",
+    def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE,
+                 averaging_types: dict[str: str] | str = "macro",
                  module_names=(LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER)):
         """
         :param averaging_type:  if "micro": Equivalent to the MultiTaskAcc class (good for eval)
@@ -545,14 +546,20 @@ class MultiTaskAccTorchmetrics(nn.Module):
         super().__init__()
         self.module_names = module_names
         self.multi_acc = {}
-        for name in self.module_names:
-            n_classes = num_classes[name]
+
+        if isinstance(averaging_types, str):
+            averaging_types = {mn: averaging_types for mn in self.module_names}
+        else:
+            assert isinstance(averaging_types, dict)
+
+        for mn in self.module_names:
+            n_classes = num_classes[mn]
             if pads is not None:
-                ignore_idx = pads[name]
+                ignore_idx = pads[mn]
             else:
                 ignore_idx = None
-            self.multi_acc[name] = MulticlassAccuracy(average=averaging_type, multidim_average='global',
-                                                      num_classes=n_classes, ignore_index=ignore_idx).to(device)
+            self.multi_acc[mn] = MulticlassAccuracy(average=averaging_types[mn], multidim_average='global',
+                                                    num_classes=n_classes, ignore_index=ignore_idx).to(device)
 
     def forward(self, output, target):
         # weighted loss
@@ -567,19 +574,26 @@ class MultiTaskAccTorchmetrics(nn.Module):
 class MultiTaskRecTorchmetrics(nn.Module):
     """Multi Task Learning Macro-averaged Recall Calculation implemented via torchmetrics"""
 
-    def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE, averaging_type="macro",
+    def __init__(self, num_classes: dict, pads: dict = None, device=DEVICE,
+                 averaging_types: dict[str: str] | str = "macro",
                  module_names=(LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER)):
         super().__init__()
         self.module_names = module_names
         self.multi_rec = {}
-        for name in self.module_names:
-            n_classes = num_classes[name]
+
+        if isinstance(averaging_types, str):
+            averaging_types = {mn: averaging_types for mn in self.module_names}
+        else:
+            assert isinstance(averaging_types, dict)
+
+        for mn in self.module_names:
+            n_classes = num_classes[mn]
             if pads is not None:
-                ignore_idx = pads[name]
+                ignore_idx = pads[mn]
             else:
                 ignore_idx = None
-            self.multi_rec[name] = MulticlassRecall(average=averaging_type, multidim_average='global',
-                                                    num_classes=n_classes, ignore_index=ignore_idx).to(device)
+            self.multi_rec[mn] = MulticlassRecall(average=averaging_types[mn], multidim_average='global',
+                                                  num_classes=n_classes, ignore_index=ignore_idx).to(device)
 
     def forward(self, output, target):
         # weighted loss

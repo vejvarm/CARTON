@@ -247,7 +247,7 @@ def validate(val_loader, model, vocabs, helper_data, criterion):
 
     pad = {k: v.stoi["[PAD]"] for k, v in vocabs.items() if k != "id"}
     num_classes = {k: len(v) for k, v in vocabs.items() if k != "id"}
-    acc_calculator = MultiTaskAccTorchmetrics(num_classes, pads=pad, device=DEVICE, averaging_type='micro')  # !we use 'micro' to NOT bloat up classes, which don't have much samples (that would be useful for training)
+    acc_calculator = MultiTaskAccTorchmetrics(num_classes, pads=pad, device=DEVICE, averaging_types='micro')  # !we use 'micro' to NOT bloat up classes, which don't have much samples (that would be useful for training)
     accuracies = {LOGICAL_FORM: AverageMeter(),
                   NER: AverageMeter(),
                   COREF: AverageMeter(),

@@ -113,21 +113,23 @@ if __name__ == "__main__":
     model.load_state_dict(checkpoint['state_dict'])
     print(f"=> loaded checkpoint '{args.model_path}' (epoch {checkpoint['epoch']})")
 
-    acc_calculator = MultiTaskAccTorchmetrics(num_classes, pads=pad, device=DEVICE, averaging_type='micro')  # !we use 'micro' to NOT bloat up classes, which don't have much samples (that would be useful for training)
-    accuracies = {LOGICAL_FORM: AverageMeter(),
-                  NER: AverageMeter(),
-                  COREF: AverageMeter(),
-                  PREDICATE_POINTER: AverageMeter(),
-                  TYPE_POINTER: AverageMeter()}
+    # ACCURACY Metric
+    # for !we use 'micro' to NOT bloat up classes, which don't have much samples (that would be useful for training)
+    acc_modules = [LOGICAL_FORM, NER, COREF, PREDICATE_POINTER, TYPE_POINTER]
+    acc_averaging_types = {mn: 'micro' for mn in acc_modules}
+    acc_calculator = MultiTaskAccTorchmetrics(num_classes, pads=pad, device=DEVICE,
+                                              averaging_types=acc_averaging_types, module_names=acc_modules)
+    accuracies = {mn: AverageMeter() for mn in acc_modules}
 
-    rec_calculator = MultiTaskRecTorchmetrics(num_classes, pads=pad, device=DEVICE)
-    recalls = {LOGICAL_FORM: AverageMeter(),
-               NER: AverageMeter(),
-               COREF: AverageMeter(),
-               PREDICATE_POINTER: AverageMeter(),
-               TYPE_POINTER: AverageMeter()}
+    # RECALL Metric (Macro averaged) (except NER)
+    # TODO: FIX >>> !this is a HACK, we omit NER as we do not have enough GPU memory to calculate macro averaged recall for NER vocab
+    recall_modules = [LOGICAL_FORM, COREF, PREDICATE_POINTER, TYPE_POINTER]
+    # TODO: <<< FIX
+    recall_averaging_types = {mn: 'macro' for mn in recall_modules}
+    rec_calculator = MultiTaskRecTorchmetrics(num_classes, pads=pad, device=DEVICE,
+                                              averaging_types=recall_averaging_types, module_names=recall_modules)
+    recalls = {mn: AverageMeter() for mn in recall_modules}
 
-    # for i, data in random.sample(test_loader, 5):
     with torch.no_grad():
         with tqdm(total=total_batches, desc=f'Inference') as pbar:
             for i, batch in enumerate(test_loader):
@@ -155,7 +157,7 @@ if __name__ == "__main__":
                     meter.update(recs[name])
 
                 pbar.set_postfix({'lf': f"{accuracies[LOGICAL_FORM].avg:.4f}|{recalls[LOGICAL_FORM].avg:.4f}",
-                                  'ner': f"{accuracies[NER].avg:.4f}|{recalls[NER].avg:.4f}",
+                                  'ner': f"{accuracies[NER].avg:.4f}|-",  # TODO: <<< fix NER
                                   'coref': f"{accuracies[COREF].avg:.4f}|{recalls[COREF].avg:.4f}",
                                   'pp': f"{accuracies[PREDICATE_POINTER].avg:.4f}|{recalls[PREDICATE_POINTER].avg:.4f}",
                                   'tp': f"{accuracies[TYPE_POINTER].avg:.4f}|{recalls[TYPE_POINTER].avg:.4f}"})
