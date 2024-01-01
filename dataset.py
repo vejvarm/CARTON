@@ -677,3 +677,28 @@ class CSQADataset:
             self.counters[ENTITY].update(item[7])
 
             self.id += 1
+
+
+def prepad_tensors_with_start_tokens(batch, vocabs: dict, device):
+    lf = batch.logical_form
+    pp = batch.predicate_pointer
+    tp = batch.type_pointer
+
+    # pad first position of Decoder output with `[START]` token and PP and TP with `NA` token
+    lf_pad = torch.hstack([torch.full((lf.shape[0], 1), vocabs[LOGICAL_FORM].stoi['[START]']).to(device), lf])
+    pp_pad = torch.hstack([torch.full((pp.shape[0], 1), vocabs[PREDICATE_POINTER].stoi['NA']).to(device), pp])
+    tp_pad = torch.hstack([torch.full((tp.shape[0], 1), vocabs[TYPE_POINTER].stoi['NA']).to(device), tp])
+
+    return lf_pad, pp_pad, tp_pad
+
+
+if __name__ == "__main__":
+    # to check vocabularies
+    from args import get_parser
+    parser = get_parser()
+    args = parser.parse_args()
+
+    dataset = CSQADataset(args,
+                          splits=('test',))  # assuming we already have the correct vocab cache from all splits!
+    data_dict, helper_dict = dataset.preprocess_data()
+    vocabs = dataset.build_vocabs(args.stream_data)

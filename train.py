@@ -8,7 +8,7 @@ import torch.optim
 from tqdm import tqdm
 
 from model import CARTON
-from dataset import CSQADataset, collate_fn
+from dataset import CSQADataset, collate_fn, prepad_tensors_with_start_tokens
 from torch.utils.data import DataLoader, SequentialSampler, BatchSampler, RandomSampler
 from torch.utils.tensorboard import SummaryWriter
 from utils import (NoamOpt, AverageMeter, MultiTaskLoss, save_checkpoint, init_weights,
@@ -179,11 +179,11 @@ def train(train_loader, model, vocabs, helper_data, criterion, optimizer, epoch)
         for i, batch in enumerate(train_loader):
             # get inputs
             input = batch.input
-            logical_form = batch.logical_form
             ner = batch.ner
             coref = batch.coref
-            predicate_t = batch.predicate_pointer
-            type_t = batch.type_pointer
+
+            # pad first position of Decoder output with `[START]` token and PP and TP with `NA` token
+            logical_form, predicate_t, type_t = prepad_tensors_with_start_tokens(batch, vocabs, device=DEVICE)
 
             # compute output
             output = model(input, logical_form[:, :-1])
@@ -261,11 +261,10 @@ def validate(val_loader, model, vocabs, helper_data, criterion):
         for _, batch in tqdm(enumerate(val_loader), desc="\tvalidation", total=len(val_loader)):
             # get inputs
             input = batch.input
-            logical_form = batch.logical_form
             ner = batch.ner
             coref = batch.coref
-            predicate_t = batch.predicate_pointer
-            type_t = batch.type_pointer
+
+            logical_form, predicate_t, type_t = prepad_tensors_with_start_tokens(batch, vocabs, device=DEVICE)
 
             # compute output
             output = model(input, logical_form[:, :-1])

@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import torch
 from tqdm import tqdm
 
-from dataset import CSQADataset, collate_fn
+from dataset import CSQADataset, collate_fn, prepad_tensors_with_start_tokens
 from model import CARTON
 from utils import Predictor, AverageMeter, MultiTaskAcc, MultiTaskAccTorchmetrics, MultiTaskRecTorchmetrics
 
@@ -137,15 +137,17 @@ if __name__ == "__main__":
                 Using model to do inference
                 """
 
+                logical_form, predicate_t, type_t = prepad_tensors_with_start_tokens(batch, vocabs, device=DEVICE)
+
                 # compute output
-                output = model(batch.input, batch.logical_form[:, :-1])
+                output = model(batch.input, logical_form[:, :-1])  # TODO: we should feed one lf token at a time
 
                 target = {
-                    LOGICAL_FORM: batch.logical_form[:, 1:].contiguous().view(-1),
+                    LOGICAL_FORM: logical_form[:, 1:].contiguous().view(-1),
                     NER: batch.ner.contiguous().view(-1),
                     COREF: batch.coref.contiguous().view(-1),
-                    PREDICATE_POINTER: batch.predicate_pointer[:, 1:].contiguous().view(-1),
-                    TYPE_POINTER: batch.type_pointer[:, 1:].contiguous().view(-1),
+                    PREDICATE_POINTER: predicate_t[:, 1:].contiguous().view(-1),
+                    TYPE_POINTER: type_t[:, 1:].contiguous().view(-1),
                 }
 
                 accs = acc_calculator(output, target)

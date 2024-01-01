@@ -14,7 +14,6 @@ from constants import ROOT_PATH
 from args import parse_and_get_args
 args = parse_and_get_args()
 
-
 def extract_individual_losses_from_train_log(file_name):
     with open(f"{ROOT_PATH}/{args.path_results}/{file_name}", 'r') as f:
         col_names = []
