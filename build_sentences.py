@@ -137,7 +137,11 @@ def compose_logical_form(inp, pred_lf, pred_coref, pred_pp, pred_tp, entities):
                 composed_lf.append(entities[ent_keys_filled.pop(0)])
             except IndexError:
                 # print(f"ent idx: {ent_idx} | {entities}")
-                composed_lf.append(entities["NA"].pop())
+                try:
+                    composed_lf.append(entities["NA"].pop())
+                except IndexError:
+                    print("No more entities to fill in logical form")
+                    composed_lf.append("[UNK]$ENTITY")
         elif act == "relation":
             composed_lf.append(pp[i])
         elif act == "type":
@@ -181,29 +185,22 @@ if __name__ == "__main__":
             for i, batch in enumerate(test_loader):
                 logical_form, predicate_t, type_t = prepad_tensors_with_start_tokens(batch, vocabs, device=DEVICE)
 
-                # print(vocabs[LOGICAL_FORM].stoi)
-                # print(logical_form.shape)
-                # tg_lf = torch.zeros(logical_form.shape[0], 1, dtype=torch.long).to(DEVICE)
                 tg_lf = logical_form[:, :1]
-                # tg_lf = torch.hstack([tg_lf, logical_form[:, :-1]])
-                # print(tg_lf)
-                # exit()
 
                 # infer predictions from model
                 for j in range(logical_form.shape[1] - 1):
                     output = model(batch.input, tg_lf)  # dict
 
                     pred = torch.argmax(output[LOGICAL_FORM], dim=1).view(args.batch_size, -1)
-
-                    tg_lf = torch.hstack([tg_lf, pred[:, j:j+1]])
-                    print(tg_lf)
+                    # print(f"pred[{j}]: {pred.shape}")
+                    tg_lf = torch.hstack([tg_lf, pred[:, -1:]])
+                    # print(f"tg_lf[{j}]: {tg_lf}")
+                # print(f"tg_lf: {tg_lf.shape} | lf: {logical_form.shape} | pred: {pred.shape}")
                 preds = {
                     k: torch.argmax(output[k], dim=1).view(args.batch_size, -1) for k in [LOGICAL_FORM, NER,
                                                                                           COREF, PREDICATE_POINTER,
                                                                                           TYPE_POINTER]
                 }
-                print(preds[LOGICAL_FORM])
-                print(preds[LOGICAL_FORM].shape)
 
                 # get labels from data
                 target = {
@@ -224,14 +221,7 @@ if __name__ == "__main__":
                 # TODO: fix PADDING token MISMATCH in predictions
                 preds_decoded = {
                     k: [[vocabs[k].itos[tok] for tok in sample] for sample in preds[k]][:len(t_decoded[k])] for k in preds.keys()  # !HACK with len(t_decoded[k])
-                    # k: [[vocabs[k].itos[tok] for tok in sample] for sample in preds[k]] for k in preds.keys()
-                    # k: [[vocabs[k].itos[tok] for tok in preds[k][i] if tok != pad[k]] for i in range(len(t_decoded[k]))] for k in preds.keys()
                 }
-
-                print(t_decoded)
-                print(preds_decoded)
-
-                exit()
 
                 batch_results = extract_entities_and_sentences(i_decoded, t_decoded[NER], t_decoded[COREF])
 
