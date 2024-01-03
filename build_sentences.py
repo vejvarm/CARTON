@@ -223,7 +223,7 @@ if __name__ == "__main__":
                     k: [[vocabs[k].itos[tok] for tok in sample] for sample in preds[k]][:len(t_decoded[k])] for k in preds.keys()  # !HACK with len(t_decoded[k])
                 }
 
-                batch_results = extract_entities_and_sentences(i_decoded, t_decoded[NER], t_decoded[COREF])
+                batch_results = extract_entities_and_sentences(i_decoded, preds_decoded[NER], preds_decoded[COREF])
 
                 # TODO: what do we do with [PAD] tokens (Remove/keep and mask?) when calculating accuracy?
                 # find all B-'s ... extract the type_id from there

@@ -60,7 +60,7 @@ def get_parser():
     parser.add_argument('--pool_size', default=100, type=int)
 
     # test and inference
-    parser.add_argument('--model-path', default='experiments/models/CARTONNER_csqa15_e10_v0.0065_multitask.pth.tar',
+    parser.add_argument('--model-path', default='experiments/models/CARTONNER_merged15_e15_v0.0258_multitask.pth.tar',
                         type=str)
     parser.add_argument('--file_path', default='/data/final/csqa/process/test.json', type=str)
     parser.add_argument('--inference_partition', default=InferencePartition.TEST.value,

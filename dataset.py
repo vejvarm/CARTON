@@ -18,6 +18,36 @@ from constants import (LOGICAL_FORM, ROOT_PATH, QUESTION_TYPE, ENTITY, GOLD, LAB
                        CONTEXT_QUESTION, CONTEXT_ENTITIES, ANSWER, RESULTS, PREV_RESULTS, START_TOKEN, CTX_TOKEN,
                        UNK_TOKEN, END_TOKEN, INPUT, ID, NER, COREF, PREDICATE_POINTER, TYPE_POINTER, B, I, O)
 
+
+@dataclass
+class SingleInput:
+    """
+    Single input sample in the same form as DataBatch.
+    """
+    id: torch.Tensor  # str
+    input: torch.Tensor  # str
+    logical_form: torch.Tensor  # list[str] len=0
+    predicate_pointer: torch.Tensor  # list[int] len=0
+    type_pointer = torch.Tensor  # list[int] len=0
+
+    def __init__(self, sample_tokenized: list[any], vocabs: dict, device: str):
+        """ Initialize SingleInputSample from a single sample_tokenized.
+
+        :param sample_tokenized: tokenized input sentence
+        :param vocabs: dictionary of vocabularies
+        :param device: device to put tensors on
+        """
+        self.id = self._tensor([0]).unsqueeze(0).to(device)
+        self.input = self._tensor([vocabs[INPUT].stoi[s] for s in sample_tokenized]).unsqueeze(0).to(device)
+        self.logical_form = self._tensor([]).unsqueeze(0).to(device)
+        self.predicate_pointer = self._tensor([]).unsqueeze(0).to(device)
+        self.type_pointer = self._tensor([]).unsqueeze(0).to(device)
+
+    @staticmethod
+    def _tensor(data):
+        return torch.tensor(data)
+
+
 @dataclass
 class DataBatch:
     """
@@ -685,9 +715,9 @@ def prepad_tensors_with_start_tokens(batch, vocabs: dict, device):
     tp = batch.type_pointer
 
     # pad first position of Decoder output with `[START]` token and PP and TP with `NA` token
-    lf_pad = torch.hstack([torch.full((lf.shape[0], 1), vocabs[LOGICAL_FORM].stoi['[START]']).to(device), lf])
-    pp_pad = torch.hstack([torch.full((pp.shape[0], 1), vocabs[PREDICATE_POINTER].stoi['NA']).to(device), pp])
-    tp_pad = torch.hstack([torch.full((tp.shape[0], 1), vocabs[TYPE_POINTER].stoi['NA']).to(device), tp])
+    lf_pad = torch.hstack([torch.full((lf.shape[0], 1), vocabs[LOGICAL_FORM].stoi['[START]']).to(device), lf]).type(torch.long)
+    pp_pad = torch.hstack([torch.full((pp.shape[0], 1), vocabs[PREDICATE_POINTER].stoi['NA']).to(device), pp]).type(torch.long)
+    tp_pad = torch.hstack([torch.full((tp.shape[0], 1), vocabs[TYPE_POINTER].stoi['NA']).to(device), tp]).type(torch.long)
 
     return lf_pad, pp_pad, tp_pad
 
