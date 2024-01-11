@@ -111,6 +111,7 @@ if __name__ == "__main__":
     checkpoint = torch.load(f'{ROOT_PATH}/{args.model_path}', encoding='latin1', map_location=DEVICE)
     args.start_epoch = checkpoint['epoch']
     model.load_state_dict(checkpoint['state_dict'])
+    model.eval()
     print(f"=> loaded checkpoint '{args.model_path}' (epoch {checkpoint['epoch']})")
 
     # ACCURACY Metric
